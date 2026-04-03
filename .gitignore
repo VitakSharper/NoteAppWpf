@@ -1,0 +1,21 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Visual Studio
+.vs/
+
+## .NET tool cache
+.dotnet/
+
+## User secrets
+secrets.json
+
+## OS
+Thumbs.db
+desktop.ini
+.DS_Store

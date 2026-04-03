@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep:*)",
+      "Bash(xargs head:*)",
+      "Bash(dotnet build:*)",
+      "Bash(ls -t /c/Repos/NoteApp/*.png)",
+      "Bash(dotnet ef:*)",
+      "Bash(xargs -0 cp -t /tmp/)",
+      "Bash(xargs -0 -I{} cp \"{}\" /tmp/screenshot.png)",
+      "Bash(powershell -Command \"Get-ChildItem 'C:\\\\Repos\\\\NoteApp\\\\' -Filter 'screenshot4*' | Select-Object FullName\")",
+      "Bash(powershell -Command \"Get-ChildItem 'C:\\\\Repos\\\\NoteApp\\\\' -Filter 'screenshot*' | Sort-Object LastWriteTime -Descending | Select-Object -First 3 FullName, LastWriteTime\")",
+      "Bash(powershell -Command \"Get-ChildItem 'C:\\\\Repos\\\\NoteApp\\\\' -Filter '*.png' | Sort-Object LastWriteTime -Descending | Select-Object -First 5 FullName, LastWriteTime\")",
+      "Bash(powershell -Command \"Get-ChildItem 'C:\\\\Repos\\\\NoteApp\\\\' -Include '*.png','*.jpg','*.jpeg','*.bmp','*.gif','*.webp' -Recurse -Depth 0 | Sort-Object LastWriteTime -Descending | Select-Object FullName, LastWriteTime\")",
+      "Bash(powershell -Command \"Get-ChildItem 'C:\\\\Repos\\\\NoteApp\\\\' | Sort-Object LastWriteTime -Descending | Select-Object -First 10 Name, LastWriteTime\")",
+      "Bash(dotnet add:*)",
+      "Bash(git init:*)"
+    ]
+  }
+}

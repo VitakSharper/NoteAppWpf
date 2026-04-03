@@ -1,0 +1,115 @@
+<UserControl x:Class="NoteApp.Views.TagManagerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:converters="clr-namespace:NoteApp.Converters"
+             Loaded="OnLoaded">
+
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
+        <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
+    </UserControl.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0" Text="Manage Tags"
+                   Style="{StaticResource MaterialDesignHeadline5TextBlock}" Margin="0,0,0,16" />
+
+        <!-- Create Tag -->
+        <materialDesign:Card Grid.Row="1" Padding="16" Margin="0,0,0,16"
+                             materialDesign:ElevationAssist.Elevation="Dp2">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource MaterialDesignRaisedButton}"
+                        Content="Add Tag" Command="{Binding CreateTagCommand}" Margin="16,0,0,0" />
+                <TextBox Text="{Binding NewTagName, UpdateSourceTrigger=PropertyChanged}"
+                         materialDesign:HintAssist.Hint="New tag name..."
+                         VerticalAlignment="Center" FontSize="14">
+                    <TextBox.InputBindings>
+                        <KeyBinding Key="Enter" Command="{Binding CreateTagCommand}" />
+                    </TextBox.InputBindings>
+                </TextBox>
+            </DockPanel>
+        </materialDesign:Card>
+
+        <!-- Loading -->
+        <ProgressBar Grid.Row="2" IsIndeterminate="True"
+                     Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
+                     VerticalAlignment="Top" />
+
+        <!-- Tags List -->
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Tags}" Margin="0,8,0,0">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <materialDesign:Card Margin="0,4" Padding="12"
+                                             materialDesign:ElevationAssist.Elevation="Dp1">
+                            <DockPanel>
+                                <!-- Actions -->
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                                            ToolTip="Edit" Width="32" Height="32"
+                                            Command="{Binding DataContext.BeginEditCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}">
+                                        <materialDesign:PackIcon Kind="Pencil" Width="18" Height="18" />
+                                    </Button>
+                                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                                            ToolTip="Delete" Width="32" Height="32"
+                                            Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                                            Command="{Binding DataContext.DeleteTagCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}">
+                                        <materialDesign:PackIcon Kind="Delete" Width="18" Height="18" />
+                                    </Button>
+                                </StackPanel>
+
+                                <!-- Tag icon + name -->
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <materialDesign:PackIcon Kind="Tag" VerticalAlignment="Center"
+                                                             Margin="0,0,8,0"
+                                                             Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                                    <TextBlock Text="{Binding Name.Value}" FontSize="14"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </DockPanel>
+                        </materialDesign:Card>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Edit Dialog Overlay -->
+        <Grid Grid.Row="0" Grid.RowSpan="3"
+              Visibility="{Binding IsEditing, Converter={StaticResource BoolToVis}}">
+            <Grid.Background>
+                <SolidColorBrush Color="Black" Opacity="0.3" />
+            </Grid.Background>
+            <materialDesign:Card Padding="24" MaxWidth="400"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                                 materialDesign:ElevationAssist.Elevation="Dp8">
+                <StackPanel>
+                    <TextBlock Text="Rename Tag" Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Margin="0,0,0,16" />
+                    <TextBox Text="{Binding EditTagName, UpdateSourceTrigger=PropertyChanged}"
+                             materialDesign:HintAssist.Hint="Tag name"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             Margin="0,0,0,16" MinWidth="280">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding SaveEditCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Cancel" Style="{StaticResource MaterialDesignFlatButton}"
+                                Command="{Binding CancelEditCommand}" Margin="0,0,8,0" />
+                        <Button Content="Save" Style="{StaticResource MaterialDesignRaisedButton}"
+                                Command="{Binding SaveEditCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </materialDesign:Card>
+        </Grid>
+    </Grid>
+</UserControl>

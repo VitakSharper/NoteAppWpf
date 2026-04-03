@@ -1,0 +1,4 @@
+interface:
+  display_name: "NoteApp Maintainer"
+  short_description: "Maintain the NoteApp WPF codebase"
+  default_prompt: "Use $noteapp-maintainer to modify this NoteApp WPF application while preserving its functional architecture."

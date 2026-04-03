@@ -1,0 +1,203 @@
+<UserControl x:Class="NoteApp.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:converters="clr-namespace:NoteApp.Converters">
+
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <DockPanel Grid.Row="0" Margin="0,0,0,16">
+                <Button DockPanel.Dock="Right" ToolTip="Close"
+                        Style="{StaticResource MaterialDesignIconButton}"
+                        Click="OnClose"
+                        Width="36" Height="36">
+                    <materialDesign:PackIcon Kind="Close" Width="22" Height="22" />
+                </Button>
+                <TextBlock Text="Settings"
+                           Style="{StaticResource MaterialDesignHeadline5TextBlock}"
+                           VerticalAlignment="Center" />
+            </DockPanel>
+
+            <materialDesign:Card Grid.Row="1"
+                                 Padding="20"
+                                 Margin="0,0,0,16"
+                                 materialDesign:ElevationAssist.Elevation="Dp2">
+                <StackPanel>
+                    <TextBlock Text="Appearance"
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Margin="0,0,0,16" />
+
+                    <StackPanel Margin="0,0,0,20">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="WeatherNight"
+                                                     VerticalAlignment="Center"
+                                                     Margin="0,0,12,0"
+                                                     Width="24" Height="24" />
+                            <TextBlock Text="Dark mode"
+                                       FontSize="14"
+                                       VerticalAlignment="Center" />
+                            <ToggleButton IsChecked="{Binding IsDarkMode}"
+                                          Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                          Margin="16,0,0,0"
+                                          VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Text="Switch between light and dark theme for the entire application."
+                                   Margin="36,4,0,0"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                    </StackPanel>
+
+                    <Separator Margin="0,0,0,20" />
+
+                    <TextBlock Text="Application behavior"
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Margin="0,0,0,16" />
+
+                    <StackPanel Margin="0,0,0,16">
+                        <CheckBox IsChecked="{Binding ConfirmNoteDeletion}"
+                                  Content="Confirm before deleting notes"
+                                  FontSize="14" />
+                        <TextBlock Text="Show a confirmation dialog before removing a note."
+                                   Margin="28,4,0,0"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,16">
+                        <CheckBox IsChecked="{Binding ConfirmTagDeletion}"
+                                  Content="Confirm before deleting tags"
+                                  FontSize="14" />
+                        <TextBlock Text="Show a confirmation dialog before removing a tag."
+                                   Margin="28,4,0,0"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,20">
+                        <TextBlock Text="Startup page"
+                                   FontSize="14"
+                                   FontWeight="Medium"
+                                   Margin="0,0,0,8" />
+                        <ComboBox ItemsSource="{Binding StartupPages}"
+                                  SelectedItem="{Binding StartupPage}"
+                                  MinWidth="220" />
+                        <TextBlock Text="Choose which section opens first when the application starts."
+                                   Margin="0,8,0,0"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Right">
+                        <Button Content="Reset defaults"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Command="{Binding ResetDefaultsCommand}"
+                                Margin="0,0,8,0" />
+                        <Button Content="Save settings"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Command="{Binding SaveCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <materialDesign:Card Grid.Row="2"
+                                 Padding="20"
+                                 materialDesign:ElevationAssist.Elevation="Dp1">
+                <StackPanel>
+                    <TextBlock Text="Storage"
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Margin="0,0,0,12" />
+                    <TextBlock Text="Settings file"
+                               FontSize="14"
+                               FontWeight="Medium"
+                               Margin="0,0,0,8" />
+                    <TextBox Text="{Binding SettingsFilePath, Mode=OneWay}"
+                             IsReadOnly="True"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+                </StackPanel>
+            </materialDesign:Card>
+
+            <materialDesign:Card Grid.Row="3"
+                                 Padding="20"
+                                 Margin="0,16,0,0"
+                                 materialDesign:ElevationAssist.Elevation="Dp2">
+                <StackPanel>
+                    <TextBlock Text="Database Backup"
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Margin="0,0,0,16" />
+
+                    <TextBlock Text="Export the database as a password-protected BACPAC archive."
+                               Margin="0,0,0,16"
+                               Foreground="{DynamicResource MaterialDesignBodyLight}" />
+
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Text="Backup folder"
+                                   FontSize="14"
+                                   FontWeight="Medium"
+                                   Margin="0,0,0,8" />
+                        <DockPanel LastChildFill="True">
+                            <Button DockPanel.Dock="Right"
+                                    ToolTip="Open folder in Explorer"
+                                    Style="{StaticResource MaterialDesignIconButton}"
+                                    Command="{Binding OpenBackupFolderCommand}"
+                                    Width="36" Height="36"
+                                    Margin="4,0,0,0">
+                                <materialDesign:PackIcon Kind="FolderOpen" Width="20" Height="20" />
+                            </Button>
+                            <Button DockPanel.Dock="Right"
+                                    ToolTip="Browse for folder"
+                                    Style="{StaticResource MaterialDesignIconButton}"
+                                    Command="{Binding BrowseBackupFolderCommand}"
+                                    Width="36" Height="36"
+                                    Margin="4,0,0,0">
+                                <materialDesign:PackIcon Kind="DotsHorizontal" Width="20" Height="20" />
+                            </Button>
+                            <TextBox Text="{Binding BackupFolderPath, UpdateSourceTrigger=PropertyChanged}"
+                                     materialDesign:HintAssist.Hint="Backup folder path"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+                        </DockPanel>
+                        <TextBlock Text="Folder where backup archives are stored."
+                                   Margin="0,8,0,0"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Text="Backup password"
+                                   FontSize="14"
+                                   FontWeight="Medium"
+                                   Margin="0,0,0,8" />
+                        <TextBox Text="{Binding BackupPassword, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="Enter backup password"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 MaxWidth="400"
+                                 HorizontalAlignment="Left" />
+                        <TextBlock Text="This password protects the zip archive. Store it safely — it cannot be recovered."
+                                   Margin="0,8,0,0"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal"
+                                Margin="0,8,0,0">
+                        <Button Content="Backup Now"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Command="{Binding BackupCommand}"
+                                IsEnabled="{Binding CanBackup}"
+                                Margin="0,0,16,0" />
+                        <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
+                                     IsIndeterminate="True"
+                                     Visibility="{Binding IsBackingUp, Converter={StaticResource BoolToVis}}"
+                                     Width="24" Height="24"
+                                     VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+            </materialDesign:Card>
+        </Grid>
+    </ScrollViewer>
+</UserControl>
