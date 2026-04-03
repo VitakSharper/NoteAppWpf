@@ -23,6 +23,10 @@ dotnet user-secrets set "ConnectionStrings:NoteDb" "Server=YOUR_SERVER;Database=
 
 No test project exists yet. QuestPDF is referenced but PDF export is not yet implemented.
 
+## Repository
+
+GitHub: https://github.com/VitakSharper/NoteAppWpf.git (remote `origin`, branch `master`).
+
 ## Architecture
 
 WPF desktop app (.NET 10) with functional programming patterns (Zoran Horvat style). SQL Server backend via EF Core 10. Solution file is `NoteApp.slnx` (not `.sln`).
@@ -48,6 +52,8 @@ DI is configured in `App.xaml.cs`. Connection string loaded via .NET User Secret
 - **Sealed discriminated unions** for note block types: `NoteBlock.Text | NoteBlock.File | NoteBlock.Link` — defined in `Domain/Models/NoteContent.cs` (filename doesn't match type name).
 - **Pure mapper functions** in `Services/Mapping/NoteMapper.cs` converting between EF entities and domain models.
 - **MVVM** with `[ObservableProperty]` and `[RelayCommand]` source generators from CommunityToolkit.Mvvm.
+- **TagFilterItem wrapper** in `NoteListViewModel.cs` — wraps `Tag` with observable `IsSelected` for tag filter UI state. `AllTags` is `ObservableCollection<TagFilterItem>`, not raw `Tag`.
+- **Collapsible tag filter panel** in `NoteListView.xaml` — toggle button expands/collapses a tag row below the filter bar. Selected tags render with dark green fill (`#2E7D32`) via `DataTrigger` on `IsSelected`.
 
 ### Note Model
 
@@ -63,6 +69,10 @@ When modifying note structure or block types, update across all layers:
 5. `Services/EncryptionService.cs` (if it affects serialization)
 6. `ViewModels/NoteEditorViewModel.cs` + `Views/NoteEditorView.xaml`
 7. Add EF migration if schema changed
+
+### Database Backup
+
+`BackupService` exports a SQL Server BACPAC via DacFx, then packages it into a password-protected AES-256 zip (SharpZipLib). Triggered from `SettingsViewModel.BackupAsync()`. Output: `NoteApp_<timestamp>.zip` in the configured backup folder (default `AppSettings.DefaultBackupFolderPath`). Intermediate `.bacpac` is deleted after zipping. Returns `Result<string, AppError>`.
 
 ### Stale Documentation Warning
 
