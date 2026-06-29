@@ -5,7 +5,6 @@ using MaterialDesignThemes.Wpf;
 using NoteApp.Data.Repositories;
 using NoteApp.Domain.Functional;
 using NoteApp.Domain.Models;
-using NoteApp.Domain.ValueObjects;
 using NoteApp.Services;
 using NoteApp.Views;
 
@@ -17,9 +16,12 @@ public partial class MainViewModel : ObservableObject
     private readonly ITagRepository _tagRepository;
     private readonly AppSettingsService _settingsService;
 
-    [ObservableProperty] private ObservableObject? _currentView;
-    [ObservableProperty] private string _statusMessage = string.Empty;
-    [ObservableProperty] private bool _isDrawerOpen;
+    // Middle pane: NoteList <-> TagManager
+    [ObservableProperty] private ObservableObject? _middlePaneContent;
+    // Right pane: a NoteEditorViewModel, or null => empty-state placeholder
+    [ObservableProperty] private ObservableObject? _currentEditor;
+    // Settings modal (hosted in RootDialog)
+    [ObservableProperty] private bool _isSettingsOpen;
 
     public NoteListViewModel NoteListViewModel { get; }
     public TagManagerViewModel TagManagerViewModel { get; }
@@ -47,49 +49,39 @@ public partial class MainViewModel : ObservableObject
 
         tagManagerViewModel.ShowMessage += OnShowMessage;
         settingsViewModel.ShowMessage += OnShowMessage;
-        settingsViewModel.CloseRequested += () => CurrentView = NoteListViewModel;
+        settingsViewModel.CloseRequested += () => IsSettingsOpen = false;
 
-        CurrentView = _settingsService.Current.LaunchPage switch
-        {
-            StartupPage.Tags => TagManagerViewModel,
-            StartupPage.Settings => SettingsViewModel,
-            _ => NoteListViewModel
-        };
+        // Startup: choose middle pane; Settings.LaunchPage opens the dialog over Notes
+        MiddlePaneContent = _settingsService.Current.LaunchPage == StartupPage.Tags
+            ? TagManagerViewModel
+            : NoteListViewModel;
+        if (_settingsService.Current.LaunchPage == StartupPage.Settings)
+            IsSettingsOpen = true;
     }
 
     [RelayCommand]
-    private void NavigateToNotes()
-    {
-        CurrentView = NoteListViewModel;
-        IsDrawerOpen = false;
-    }
+    private void NavigateToNotes() => MiddlePaneContent = NoteListViewModel;
 
     [RelayCommand]
     private void NavigateToTags()
     {
-        CurrentView = TagManagerViewModel;
-        IsDrawerOpen = false;
+        MiddlePaneContent = TagManagerViewModel;
         TagManagerViewModel.LoadTagsCommand.Execute(null);
     }
 
     [RelayCommand]
-    private void NavigateToSettings()
-    {
-        CurrentView = SettingsViewModel;
-        IsDrawerOpen = false;
-    }
+    private void OpenSettings() => IsSettingsOpen = true;
 
     [RelayCommand]
     private async Task CreateNote()
     {
-        IsDrawerOpen = false;
         var tags = await _tagRepository.GetAllAsync();
         var allTags = tags.Match(t => t, _ => (IReadOnlyList<Tag>)[]);
 
         var editor = new NoteEditorViewModel(_noteService, _tagRepository, allTags);
         editor.SaveCompleted += OnNoteSaved;
         editor.CancelRequested += OnEditorCancelled;
-        CurrentView = editor;
+        CurrentEditor = editor;
     }
 
     private async void OnEditNoteRequested(Note note)
@@ -121,7 +113,7 @@ public partial class MainViewModel : ObservableObject
         var editor = new NoteEditorViewModel(_noteService, _tagRepository, allTags, note, password);
         editor.SaveCompleted += OnNoteSaved;
         editor.CancelRequested += OnEditorCancelled;
-        CurrentView = editor;
+        CurrentEditor = editor;
     }
 
     private void OnCreateNoteRequested() => CreateNoteCommand.Execute(null);
@@ -131,7 +123,7 @@ public partial class MainViewModel : ObservableObject
         MessageQueue.Enqueue($"Note '{note.Title}' saved successfully.");
         NoteListViewModel.LoadNotesCommand.Execute(null);
 
-        if (CurrentView is NoteEditorViewModel existingEditor)
+        if (CurrentEditor is NoteEditorViewModel existingEditor)
         {
             existingEditor.RefreshAfterSave(note);
         }
@@ -143,17 +135,12 @@ public partial class MainViewModel : ObservableObject
             var editor = new NoteEditorViewModel(_noteService, _tagRepository, allTags, note, password);
             editor.SaveCompleted += OnNoteSaved;
             editor.CancelRequested += OnEditorCancelled;
-            CurrentView = editor;
+            CurrentEditor = editor;
         }
     }
 
-    private void OnEditorCancelled()
-    {
-        CurrentView = NoteListViewModel;
-    }
+    // Returning to empty-state leaves the note list intact in the middle pane
+    private void OnEditorCancelled() => CurrentEditor = null;
 
-    private void OnShowMessage(string message)
-    {
-        MessageQueue.Enqueue(message);
-    }
+    private void OnShowMessage(string message) => MessageQueue.Enqueue(message);
 }

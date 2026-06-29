@@ -63,3 +63,13 @@ public sealed class ScrollHeightToRtbHeightConverter : System.Windows.Data.IValu
     public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) =>
         throw new NotSupportedException();
 }
+
+public sealed class NullToVisibilityConverter : System.Windows.Data.IValueConverter
+{
+    // value == null  -> Visible (show placeholder); else Collapsed
+    public object Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture) =>
+        value is null ? Visibility.Visible : Visibility.Collapsed;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture) =>
+        throw new NotSupportedException();
+}
