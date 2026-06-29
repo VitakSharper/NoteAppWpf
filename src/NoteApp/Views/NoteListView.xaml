@@ -23,6 +23,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -50,9 +51,26 @@
             </DockPanel>
         </materialDesign:Card>
 
-        <!-- Filters -->
-        <DockPanel Grid.Row="1" Margin="16,0,16,8">
-            <!-- Sort (right side) -->
+        <!-- Type filters (own row, wraps when the pane is narrow) -->
+        <ItemsControl Grid.Row="1" Margin="16,0,16,8" ItemsSource="{Binding TypeFilters}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Button Content="{Binding Label}" Margin="0,0,4,4"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Command="{Binding DataContext.SelectTypeFilterCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}"
+                            Padding="8,4" Height="32" FontSize="12" />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Tags toggle (left) + Sort (right) -->
+        <DockPanel Grid.Row="2" Margin="16,0,16,8">
             <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding SortOptions}"
                       SelectedItem="{Binding SelectedSort}"
                       materialDesign:HintAssist.Hint="Sort by"
@@ -66,54 +84,33 @@
                 </ComboBox.ItemTemplate>
             </ComboBox>
 
-            <!-- Type Filters + Tag Filters (left side) -->
-            <StackPanel Orientation="Horizontal">
-                <ItemsControl ItemsSource="{Binding TypeFilters}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Button Content="{Binding Label}" Margin="0,0,4,0"
-                                    Style="{StaticResource MaterialDesignOutlinedButton}"
-                                    Command="{Binding DataContext.SelectTypeFilterCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    CommandParameter="{Binding}"
-                                    Padding="8,4" Height="32" FontSize="12" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,4" />
-
-                <ToggleButton x:Name="TagFilterToggle"
-                              Style="{StaticResource MaterialDesignFlatButton}"
-                              Height="32" Padding="8,4" Cursor="Hand"
-                              ToolTip="Show/hide tag filters">
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="TagMultiple" Width="18" Height="18"
-                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
-                        <TextBlock Text="Tags" FontSize="12" VerticalAlignment="Center" />
-                        <materialDesign:PackIcon Width="18" Height="18" VerticalAlignment="Center" Margin="2,0,0,0">
-                            <materialDesign:PackIcon.Style>
-                                <Style TargetType="materialDesign:PackIcon">
-                                    <Setter Property="Kind" Value="ChevronDown" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsChecked, ElementName=TagFilterToggle}" Value="True">
-                                            <Setter Property="Kind" Value="ChevronUp" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </materialDesign:PackIcon.Style>
-                        </materialDesign:PackIcon>
-                    </StackPanel>
-                </ToggleButton>
-            </StackPanel>
+            <ToggleButton x:Name="TagFilterToggle"
+                          HorizontalAlignment="Left"
+                          Style="{StaticResource MaterialDesignFlatButton}"
+                          Height="32" Padding="8,4" Cursor="Hand"
+                          ToolTip="Show/hide tag filters">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="TagMultiple" Width="18" Height="18"
+                                             VerticalAlignment="Center" Margin="0,0,4,0" />
+                    <TextBlock Text="Tags" FontSize="12" VerticalAlignment="Center" />
+                    <materialDesign:PackIcon Width="18" Height="18" VerticalAlignment="Center" Margin="2,0,0,0">
+                        <materialDesign:PackIcon.Style>
+                            <Style TargetType="materialDesign:PackIcon">
+                                <Setter Property="Kind" Value="ChevronDown" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsChecked, ElementName=TagFilterToggle}" Value="True">
+                                        <Setter Property="Kind" Value="ChevronUp" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </materialDesign:PackIcon.Style>
+                    </materialDesign:PackIcon>
+                </StackPanel>
+            </ToggleButton>
         </DockPanel>
 
         <!-- Tag Filter Panel (collapsible) -->
-        <Border Grid.Row="2" Margin="16,0,16,8"
+        <Border Grid.Row="3" Margin="16,0,16,8"
                 Visibility="{Binding IsChecked, ElementName=TagFilterToggle, Converter={StaticResource BoolToVis}}">
             <ItemsControl ItemsSource="{Binding AllTags}">
                 <ItemsControl.ItemsPanel>
@@ -159,12 +156,12 @@
         </Border>
 
         <!-- Loading -->
-        <ProgressBar Grid.Row="3" IsIndeterminate="True"
+        <ProgressBar Grid.Row="4" IsIndeterminate="True"
                      Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
                      VerticalAlignment="Top" />
 
         <!-- Comfortable single-column note list -->
-        <ListBox Grid.Row="3" ItemsSource="{Binding Notes}" Margin="8,0,8,8"
+        <ListBox Grid.Row="4" ItemsSource="{Binding Notes}" Margin="8,0,8,8"
                  SelectedItem="{Binding SelectedNote}"
                  HorizontalContentAlignment="Stretch"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
