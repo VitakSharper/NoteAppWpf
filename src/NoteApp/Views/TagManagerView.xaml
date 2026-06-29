@@ -10,7 +10,7 @@
         <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
     </UserControl.Resources>
 
-    <Grid Margin="16">
+    <Grid Margin="16" Background="{DynamicResource MaterialDesignPaper}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -23,6 +23,7 @@
 
         <!-- Create Tag -->
         <materialDesign:Card Grid.Row="1" Padding="16" Margin="0,0,0,16"
+                             UniformCornerRadius="12"
                              materialDesign:ElevationAssist.Elevation="Dp2">
             <DockPanel>
                 <Button DockPanel.Dock="Right" Style="{StaticResource MaterialDesignRaisedButton}"
@@ -44,10 +45,12 @@
 
         <!-- Tags List -->
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding Tags}" Margin="0,8,0,0">
+            <ItemsControl ItemsSource="{Binding Tags}" Margin="0,8,0,0" HorizontalAlignment="Stretch">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <materialDesign:Card Margin="0,4" Padding="12"
+                                             UniformCornerRadius="8"
+                                             HorizontalAlignment="Stretch"
                                              materialDesign:ElevationAssist.Elevation="Dp1">
                             <DockPanel>
                                 <!-- Actions -->

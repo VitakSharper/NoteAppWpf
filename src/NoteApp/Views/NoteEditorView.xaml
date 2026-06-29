@@ -140,7 +140,7 @@
                                      LinkBlockTemplate="{StaticResource LinkBlockTemplate}" />
     </UserControl.Resources>
 
-    <Grid Margin="16">
+    <Grid Margin="16" Background="{DynamicResource MaterialDesignCardBackground}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -208,6 +208,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:BlockViewModel}">
                         <materialDesign:Card Margin="0,0,0,12" Padding="12"
+                                             UniformCornerRadius="12"
                                              materialDesign:ElevationAssist.Elevation="Dp2">
                             <Grid>
                                 <Grid.RowDefinitions>
@@ -337,6 +338,7 @@
 
                 <!-- Encryption -->
                 <materialDesign:Card Margin="0,0,0,0" Padding="12"
+                                     UniformCornerRadius="12"
                                      materialDesign:ElevationAssist.Elevation="Dp1">
                     <StackPanel Orientation="Horizontal">
                         <materialDesign:PackIcon Kind="Lock" Width="20" Height="20"
@@ -359,7 +361,7 @@
             <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
                        VerticalAlignment="Center" Margin="0,0,16,0" />
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
-                <Button Content="Cancel" Style="{StaticResource MaterialDesignFlatButton}"
+                <Button Content="Cancel" Style="{StaticResource MaterialDesignOutlinedButton}"
                         Command="{Binding CancelCommand}" Margin="0,0,8,0" />
                 <Button Content="Save" Style="{StaticResource MaterialDesignRaisedButton}"
                         Command="{Binding SaveCommand}" />
