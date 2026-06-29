@@ -136,18 +136,11 @@ public partial class SettingsViewModel : ObservableObject
         var theme = paletteHelper.GetTheme();
         theme.SetBaseTheme(isDark ? BaseTheme.Dark : BaseTheme.Light);
 
-        if (isDark)
-        {
-            // Lighter Indigo (300) for better contrast on dark backgrounds
-            var lightIndigo = Color.FromRgb(0x79, 0x86, 0xCB);
-            theme.SetPrimaryColor(lightIndigo);
-            theme.SetSecondaryColor(Color.FromRgb(0x4D, 0xB6, 0xAC)); // Teal 300
-        }
-        else
-        {
-            theme.SetPrimaryColor(Color.FromRgb(0x3F, 0x51, 0xB5)); // Indigo 500
-            theme.SetSecondaryColor(Color.FromRgb(0x00, 0x96, 0x88)); // Teal 500
-        }
+        // Modern Violet accent
+        var violet = Color.FromRgb(0x6C, 0x79, 0xFF);
+        var violetLight = Color.FromRgb(0x9A, 0xA3, 0xFF); // lighter for dark-mode contrast
+        theme.SetPrimaryColor(isDark ? violetLight : violet);
+        theme.SetSecondaryColor(isDark ? violetLight : violet);
 
         paletteHelper.SetTheme(theme);
     }
