@@ -73,3 +73,54 @@ public sealed class NullToVisibilityConverter : System.Windows.Data.IValueConver
     public object ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture) =>
         throw new NotSupportedException();
 }
+
+public sealed class NotePreviewConverter : System.Windows.Data.IValueConverter
+{
+    private const int MaxLength = 120;
+
+    public object Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
+    {
+        if (value is not NoteApp.Domain.Models.Note note || note.IsEncrypted)
+            return string.Empty;
+
+        var firstText = note.Blocks
+            .OrderBy(b => b.SortOrder)
+            .OfType<NoteApp.Domain.Models.NoteBlock.Text>()
+            .FirstOrDefault();
+        if (firstText is null || string.IsNullOrEmpty(firstText.RichText))
+            return string.Empty;
+
+        var plain = ExtractPlainText(firstText.RichText);
+        plain = System.Text.RegularExpressions.Regex.Replace(plain, @"\s+", " ").Trim();
+        return plain.Length > MaxLength ? plain[..MaxLength] + "…" : plain;
+    }
+
+    private static string ExtractPlainText(string content)
+    {
+        var doc = new System.Windows.Documents.FlowDocument();
+        // Try Base64 XamlPackage first
+        try
+        {
+            var bytes = System.Convert.FromBase64String(content);
+            using var ms = new System.IO.MemoryStream(bytes);
+            var range = new System.Windows.Documents.TextRange(doc.ContentStart, doc.ContentEnd);
+            range.Load(ms, System.Windows.DataFormats.XamlPackage);
+            return new System.Windows.Documents.TextRange(doc.ContentStart, doc.ContentEnd).Text;
+        }
+        catch { /* not XamlPackage */ }
+
+        // Try legacy plain XAML
+        try
+        {
+            if (System.Windows.Markup.XamlReader.Parse(content) is System.Windows.Documents.FlowDocument parsed)
+                return new System.Windows.Documents.TextRange(parsed.ContentStart, parsed.ContentEnd).Text;
+        }
+        catch { /* not XAML */ }
+
+        // Last resort: treat as plain text
+        return content;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture) =>
+        throw new NotSupportedException();
+}

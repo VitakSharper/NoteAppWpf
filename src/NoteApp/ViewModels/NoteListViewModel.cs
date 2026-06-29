@@ -46,7 +46,6 @@ public partial class NoteListViewModel : ObservableObject
     [ObservableProperty] private NoteTypeFilter _selectedTypeFilter = NoteTypeFilter.All;
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private Note? _selectedNote;
-    [ObservableProperty] private bool _isListView;
     [ObservableProperty] private SortOption _selectedSort = SortOption.UpdatedDesc;
 
     public IReadOnlyList<NoteTypeFilter> TypeFilters => NoteTypeFilter.AllFilters;
@@ -66,8 +65,11 @@ public partial class NoteListViewModel : ObservableObject
         _settingsService = settingsService;
     }
 
-    [RelayCommand]
-    private void ToggleViewMode() => IsListView = !IsListView;
+    partial void OnSelectedNoteChanged(Note? value)
+    {
+        if (value is not null)
+            EditNoteRequested?.Invoke(value);
+    }
 
     partial void OnSelectedSortChanged(SortOption value)
     {

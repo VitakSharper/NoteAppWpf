@@ -8,14 +8,14 @@
     <UserControl.Resources>
         <converters:NoteTypeToIconConverter x:Key="NoteTypeToIcon" />
         <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
-        <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
+        <converters:NotePreviewConverter x:Key="NotePreview" />
 
-        <SolidColorBrush x:Key="TagBadgeBackground" Color="#C8E6C9" />
-        <SolidColorBrush x:Key="TagBadgeForeground" Color="#1B5E20" />
-        <SolidColorBrush x:Key="TagBadgeBorder" Color="#81C784" />
-        <SolidColorBrush x:Key="TagBadgeSelectedBackground" Color="#2E7D32" />
+        <SolidColorBrush x:Key="TagBadgeBackground" Color="#E6E8FF" />
+        <SolidColorBrush x:Key="TagBadgeForeground" Color="#3A3F8F" />
+        <SolidColorBrush x:Key="TagBadgeBorder" Color="#C5CAF5" />
+        <SolidColorBrush x:Key="TagBadgeSelectedBackground" Color="#6C79FF" />
         <SolidColorBrush x:Key="TagBadgeSelectedForeground" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="TagBadgeSelectedBorder" Color="#1B5E20" />
+        <SolidColorBrush x:Key="TagBadgeSelectedBorder" Color="#6C79FF" />
     </UserControl.Resources>
 
     <Grid>
@@ -52,26 +52,19 @@
 
         <!-- Filters -->
         <DockPanel Grid.Row="1" Margin="16,0,16,8">
-            <!-- View toggle + Sort (right side) -->
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
-                <ComboBox ItemsSource="{Binding SortOptions}"
-                          SelectedItem="{Binding SelectedSort}"
-                          materialDesign:HintAssist.Hint="Sort by"
-                          Width="160" FontSize="12" Height="32" Margin="0,0,8,0"
-                          materialDesign:ComboBoxAssist.ShowSelectedItem="True">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Label}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-
-                <ToggleButton Style="{StaticResource MaterialDesignFlatPrimaryToggleButton}"
-                              IsChecked="{Binding IsListView}" ToolTip="Toggle list/card view"
-                              Width="32" Height="32">
-                    <materialDesign:PackIcon Kind="ViewList" Width="20" Height="20" />
-                </ToggleButton>
-            </StackPanel>
+            <!-- Sort (right side) -->
+            <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding SortOptions}"
+                      SelectedItem="{Binding SelectedSort}"
+                      materialDesign:HintAssist.Hint="Sort by"
+                      Width="160" FontSize="12" Height="32" Margin="8,0,0,0"
+                      VerticalAlignment="Center"
+                      materialDesign:ComboBoxAssist.ShowSelectedItem="True">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Label}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
 
             <!-- Type Filters + Tag Filters (left side) -->
             <StackPanel Orientation="Horizontal">
@@ -170,292 +163,99 @@
                      Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
                      VerticalAlignment="Top" />
 
-        <!-- Notes Card View -->
-        <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto"
-                      Visibility="{Binding IsListView, Converter={StaticResource InverseBoolToVis}}">
-            <ItemsControl ItemsSource="{Binding Notes}" Margin="16,0,16,16">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <materialDesign:Card Width="320" Margin="4,4" Padding="0"
-                                             materialDesign:ElevationAssist.Elevation="Dp2"
-                                             Cursor="Hand">
-                            <materialDesign:Card.InputBindings>
-                                <MouseBinding MouseAction="LeftDoubleClick"
-                                              Command="{Binding DataContext.OpenNoteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                              CommandParameter="{Binding}" />
-                            </materialDesign:Card.InputBindings>
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
+        <!-- Comfortable single-column note list -->
+        <ListBox Grid.Row="3" ItemsSource="{Binding Notes}" Margin="8,0,8,8"
+                 SelectedItem="{Binding SelectedNote}"
+                 HorizontalContentAlignment="Stretch"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 Background="Transparent" BorderThickness="0">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Margin" Value="0,2" />
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Border Background="{DynamicResource MaterialDesignCardBackground}"
+                            CornerRadius="{StaticResource CardCornerRadius}"
+                            Padding="12,10" Margin="4,2">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
 
-                                <!-- Header with title -->
-                                <DockPanel Grid.Row="0" Margin="16,12,16,4">
-                                    <materialDesign:PackIcon Width="24" Height="24" VerticalAlignment="Center"
-                                                             Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                             DockPanel.Dock="Left" Margin="0,0,8,0">
-                                        <materialDesign:PackIcon.Style>
-                                            <Style TargetType="materialDesign:PackIcon">
-                                                <Setter Property="Kind" Value="Note" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsEncrypted}" Value="True">
-                                                        <Setter Property="Kind" Value="Lock" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </materialDesign:PackIcon.Style>
-                                    </materialDesign:PackIcon>
-                                    <TextBlock Text="{Binding Title.Value}" FontWeight="Medium" FontSize="15"
-                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                </DockPanel>
+                            <!-- Title row: icon + title + type dots -->
+                            <DockPanel Grid.Row="0">
+                                <materialDesign:PackIcon Width="18" Height="18" DockPanel.Dock="Left"
+                                                         Margin="0,0,8,0" VerticalAlignment="Center"
+                                                         Foreground="{StaticResource AccentBrush}">
+                                    <materialDesign:PackIcon.Style>
+                                        <Style TargetType="materialDesign:PackIcon">
+                                            <Setter Property="Kind" Value="Note" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEncrypted}" Value="True">
+                                                    <Setter Property="Kind" Value="Lock" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </materialDesign:PackIcon.Style>
+                                </materialDesign:PackIcon>
 
-                                <!-- Block type icons summary -->
-                                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="16,4,16,4">
-                                    <!-- Encrypted indicator -->
-                                    <StackPanel Orientation="Horizontal">
-                                        <StackPanel.Style>
-                                            <Style TargetType="StackPanel">
-                                                <Setter Property="Visibility" Value="Collapsed" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsEncrypted}" Value="True">
-                                                        <Setter Property="Visibility" Value="Visible" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </StackPanel.Style>
-                                        <materialDesign:PackIcon Kind="ShieldLock" Width="14" Height="14" Margin="0,0,4,0"
-                                                                 Foreground="{DynamicResource SecondaryHueMidBrush}" />
-                                        <TextBlock Text="Encrypted" FontSize="11" FontStyle="Italic"
-                                                   VerticalAlignment="Center"
-                                                   Foreground="{DynamicResource SecondaryHueMidBrush}" />
-                                    </StackPanel>
-                                    <!-- Normal block summary (hidden when encrypted) -->
-                                    <StackPanel Orientation="Horizontal">
-                                        <StackPanel.Style>
-                                            <Style TargetType="StackPanel">
-                                                <Setter Property="Visibility" Value="Visible" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsEncrypted}" Value="True">
-                                                        <Setter Property="Visibility" Value="Collapsed" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </StackPanel.Style>
-                                        <materialDesign:PackIcon Kind="NoteText" Width="16" Height="16" Margin="0,0,4,0"
-                                                                 Foreground="{DynamicResource MaterialDesignBodyLight}">
-                                            <materialDesign:PackIcon.Style>
-                                                <Style TargetType="materialDesign:PackIcon">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding HasText}" Value="True">
-                                                            <Setter Property="Visibility" Value="Visible" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </materialDesign:PackIcon.Style>
-                                        </materialDesign:PackIcon>
-                                        <materialDesign:PackIcon Kind="FileDocument" Width="16" Height="16" Margin="0,0,4,0"
-                                                                 Foreground="{DynamicResource MaterialDesignBodyLight}">
-                                            <materialDesign:PackIcon.Style>
-                                                <Style TargetType="materialDesign:PackIcon">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding HasFiles}" Value="True">
-                                                            <Setter Property="Visibility" Value="Visible" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </materialDesign:PackIcon.Style>
-                                        </materialDesign:PackIcon>
-                                        <materialDesign:PackIcon Kind="Link" Width="16" Height="16" Margin="0,0,4,0"
-                                                                 Foreground="{DynamicResource MaterialDesignBodyLight}">
-                                            <materialDesign:PackIcon.Style>
-                                                <Style TargetType="materialDesign:PackIcon">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding HasLinks}" Value="True">
-                                                            <Setter Property="Visibility" Value="Visible" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </materialDesign:PackIcon.Style>
-                                        </materialDesign:PackIcon>
-                                        <TextBlock Text="{Binding Blocks.Count, StringFormat='{}{0} block(s)'}"
-                                                   FontSize="11" VerticalAlignment="Center"
-                                                   Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="4,0,0,0" />
-                                    </StackPanel>
+                                <!-- Type dots (right) -->
+                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                                    <materialDesign:PackIcon Kind="NoteText" Width="13" Height="13" Margin="3,0,0,0"
+                                                             Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                             Visibility="{Binding HasText, Converter={StaticResource BoolToVis}}" />
+                                    <materialDesign:PackIcon Kind="FileDocument" Width="13" Height="13" Margin="3,0,0,0"
+                                                             Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                             Visibility="{Binding HasFiles, Converter={StaticResource BoolToVis}}" />
+                                    <materialDesign:PackIcon Kind="Link" Width="13" Height="13" Margin="3,0,0,0"
+                                                             Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                             Visibility="{Binding HasLinks, Converter={StaticResource BoolToVis}}" />
                                 </StackPanel>
 
-                                <!-- Tags -->
-                                <ItemsControl Grid.Row="2" ItemsSource="{Binding Tags}" Margin="12,4,12,4">
+                                <TextBlock Text="{Binding Title.Value}" FontWeight="Medium" FontSize="14"
+                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            </DockPanel>
+
+                            <!-- Preview snippet -->
+                            <TextBlock Grid.Row="1" Margin="26,2,0,4"
+                                       Text="{Binding Converter={StaticResource NotePreview}}"
+                                       FontSize="12" TextTrimming="CharacterEllipsis" MaxHeight="18"
+                                       Foreground="{DynamicResource MaterialDesignBodyLight}" />
+
+                            <!-- Tags + date -->
+                            <DockPanel Grid.Row="2" Margin="26,0,0,0">
+                                <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center"
+                                           Text="{Binding UpdatedAt, StringFormat='{}{0:MMM dd}'}"
+                                           FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                                <ItemsControl ItemsSource="{Binding Tags}">
                                     <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel />
-                                        </ItemsPanelTemplate>
+                                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border Background="{StaticResource TagBadgeBackground}"
                                                     BorderBrush="{StaticResource TagBadgeBorder}"
-                                                    BorderThickness="1" CornerRadius="10"
-                                                    Padding="10,3" Margin="2">
-                                                <TextBlock Text="{Binding Name.Value}"
-                                                           FontSize="11" FontWeight="SemiBold"
-                                                           Foreground="{StaticResource TagBadgeForeground}"
-                                                           TextWrapping="NoWrap" />
+                                                    BorderThickness="1" CornerRadius="9"
+                                                    Padding="8,2" Margin="0,0,4,0">
+                                                <TextBlock Text="{Binding Name.Value}" FontSize="10"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{StaticResource TagBadgeForeground}" />
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-
-                                <!-- Footer: date + actions -->
-                                <DockPanel Grid.Row="3" Margin="16,4,8,8">
-                                    <TextBlock Text="{Binding UpdatedAt, StringFormat='{}{0:MMM dd, yyyy HH:mm}'}"
-                                               FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}"
-                                               VerticalAlignment="Center" />
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
-                                        <Button Style="{StaticResource MaterialDesignIconButton}"
-                                                ToolTip="Edit" Width="28" Height="28"
-                                                Command="{Binding DataContext.EditNoteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}">
-                                            <materialDesign:PackIcon Kind="Pencil" Width="16" Height="16" />
-                                        </Button>
-                                        <Button Style="{StaticResource MaterialDesignIconButton}"
-                                                ToolTip="Delete" Width="28" Height="28"
-                                                Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
-                                                Command="{Binding DataContext.DeleteNoteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}">
-                                            <materialDesign:PackIcon Kind="Delete" Width="16" Height="16" />
-                                        </Button>
-                                    </StackPanel>
-                                </DockPanel>
-                            </Grid>
-                        </materialDesign:Card>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
-
-        <!-- Notes List View -->
-        <DataGrid Grid.Row="3" ItemsSource="{Binding Notes}" Margin="16,0,16,16"
-                  Visibility="{Binding IsListView, Converter={StaticResource BoolToVis}}"
-                  AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True"
-                  SelectionMode="Single" SelectedItem="{Binding SelectedNote}"
-                  HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                  CanUserResizeColumns="True" CanUserReorderColumns="False"
-                  Background="Transparent" BorderThickness="0"
-                  materialDesign:DataGridAssist.ColumnHeaderPadding="8 4"
-                  materialDesign:DataGridAssist.CellPadding="8 6"
-                  Cursor="Hand">
-            <DataGrid.InputBindings>
-                <MouseBinding MouseAction="LeftDoubleClick"
-                              Command="{Binding OpenNoteCommand}"
-                              CommandParameter="{Binding SelectedNote}" />
-            </DataGrid.InputBindings>
-            <DataGrid.Columns>
-                <!-- Icon -->
-                <DataGridTemplateColumn Header="" Width="40" CanUserSort="False" CanUserResize="False">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <materialDesign:PackIcon Width="18" Height="18"
-                                                     Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                     VerticalAlignment="Center" HorizontalAlignment="Center">
-                                <materialDesign:PackIcon.Style>
-                                    <Style TargetType="materialDesign:PackIcon">
-                                        <Setter Property="Kind" Value="Note" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsEncrypted}" Value="True">
-                                                <Setter Property="Kind" Value="Lock" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </materialDesign:PackIcon.Style>
-                            </materialDesign:PackIcon>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-
-                <!-- Title -->
-                <DataGridTextColumn Header="Title" Binding="{Binding Title.Value}"
-                                    Width="*" SortMemberPath="Title.Value"
-                                    ElementStyle="{StaticResource MaterialDesignDataGridTextColumnStyle}" />
-
-                <!-- Blocks -->
-                <DataGridTextColumn Header="Blocks" Binding="{Binding Blocks.Count}"
-                                    Width="70" CanUserSort="False"
-                                    ElementStyle="{StaticResource MaterialDesignDataGridTextColumnStyle}" />
-
-                <!-- Tags -->
-                <DataGridTemplateColumn Header="Tags" Width="200" CanUserSort="False">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <ItemsControl ItemsSource="{Binding Tags}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel Orientation="Horizontal" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="{StaticResource TagBadgeBackground}"
-                                                BorderBrush="{StaticResource TagBadgeBorder}"
-                                                BorderThickness="1" CornerRadius="10"
-                                                Padding="8,2" Margin="2,1">
-                                            <TextBlock Text="{Binding Name.Value}" FontSize="10"
-                                                       FontWeight="SemiBold"
-                                                       Foreground="{StaticResource TagBadgeForeground}" />
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-
-                <!-- Updated -->
-                <DataGridTextColumn Header="Updated" Width="150"
-                                    Binding="{Binding UpdatedAt, StringFormat='{}{0:MMM dd, yyyy HH:mm}'}"
-                                    SortMemberPath="UpdatedAt"
-                                    ElementStyle="{StaticResource MaterialDesignDataGridTextColumnStyle}" />
-
-                <!-- Created -->
-                <DataGridTextColumn Header="Created" Width="150"
-                                    Binding="{Binding CreatedAt, StringFormat='{}{0:MMM dd, yyyy HH:mm}'}"
-                                    SortMemberPath="CreatedAt"
-                                    ElementStyle="{StaticResource MaterialDesignDataGridTextColumnStyle}" />
-
-                <!-- Actions -->
-                <DataGridTemplateColumn Header="" Width="80" CanUserSort="False" CanUserResize="False">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <Button Style="{StaticResource MaterialDesignIconButton}"
-                                        ToolTip="Edit" Width="28" Height="28"
-                                        Command="{Binding DataContext.EditNoteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding}">
-                                    <materialDesign:PackIcon Kind="Pencil" Width="14" Height="14" />
-                                </Button>
-                                <Button Style="{StaticResource MaterialDesignIconButton}"
-                                        ToolTip="Delete" Width="28" Height="28"
-                                        Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
-                                        Command="{Binding DataContext.DeleteNoteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding}">
-                                    <materialDesign:PackIcon Kind="Delete" Width="14" Height="14" />
-                                </Button>
-                            </StackPanel>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-            </DataGrid.Columns>
-        </DataGrid>
+                            </DockPanel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
 
         <!-- Empty state -->
         <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center"
