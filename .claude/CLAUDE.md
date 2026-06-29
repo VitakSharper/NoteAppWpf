@@ -53,7 +53,9 @@ DI is configured in `App.xaml.cs`. Connection string loaded via .NET User Secret
 - **Pure mapper functions** in `Services/Mapping/NoteMapper.cs` converting between EF entities and domain models.
 - **MVVM** with `[ObservableProperty]` and `[RelayCommand]` source generators from CommunityToolkit.Mvvm.
 - **TagFilterItem wrapper** in `NoteListViewModel.cs` — wraps `Tag` with observable `IsSelected` for tag filter UI state. `AllTags` is `ObservableCollection<TagFilterItem>`, not raw `Tag`.
-- **Collapsible tag filter panel** in `NoteListView.xaml` — toggle button expands/collapses a tag row below the filter bar. Selected tags render with dark green fill (`#2E7D32`) via `DataTrigger` on `IsSelected`.
+- **Three-pane shell** in `MainWindow.xaml`: 64px navy icon rail (always `#20283D`, both themes) · `MiddlePaneContent` `ContentControl` that swaps between `NoteListViewModel` and `TagManagerViewModel` · `CurrentEditor` `ContentControl` for the active editor or empty-state; Settings is hosted in `materialDesign:DialogHost` (`RootDialog`) as a modal overlay, not a separate pane.
+- **Comfortable single-column note list** in `NoteListView.xaml`: a `ListBox` with card-style rows showing title + `NotePreviewConverter` snippet + tag chips + date. The old card/DataGrid toggle was removed. Tag chips use a static violet palette (`#E6E8FF` fill / `#3A3F8F` text) intentionally legible on both light and dark card surfaces.
+- **Modern Violet MD3 theme** in `Theme/ModernViolet.xaml`: static brushes for the rail (`RailBackgroundBrush`, `RailForegroundBrush`, `RailSelectedBrush`), accent (`AccentBrush` `#6C79FF`), and tag chips (`TagChipBackground/Foreground/Border`), plus `CornerRadius` tokens (`CardCornerRadius`, `ControlCornerRadius`). All other surfaces use MDIX `{DynamicResource MaterialDesign*}` brushes and auto-switch on dark-mode toggle.
 
 ### Note Model
 
