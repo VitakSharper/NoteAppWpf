@@ -94,7 +94,11 @@ public partial class MainViewModel : ObservableObject
             {
                 Owner = Application.Current.MainWindow
             };
-            if (dialog.ShowDialog() != true) return;
+            if (dialog.ShowDialog() != true)
+            {
+                NoteListViewModel.SelectedNote = null;
+                return;
+            }
             password = dialog.Password;
 
             var decryptResult = await _noteService.UnlockNoteAsync(note.Id, password);
@@ -102,6 +106,7 @@ public partial class MainViewModel : ObservableObject
             {
                 var error = ((Result<Note, AppError>.Failure)decryptResult).Error;
                 MessageQueue.Enqueue(error.Message);
+                NoteListViewModel.SelectedNote = null;
                 return;
             }
             note = ((Result<Note, AppError>.Success)decryptResult).Value;
@@ -139,8 +144,13 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    // Returning to empty-state leaves the note list intact in the middle pane
-    private void OnEditorCancelled() => CurrentEditor = null;
+    // Returning to empty-state leaves the note list intact in the middle pane.
+    // Also clear SelectedNote so the user can re-select the same note immediately.
+    private void OnEditorCancelled()
+    {
+        CurrentEditor = null;
+        NoteListViewModel.SelectedNote = null;
+    }
 
     private void OnShowMessage(string message) => MessageQueue.Enqueue(message);
 }
