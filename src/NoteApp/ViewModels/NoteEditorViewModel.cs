@@ -28,9 +28,9 @@ public partial class BlockViewModel : ObservableObject
 
     public string BlockLabel => BlockType switch
     {
-        BlockType.Text => "📝 Text Block",
-        BlockType.File => "📎 File Block",
-        BlockType.Link => "🔗 Link Block",
+        BlockType.Text => "Text",
+        BlockType.File => "File",
+        BlockType.Link => "Link",
         _ => "Block"
     };
 }

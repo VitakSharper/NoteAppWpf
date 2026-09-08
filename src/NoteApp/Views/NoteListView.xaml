@@ -14,6 +14,35 @@
         <SolidColorBrush x:Key="TagBadgeSelectedBackground" Color="#6C79FF" />
         <SolidColorBrush x:Key="TagBadgeSelectedForeground" Color="#FFFFFF" />
         <SolidColorBrush x:Key="TagBadgeSelectedBorder" Color="#6C79FF" />
+
+        <!-- Type filter rendered as MD3 filter chips: the selected one is a filled
+             violet pill, the others a quiet outline. Selection drives the filter. -->
+        <Style x:Key="FilterChipItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Chip" CornerRadius="16" Padding="14,6" SnapsToDevicePixels="True"
+                                Background="Transparent"
+                                BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="1">
+                            <TextBlock x:Name="Label" Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource MaterialDesignBody}" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chip" Property="Background" Value="{DynamicResource MaterialDesignSelection}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Chip" Property="Background" Value="{StaticResource TagBadgeSelectedBackground}" />
+                                <Setter TargetName="Chip" Property="BorderBrush" Value="{StaticResource TagBadgeSelectedBorder}" />
+                                <Setter TargetName="Label" Property="Foreground" Value="{StaticResource TagBadgeSelectedForeground}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -25,54 +54,50 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Search Bar -->
-        <materialDesign:Card Grid.Row="0" Margin="16,16,16,8" Padding="16"
-                             materialDesign:ElevationAssist.Elevation="Dp2">
-            <DockPanel>
-                <Button DockPanel.Dock="Right" Style="{StaticResource MaterialDesignIconButton}"
-                        Command="{Binding ClearSearchCommand}" ToolTip="Clear" Margin="8,0,0,0">
-                    <materialDesign:PackIcon Kind="Close" />
-                </Button>
-                <Button DockPanel.Dock="Right" Style="{StaticResource MaterialDesignIconButton}"
-                        Command="{Binding SearchCommand}" ToolTip="Search">
-                    <materialDesign:PackIcon Kind="Magnify" />
-                </Button>
-                <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                         materialDesign:HintAssist.Hint="Search notes..."
-                         materialDesign:TextFieldAssist.HasClearButton="False"
-                         VerticalAlignment="Center"
-                         FontSize="14">
-                    <TextBox.InputBindings>
-                        <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
-                    </TextBox.InputBindings>
-                </TextBox>
-            </DockPanel>
-        </materialDesign:Card>
+        <!-- Search: rounded outlined field with the magnifier built in. Enter searches;
+             the X resets text, type and tag filters and only shows when there is something to reset. -->
+        <DockPanel Grid.Row="0" Margin="16,16,16,10">
+            <Button DockPanel.Dock="Right" Style="{StaticResource MaterialDesignIconButton}"
+                    Command="{Binding ClearSearchCommand}" ToolTip="Clear search and filters"
+                    Width="36" Height="36" Margin="4,0,0,0"
+                    Visibility="{Binding HasActiveFilters, Converter={StaticResource BoolToVis}}">
+                <materialDesign:PackIcon Kind="FilterRemoveOutline" Width="20" Height="20" />
+            </Button>
+            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     materialDesign:HintAssist.Hint="Search notes…"
+                     materialDesign:HintAssist.IsFloating="False"
+                     materialDesign:TextFieldAssist.HasLeadingIcon="True"
+                     materialDesign:TextFieldAssist.LeadingIcon="Magnify"
+                     materialDesign:TextFieldAssist.TextFieldCornerRadius="20"
+                     Padding="8,10" FontSize="13" VerticalAlignment="Center">
+                <TextBox.InputBindings>
+                    <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
+                </TextBox.InputBindings>
+            </TextBox>
+        </DockPanel>
 
-        <!-- Type filters (own row, wraps when the pane is narrow) -->
-        <ItemsControl Grid.Row="1" Margin="16,0,16,8" ItemsSource="{Binding TypeFilters}">
-            <ItemsControl.ItemsPanel>
+        <!-- Type filter chips -->
+        <ListBox Grid.Row="1" Margin="16,0,16,10"
+                 ItemsSource="{Binding TypeFilters}"
+                 SelectedItem="{Binding SelectedTypeFilter}"
+                 ItemContainerStyle="{StaticResource FilterChipItemStyle}"
+                 Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 ScrollViewer.VerticalScrollBarVisibility="Disabled">
+            <ListBox.ItemsPanel>
                 <ItemsPanelTemplate>
                     <WrapPanel Orientation="Horizontal" />
                 </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Button Content="{Binding Label}" Margin="0,0,4,4"
-                            Style="{StaticResource MaterialDesignOutlinedButton}"
-                            Command="{Binding DataContext.SelectTypeFilterCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                            CommandParameter="{Binding}"
-                            Padding="8,4" Height="32" FontSize="12" />
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+            </ListBox.ItemsPanel>
+        </ListBox>
 
         <!-- Tags toggle (left) + Sort (right) -->
         <DockPanel Grid.Row="2" Margin="16,0,16,8">
             <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding SortOptions}"
                       SelectedItem="{Binding SelectedSort}"
                       materialDesign:HintAssist.Hint="Sort by"
-                      Width="160" FontSize="12" Height="32" Margin="8,0,0,0"
+                      Width="170" FontSize="12" Height="32" Margin="8,0,0,0"
                       VerticalAlignment="Center"
                       materialDesign:ComboBoxAssist.ShowSelectedItem="True">
                 <ComboBox.ItemTemplate>
@@ -175,7 +200,7 @@
                 <DataTemplate>
                     <Border Background="{DynamicResource MaterialDesignCardBackground}"
                             CornerRadius="{StaticResource CardCornerRadius}"
-                            Padding="12,10" Margin="4,2"
+                            Padding="14,10" Margin="4,2"
                             Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
                         <Border.ContextMenu>
                             <ContextMenu>
@@ -198,7 +223,7 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
-                            <!-- Title row: icon + title + type dots -->
+                            <!-- Title row: icon + title, then type dots and date on the right -->
                             <DockPanel Grid.Row="0">
                                 <materialDesign:PackIcon Width="18" Height="18" DockPanel.Dock="Left"
                                                          Margin="0,0,8,0" VerticalAlignment="Center"
@@ -215,8 +240,11 @@
                                     </materialDesign:PackIcon.Style>
                                 </materialDesign:PackIcon>
 
-                                <!-- Type dots (right) -->
-                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                                <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"
+                                           Text="{Binding UpdatedAt, StringFormat='{}{0:MMM dd}'}"
+                                           FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}" />
+
+                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="6,0,0,0">
                                     <materialDesign:PackIcon Kind="NoteText" Width="13" Height="13" Margin="3,0,0,0"
                                                              Foreground="{DynamicResource MaterialDesignBodyLight}"
                                                              Visibility="{Binding HasText, Converter={StaticResource BoolToVis}}" />
@@ -232,35 +260,49 @@
                                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                             </DockPanel>
 
-                            <!-- Preview snippet -->
-                            <TextBlock Grid.Row="1" Margin="26,2,0,4"
+                            <!-- Preview snippet (hidden when there is none, e.g. encrypted notes) -->
+                            <TextBlock Grid.Row="1" Margin="26,3,0,0"
                                        Text="{Binding Preview}"
                                        FontSize="12" TextTrimming="CharacterEllipsis" MaxHeight="18"
-                                       Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                                       Foreground="{DynamicResource MaterialDesignBodyLight}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Preview}" Value="">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
 
-                            <!-- Tags + date -->
-                            <DockPanel Grid.Row="2" Margin="26,0,0,0">
-                                <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center"
-                                           Text="{Binding UpdatedAt, StringFormat='{}{0:MMM dd}'}"
-                                           FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}" />
-                                <ItemsControl ItemsSource="{Binding Tags}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Background="{StaticResource TagBadgeBackground}"
-                                                    BorderBrush="{StaticResource TagBadgeBorder}"
-                                                    BorderThickness="1" CornerRadius="9"
-                                                    Padding="8,2" Margin="0,0,4,0">
-                                                <TextBlock Text="{Binding Name.Value}" FontSize="10"
-                                                           FontWeight="SemiBold"
-                                                           Foreground="{StaticResource TagBadgeForeground}" />
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </DockPanel>
+                            <!-- Tags (row disappears when the note has none) -->
+                            <ItemsControl Grid.Row="2" Margin="26,6,0,0" ItemsSource="{Binding Tags}">
+                                <ItemsControl.Style>
+                                    <Style TargetType="ItemsControl">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Tags.Count}" Value="0">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ItemsControl.Style>
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{StaticResource TagBadgeBackground}"
+                                                BorderBrush="{StaticResource TagBadgeBorder}"
+                                                BorderThickness="1" CornerRadius="9"
+                                                Padding="8,2" Margin="0,0,4,0">
+                                            <TextBlock Text="{Binding Name.Value}" FontSize="10"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TagBadgeForeground}" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </Grid>
                     </Border>
                 </DataTemplate>

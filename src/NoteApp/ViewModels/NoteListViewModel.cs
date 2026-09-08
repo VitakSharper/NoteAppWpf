@@ -53,6 +53,12 @@ public partial class NoteListViewModel : ObservableObject
     public IReadOnlyList<NoteTypeFilter> TypeFilters => NoteTypeFilter.AllFilters;
     public IReadOnlyList<SortOption> SortOptions => SortOption.All;
 
+    // Drives the "clear" button: anything narrowing the list beyond the default view.
+    public bool HasActiveFilters =>
+        !string.IsNullOrWhiteSpace(SearchText)
+        || SelectedTypeFilter != NoteTypeFilter.All
+        || AllTags.Any(t => t.IsSelected);
+
     public event Action<NoteSummary>? EditNoteRequested;
     public event Action? CreateNoteRequested;
     public event Action<string>? ShowMessage;
@@ -77,6 +83,22 @@ public partial class NoteListViewModel : ObservableObject
     {
         if (Notes.Count > 0)
             ApplySort();
+    }
+
+    partial void OnSearchTextChanged(string value) => OnPropertyChanged(nameof(HasActiveFilters));
+
+    // The type chips are a ListBox bound to this property: selecting a chip reloads.
+    // A ListBox can push null while its items are being (re)generated — never keep it.
+    partial void OnSelectedTypeFilterChanged(NoteTypeFilter value)
+    {
+        if (value is null)
+        {
+            SelectedTypeFilter = NoteTypeFilter.All;
+            return;
+        }
+
+        OnPropertyChanged(nameof(HasActiveFilters));
+        LoadNotesCommand.Execute(null);
     }
 
     [RelayCommand]
@@ -112,6 +134,8 @@ public partial class NoteListViewModel : ObservableObject
                     AllTags = new ObservableCollection<TagFilterItem>(items);
                 },
                 failure: _ => { });
+
+            OnPropertyChanged(nameof(HasActiveFilters));
         }
         finally
         {
@@ -146,21 +170,19 @@ public partial class NoteListViewModel : ObservableObject
     {
         SearchText = string.Empty;
         foreach (var t in AllTags) t.IsSelected = false;
-        SelectedTypeFilter = NoteTypeFilter.All;
-        LoadNotesCommand.Execute(null);
+
+        // Changing the type filter reloads by itself; otherwise reload explicitly.
+        if (SelectedTypeFilter != NoteTypeFilter.All)
+            SelectedTypeFilter = NoteTypeFilter.All;
+        else
+            LoadNotesCommand.Execute(null);
     }
 
     [RelayCommand]
     private void ToggleTagFilter(TagFilterItem item)
     {
         item.IsSelected = !item.IsSelected;
-        LoadNotesCommand.Execute(null);
-    }
-
-    [RelayCommand]
-    private void SelectTypeFilter(NoteTypeFilter filter)
-    {
-        SelectedTypeFilter = filter;
+        OnPropertyChanged(nameof(HasActiveFilters));
         LoadNotesCommand.Execute(null);
     }
 

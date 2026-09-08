@@ -10,6 +10,9 @@
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
                 <ResourceDictionary Source="Theme/ModernViolet.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- Thin overlay scrollbars app-wide (note list, editor pane, text fields) -->
+            <Style TargetType="ScrollBar" BasedOn="{StaticResource MaterialDesignScrollBarMinimal}" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

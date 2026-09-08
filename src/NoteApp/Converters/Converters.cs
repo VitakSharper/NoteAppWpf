@@ -37,15 +37,6 @@ public sealed class InverseBoolToVisibilityConverter : System.Windows.Data.IValu
         value is Visibility.Collapsed;
 }
 
-public sealed class ScrollHeightToRtbHeightConverter : System.Windows.Data.IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) =>
-        value is double height and > 150 ? height - 100 : 300.0;
-
-    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) =>
-        throw new NotSupportedException();
-}
-
 public sealed class NullToVisibilityConverter : System.Windows.Data.IValueConverter
 {
     // value == null  -> Visible (show placeholder); else Collapsed

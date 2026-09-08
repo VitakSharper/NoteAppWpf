@@ -112,6 +112,7 @@ public partial class NoteEditorView : UserControl
             using var ms = new MemoryStream(bytes);
             var range = new TextRange(rtb.Document.ContentStart, rtb.Document.ContentEnd);
             range.Load(ms, DataFormats.XamlPackage);
+            ClearForeground(rtb.Document);
             return;
         }
         catch { /* Not Base64/XamlPackage — try legacy XAML */ }
@@ -121,6 +122,7 @@ public partial class NoteEditorView : UserControl
         {
             if (XamlReader.Parse(content) is FlowDocument doc)
             {
+                ClearForeground(doc);
                 rtb.Document = doc;
                 return;
             }
@@ -130,6 +132,35 @@ public partial class NoteEditorView : UserControl
         // Last resort: treat as plain text
         rtb.Document.Blocks.Clear();
         rtb.Document.Blocks.Add(new Paragraph(new Run(content)));
+    }
+
+    // TextRange.Save bakes the inherited Foreground into the payload — the dark-theme
+    // body colour for a note written in dark mode — so it came back white-on-white in
+    // the light theme. The editor has no text-colour feature, so every stored Foreground
+    // is theme leakage: drop them all and let the document inherit the current theme.
+    private static void ClearForeground(FlowDocument doc)
+    {
+        doc.ClearValue(FlowDocument.ForegroundProperty);
+        foreach (var block in doc.Blocks)
+            ClearForeground(block);
+    }
+
+    private static void ClearForeground(TextElement element)
+    {
+        element.ClearValue(TextElement.ForegroundProperty);
+
+        IEnumerable<TextElement> children = element switch
+        {
+            Paragraph paragraph => paragraph.Inlines,
+            Span span => span.Inlines,
+            Section section => section.Blocks,
+            ListItem item => item.Blocks,
+            List list => list.ListItems,
+            _ => []
+        };
+
+        foreach (var child in children)
+            ClearForeground(child);
     }
 
     private void SyncAllRichTextBoxes()
@@ -190,6 +221,21 @@ public partial class NoteEditorView : UserControl
         _searchStatusBlocks.Remove(block.Id);
         _searchMatches.Remove(block.Id);
         _searchCurrentIndex.Remove(block.Id);
+    }
+
+    // Pixels scrolled per wheel notch — WPF's default of three 16px lines.
+    private const double WheelPixelsPerNotch = 48;
+
+    // The box no longer scrolls on its own, but its inner ScrollViewer would still
+    // swallow the wheel: scroll the pane's ScrollViewer with the delta instead.
+    private void OnRichTextBoxPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.Handled)
+            return;
+
+        e.Handled = true;
+        var notches = e.Delta / (double)Mouse.MouseWheelDeltaForOneLine;
+        BlocksScrollViewer.ScrollToVerticalOffset(BlocksScrollViewer.VerticalOffset - notches * WheelPixelsPerNotch);
     }
 
     private void OnRichTextLostFocus(object sender, RoutedEventArgs e)

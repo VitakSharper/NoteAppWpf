@@ -9,7 +9,22 @@
 
     <UserControl.Resources>
         <converters:FileSizeConverter x:Key="FileSize" />
-        <converters:ScrollHeightToRtbHeightConverter x:Key="ScrollHeightToRtbHeight" />
+
+        <!-- Formatting toolbar: flat tool buttons on the card surface, separated by hairlines,
+             instead of the stock WPF ToolBar band. -->
+        <Style x:Key="FormatToolButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignToolButton}">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+        </Style>
+        <Style x:Key="FormatToolSeparator" TargetType="Rectangle">
+            <Setter Property="Width" Value="1" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Margin" Value="6,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Fill" Value="{DynamicResource MaterialDesignDivider}" />
+        </Style>
 
         <!-- Text Block Template -->
         <DataTemplate x:Key="TextBlockTemplate" DataType="{x:Type vm:BlockViewModel}">
@@ -19,35 +34,39 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <ToolBar Grid.Row="0" Margin="0,0,0,4">
-                    <Button ToolTip="Bold" Click="OnBold" Tag="{Binding}">
-                        <materialDesign:PackIcon Kind="FormatBold" />
-                    </Button>
-                    <Button ToolTip="Italic" Click="OnItalic" Tag="{Binding}">
-                        <materialDesign:PackIcon Kind="FormatItalic" />
-                    </Button>
-                    <Button ToolTip="Underline" Click="OnUnderline" Tag="{Binding}">
-                        <materialDesign:PackIcon Kind="FormatUnderline" />
-                    </Button>
-                    <Separator />
-                    <Button ToolTip="Bullet List" Click="OnBulletList" Tag="{Binding}">
-                        <materialDesign:PackIcon Kind="FormatListBulleted" />
-                    </Button>
-                    <Separator />
-                    <Button ToolTip="Insert Image" Click="OnInsertImage" Tag="{Binding}">
-                        <materialDesign:PackIcon Kind="Image" />
-                    </Button>
-                    <Separator />
-                    <Button ToolTip="Search Text (Ctrl+F)" Click="OnToggleSearch" Tag="{Binding}">
-                        <materialDesign:PackIcon Kind="Magnify" />
-                    </Button>
-                </ToolBar>
+
+                <Border Grid.Row="0" Margin="0,0,0,4" Padding="0,0,0,6"
+                        BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="0,0,0,1">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Bold" Click="OnBold" Tag="{Binding}">
+                            <materialDesign:PackIcon Kind="FormatBold" Width="20" Height="20" />
+                        </Button>
+                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Italic" Click="OnItalic" Tag="{Binding}">
+                            <materialDesign:PackIcon Kind="FormatItalic" Width="20" Height="20" />
+                        </Button>
+                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Underline" Click="OnUnderline" Tag="{Binding}">
+                            <materialDesign:PackIcon Kind="FormatUnderline" Width="20" Height="20" />
+                        </Button>
+                        <Rectangle Style="{StaticResource FormatToolSeparator}" />
+                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Bullet List" Click="OnBulletList" Tag="{Binding}">
+                            <materialDesign:PackIcon Kind="FormatListBulleted" Width="20" Height="20" />
+                        </Button>
+                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Insert Image" Click="OnInsertImage" Tag="{Binding}">
+                            <materialDesign:PackIcon Kind="ImageOutline" Width="20" Height="20" />
+                        </Button>
+                        <Rectangle Style="{StaticResource FormatToolSeparator}" />
+                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Search Text" Click="OnToggleSearch" Tag="{Binding}">
+                            <materialDesign:PackIcon Kind="Magnify" Width="20" Height="20" />
+                        </Button>
+                    </StackPanel>
+                </Border>
 
                 <!-- Search Bar (initially collapsed) -->
                 <Border Grid.Row="1" Visibility="Collapsed"
-                        Background="{DynamicResource MaterialDesignCardBackground}"
+                        Background="{DynamicResource MaterialDesignPaper}"
                         BorderBrush="{DynamicResource MaterialDesignDivider}"
-                        BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,4"
+                        BorderThickness="1" CornerRadius="{StaticResource ControlCornerRadius}"
+                        Padding="8,6" Margin="0,4,0,6"
                         Tag="{Binding}" Loaded="OnSearchBarLoaded">
                     <DockPanel>
                         <Button DockPanel.Dock="Right" ToolTip="Close Search" Click="OnCloseSearch"
@@ -69,36 +88,37 @@
                                    VerticalAlignment="Center" Margin="8,0"
                                    Foreground="{DynamicResource MaterialDesignBodyLight}"
                                    FontSize="12" Tag="{Binding}" Loaded="OnSearchStatusLoaded" />
-                        <TextBox materialDesign:HintAssist.Hint="Search in text..."
+                        <TextBox materialDesign:HintAssist.Hint="Search in text…"
                                  FontSize="13" Padding="4,2"
                                  materialDesign:TextFieldAssist.DecorationVisibility="Collapsed"
-                                 BorderThickness="1"
+                                 BorderThickness="0"
                                  TextChanged="OnSearchTextChanged"
                                  KeyDown="OnSearchKeyDown"
                                  Tag="{Binding}" Loaded="OnSearchTextBoxLoaded" />
                     </DockPanel>
                 </Border>
 
+                <!-- The box grows with its content; only the pane scrolls (one scrollbar).
+                     PreviewMouseWheel hands the wheel to the pane, see code-behind. -->
                 <RichTextBox Grid.Row="2"
                              AcceptsReturn="True" AcceptsTab="True"
-                             VerticalScrollBarVisibility="Auto"
-                             MinHeight="120" Padding="8"
-                             MaxHeight="{Binding ActualHeight, ElementName=BlocksScrollViewer, Converter={StaticResource ScrollHeightToRtbHeight}}"
-                             BorderBrush="{DynamicResource MaterialDesignDivider}"
-                             BorderThickness="1"
+                             VerticalScrollBarVisibility="Disabled"
+                             MinHeight="140" Padding="4,8"
+                             BorderThickness="0" Background="Transparent"
                              Tag="{Binding}"
                              Loaded="OnRichTextBoxLoaded"
                              Unloaded="OnRichTextBoxUnloaded"
-                             LostFocus="OnRichTextLostFocus" />
+                             LostFocus="OnRichTextLostFocus"
+                             PreviewMouseWheel="OnRichTextBoxPreviewMouseWheel" />
             </Grid>
         </DataTemplate>
 
         <!-- File Block Template -->
         <DataTemplate x:Key="FileBlockTemplate" DataType="{x:Type vm:BlockViewModel}">
             <StackPanel Orientation="Horizontal" Margin="4">
-                <materialDesign:PackIcon Kind="File" Width="24" Height="24"
+                <materialDesign:PackIcon Kind="FileOutline" Width="24" Height="24"
                                          VerticalAlignment="Center" Margin="0,0,12,0"
-                                         Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                                         Foreground="{StaticResource AccentBrush}" />
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="{Binding FileName}" FontWeight="Medium" />
                     <TextBlock Text="{Binding FileSize, Converter={StaticResource FileSize}}"
@@ -141,7 +161,8 @@
                                      LinkBlockTemplate="{StaticResource LinkBlockTemplate}" />
     </UserControl.Resources>
 
-    <Grid Margin="16" Background="{DynamicResource MaterialDesignCardBackground}">
+    <!-- The pane itself is Paper (set in MainWindow) so the block cards stand out. -->
+    <Grid Margin="20,16,20,16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -174,73 +195,113 @@
         <TextBox Grid.Row="1" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
                  materialDesign:HintAssist.Hint="Note title"
                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                 FontSize="16" Margin="0,0,0,16" />
+                 materialDesign:TextFieldAssist.TextFieldCornerRadius="{StaticResource ControlCornerRadius}"
+                 FontSize="16" Margin="0,0,0,12" />
 
-        <!-- Add Block Buttons -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
-            <TextBlock Text="Add:" VerticalAlignment="Center" Margin="0,0,8,0"
+        <!-- Add Block -->
+        <DockPanel Grid.Row="2" Margin="0,0,0,10">
+            <TextBlock Text="Add a block" FontSize="12" VerticalAlignment="Center" Margin="4,0,8,0"
                        Foreground="{DynamicResource MaterialDesignBodyLight}" />
-            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                    Command="{Binding AddTextBlockCommand}" Margin="0,0,8,0" Padding="12,6">
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="NoteText" Margin="0,0,6,0" VerticalAlignment="Center" />
-                    <TextBlock Text="Text" VerticalAlignment="Center" />
-                </StackPanel>
-            </Button>
-            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                    Command="{Binding AddFileBlockCommand}" Margin="0,0,8,0" Padding="12,6">
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="FileDocument" Margin="0,0,6,0" VerticalAlignment="Center" />
-                    <TextBlock Text="File" VerticalAlignment="Center" />
-                </StackPanel>
-            </Button>
-            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                    Command="{Binding AddLinkBlockCommand}" Padding="12,6">
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="Link" Margin="0,0,6,0" VerticalAlignment="Center" />
-                    <TextBlock Text="Link" VerticalAlignment="Center" />
-                </StackPanel>
-            </Button>
-        </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <StackPanel.Resources>
+                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                        <Setter Property="Height" Value="32" />
+                        <Setter Property="Padding" Value="10,4" />
+                        <Setter Property="Margin" Value="0,0,4,0" />
+                    </Style>
+                </StackPanel.Resources>
+                <Button Command="{Binding AddTextBlockCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="NoteText" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Text" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Command="{Binding AddFileBlockCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="FileDocument" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="File" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Command="{Binding AddLinkBlockCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Link" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Link" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </DockPanel>
 
         <!-- Blocks List -->
-        <ScrollViewer Grid.Row="3" x:Name="BlocksScrollViewer" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="3" x:Name="BlocksScrollViewer" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
             <ItemsControl ItemsSource="{Binding Blocks}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:BlockViewModel}">
-                        <materialDesign:Card Margin="0,0,0,12" Padding="12"
-                                             UniformCornerRadius="12"
-                                             materialDesign:ElevationAssist.Elevation="Dp2">
+                        <!-- Outlined card; the outline turns accent while the block has keyboard focus -->
+                        <Border Margin="0,0,0,12" Padding="12"
+                                CornerRadius="{StaticResource CardCornerRadius}"
+                                Background="{DynamicResource MaterialDesignCardBackground}"
+                                BorderThickness="1" SnapsToDevicePixels="True">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesignDivider}" />
+                                    <Style.Triggers>
+                                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
 
-                                <!-- Block Header -->
+                                <!-- Block Header: kind icon + label, actions on the right -->
                                 <DockPanel Grid.Row="0" Margin="0,0,0,8">
-                                    <TextBlock Text="{Binding BlockLabel}" FontWeight="Medium"
-                                               VerticalAlignment="Center" FontSize="13" />
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
-                                        <Button Style="{StaticResource MaterialDesignIconButton}"
-                                                ToolTip="Move Up" Width="28" Height="28"
+                                        <StackPanel.Resources>
+                                            <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignIconButton}">
+                                                <Setter Property="Width" Value="28" />
+                                                <Setter Property="Height" Value="28" />
+                                                <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
+                                            </Style>
+                                        </StackPanel.Resources>
+                                        <Button ToolTip="Move Up"
                                                 Command="{Binding DataContext.MoveBlockUpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}">
                                             <materialDesign:PackIcon Kind="ArrowUp" Width="16" Height="16" />
                                         </Button>
-                                        <Button Style="{StaticResource MaterialDesignIconButton}"
-                                                ToolTip="Move Down" Width="28" Height="28"
+                                        <Button ToolTip="Move Down"
                                                 Command="{Binding DataContext.MoveBlockDownCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}">
                                             <materialDesign:PackIcon Kind="ArrowDown" Width="16" Height="16" />
                                         </Button>
-                                        <Button Style="{StaticResource MaterialDesignIconButton}"
-                                                ToolTip="Remove" Width="28" Height="28"
-                                                Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                                        <Button ToolTip="Remove block"
                                                 Command="{Binding DataContext.RemoveBlockCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}">
                                             <materialDesign:PackIcon Kind="Close" Width="16" Height="16" />
                                         </Button>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <materialDesign:PackIcon Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0"
+                                                                 Foreground="{StaticResource AccentBrush}">
+                                            <materialDesign:PackIcon.Style>
+                                                <Style TargetType="materialDesign:PackIcon">
+                                                    <Setter Property="Kind" Value="NoteText" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding BlockType}" Value="File">
+                                                            <Setter Property="Kind" Value="FileDocument" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding BlockType}" Value="Link">
+                                                            <Setter Property="Kind" Value="Link" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </materialDesign:PackIcon.Style>
+                                        </materialDesign:PackIcon>
+                                        <TextBlock Text="{Binding BlockLabel}" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource MaterialDesignBodyLight}" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </DockPanel>
 
@@ -248,7 +309,7 @@
                                 <ContentControl Grid.Row="1" Content="{Binding}"
                                                 ContentTemplateSelector="{StaticResource BlockSelector}" />
                             </Grid>
-                        </materialDesign:Card>
+                        </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -338,13 +399,13 @@
                 </GroupBox>
 
                 <!-- Encryption -->
-                <materialDesign:Card Margin="0,0,0,0" Padding="12"
-                                     UniformCornerRadius="12"
-                                     materialDesign:ElevationAssist.Elevation="Dp1">
+                <Border Padding="12" CornerRadius="{StaticResource CardCornerRadius}"
+                        Background="{DynamicResource MaterialDesignCardBackground}"
+                        BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="1">
                     <StackPanel Orientation="Horizontal">
                         <materialDesign:PackIcon Kind="Lock" Width="20" Height="20"
                                                  VerticalAlignment="Center" Margin="0,0,8,0"
-                                                 Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                                                 Foreground="{StaticResource AccentBrush}" />
                         <CheckBox Content="Encrypt with password"
                                   IsChecked="{Binding IsEncrypted}"
                                   VerticalAlignment="Center" FontSize="13" />
@@ -353,7 +414,7 @@
                                    Margin="12,0,0,0"
                                    Foreground="{DynamicResource MaterialDesignBodyLight}" />
                     </StackPanel>
-                </materialDesign:Card>
+                </Border>
             </StackPanel>
         </Expander>
 
