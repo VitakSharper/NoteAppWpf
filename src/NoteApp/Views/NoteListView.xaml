@@ -6,9 +6,7 @@
              Loaded="OnLoaded">
 
     <UserControl.Resources>
-        <converters:NoteTypeToIconConverter x:Key="NoteTypeToIcon" />
         <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
-        <converters:NotePreviewConverter x:Key="NotePreview" />
 
         <SolidColorBrush x:Key="TagBadgeBackground" Color="#E6E8FF" />
         <SolidColorBrush x:Key="TagBadgeForeground" Color="#3A3F8F" />
@@ -236,7 +234,7 @@
 
                             <!-- Preview snippet -->
                             <TextBlock Grid.Row="1" Margin="26,2,0,4"
-                                       Text="{Binding Converter={StaticResource NotePreview}}"
+                                       Text="{Binding Preview}"
                                        FontSize="12" TextTrimming="CharacterEllipsis" MaxHeight="18"
                                        Foreground="{DynamicResource MaterialDesignBodyLight}" />
 
@@ -269,17 +267,22 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <!-- Empty state -->
-        <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center"
-                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}, ConverterParameter=Inverse}">
+        <!-- Empty state: shown once the load finished and came back empty.
+             Visibility lives in the style only — a local binding would win over
+             the trigger (and the old one was tied to IsLoading, not to Count). -->
+        <StackPanel Grid.Row="4" HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel.Style>
                 <Style TargetType="StackPanel">
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding Notes.Count}" Value="0">
-                            <Setter Property="Visibility" Value="Visible" />
-                        </DataTrigger>
-                    </Style.Triggers>
                     <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding Notes.Count}" Value="0" />
+                                <Condition Binding="{Binding IsLoading}" Value="False" />
+                            </MultiDataTrigger.Conditions>
+                            <Setter Property="Visibility" Value="Visible" />
+                        </MultiDataTrigger>
+                    </Style.Triggers>
                 </Style>
             </StackPanel.Style>
             <materialDesign:PackIcon Kind="NoteOff" Width="64" Height="64" HorizontalAlignment="Center"

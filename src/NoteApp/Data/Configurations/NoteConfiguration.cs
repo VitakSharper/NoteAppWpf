@@ -34,6 +34,7 @@ public sealed class NoteBlockConfiguration : IEntityTypeConfiguration<NoteBlockE
         builder.Property(b => b.BlockType).IsRequired();
         builder.Property(b => b.SortOrder).IsRequired();
         builder.Property(b => b.TextContent).HasColumnType("nvarchar(max)");
+        builder.Property(b => b.PlainText).HasColumnType("nvarchar(max)");
         builder.Property(b => b.FileData).HasColumnType("varbinary(max)");
         builder.Property(b => b.FileName).HasMaxLength(500);
         builder.Property(b => b.FileExtension).HasMaxLength(50);

@@ -11,7 +11,10 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **Tagging system** — Create, rename, delete tags and assign them to notes
 - **Search & filter** — Search by title/content, filter by tags or note type
 - **Full CRUD** — Create, read, update, delete notes and tags
-- **Material Design UI** — Navigation drawer, cards, chips, snackbar notifications
+- **Encrypted notes** — Optional per-note password; blocks are stored AES-GCM encrypted (PBKDF2 key derivation)
+- **PDF export** — Export the text blocks of a note to PDF (QuestPDF)
+- **Encrypted backups** — BACPAC export of the database packed into an AES-256 zip
+- **Material Design UI** — Three-pane layout (icon rail · note list / tags · editor), cards, chips, snackbar, light/dark theme
 
 ## Tech Stack
 
@@ -64,26 +67,37 @@ dotnet ef database update
 dotnet run --project src/NoteApp
 ```
 
+### 5. Run the tests
+
+```bash
+dotnet test NoteApp.slnx
+```
+
+The tests cover the pure layers (functional core, value objects, mapping, encryption, preview) and need neither a database nor a UI thread.
+
 ## Project Structure
 
 ```
 NoteApp/
-├── NoteApp.sln
-└── src/NoteApp/
-    ├── Domain/                     Pure domain layer, no dependencies
-    │   ├── Functional/             Option<T>, Result<T,E>, Unit monads
-    │   ├── ValueObjects/           NoteId, NoteTitle, TagName, LinkUrl
-    │   ├── Models/                 Note, Tag, NoteBlock (sealed hierarchy)
-    │   └── Extensions/             Map/Bind/Match extension methods
-    ├── Data/                       EF Core data access
-    │   ├── Entities/               Mutable EF entity classes
-    │   ├── Configurations/         Fluent API table configurations
-    │   └── Repositories/           INoteRepository, ITagRepository
-    ├── Services/                   Business logic orchestration
-    │   └── Mapping/                Entity ↔ Domain pure mapping functions
-    ├── ViewModels/                 MVVM ViewModels (CommunityToolkit.Mvvm)
-    ├── Views/                      XAML views
-    └── Converters/                 WPF value converters
+├── NoteApp.slnx
+├── src/NoteApp/
+│   ├── Domain/                     Pure domain layer, no dependencies
+│   │   ├── Functional/             Option<T>, Result<T,E>, Unit monads
+│   │   ├── ValueObjects/           NoteId, NoteTitle, TagName, LinkUrl
+│   │   ├── Models/                 Note, NoteSummary, Tag, NoteBlock (sealed hierarchy)
+│   │   └── Extensions/             Map/Bind/Match extension methods
+│   ├── Data/                       EF Core data access
+│   │   ├── Entities/               Mutable EF entity classes
+│   │   ├── Configurations/         Fluent API table configurations
+│   │   ├── Queries/                Read-model rows projected for the list
+│   │   └── Repositories/           INoteRepository, ITagRepository
+│   ├── Services/                   Orchestration, encryption, backup, PDF export
+│   │   └── Mapping/                Entity ↔ Domain pure mapping functions
+│   ├── ViewModels/                 MVVM ViewModels (CommunityToolkit.Mvvm)
+│   ├── Views/                      XAML views
+│   ├── Theme/                      Modern Violet MD3 resources
+│   └── Converters/                 WPF value converters
+└── tests/NoteApp.Tests/            xUnit tests for the pure layers
 ```
 
 ## Architecture & Coding Style
@@ -102,17 +116,17 @@ This project follows **functional programming patterns** inspired by [Zoran Horv
 
 ```
 noteDb
-├── Notes        — Id, Title, CreatedAt, UpdatedAt
+├── Notes        — Id, Title, IsEncrypted, EncryptedContent, CreatedAt, UpdatedAt
 ├── NoteBlocks   — Id, NoteId (FK), BlockType (Text/File/Link), SortOrder,
-│                  TextContent, FileData, FileName, FileExtension,
-│                  FileSizeBytes, LinkUrl, LinkDescription
+│                  TextContent (rich), PlainText (searchable), FileData, FileName,
+│                  FileExtension, FileSizeBytes, LinkUrl, LinkDescription
 ├── Tags         — Id, Name (unique)
 └── NoteTags     — NoteId (FK), TagId (FK) — many-to-many junction table
 ```
 
 Each note can have multiple blocks, ordered by `SortOrder`. This allows mixing text, files, and links freely.
 
-Files are stored as `VARBINARY(MAX)` directly in the database for simpler deployment.
+Files are stored as `VARBINARY(MAX)` directly in the database for simpler deployment. Encrypted notes keep their blocks as an AES-GCM payload in `Notes.EncryptedContent` and have no `NoteBlocks` rows.
 
 ## License
 

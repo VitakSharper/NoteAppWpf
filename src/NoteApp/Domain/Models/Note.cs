@@ -16,17 +16,15 @@ public sealed record Note(
         NoteTitle title,
         IReadOnlyList<NoteBlock> blocks,
         IReadOnlyList<Tag> tags,
-        bool isEncrypted = false) =>
-        blocks.Count == 0
-            ? Result<Note, AppError>.Fail(AppError.Validation("A note must have at least one content block."))
-            : Result<Note, AppError>.Ok(new Note(
-                NoteId.New(),
-                title,
-                blocks,
-                tags,
-                isEncrypted,
-                DateTime.UtcNow,
-                DateTime.UtcNow));
+        bool isEncrypted = false)
+    {
+        if (blocks.Count == 0)
+            return Result<Note, AppError>.Fail(AppError.Validation("A note must have at least one content block."));
+
+        // One timestamp: CreatedAt and UpdatedAt must be identical on a fresh note.
+        var now = DateTime.UtcNow;
+        return Result<Note, AppError>.Ok(new Note(NoteId.New(), title, blocks, tags, isEncrypted, now, now));
+    }
 
     public Note WithTitle(NoteTitle title) =>
         this with { Title = title, UpdatedAt = DateTime.UtcNow };

@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MaterialDesignThemes.Wpf;
 using NoteApp.Data.Repositories;
-using NoteApp.Domain.Functional;
 using NoteApp.Domain.Models;
 using NoteApp.Services;
 using NoteApp.Views;
@@ -73,22 +72,16 @@ public partial class MainViewModel : ObservableObject
     private void OpenSettings() => IsSettingsOpen = true;
 
     [RelayCommand]
-    private async Task CreateNote()
-    {
-        var tags = await _tagRepository.GetAllAsync();
-        var allTags = tags.Match(t => t, _ => (IReadOnlyList<Tag>)[]);
+    private async Task CreateNote() =>
+        await OpenEditorAsync(note: null, password: null);
 
-        var editor = new NoteEditorViewModel(_noteService, _tagRepository, allTags);
-        editor.SaveCompleted += OnNoteSaved;
-        editor.CancelRequested += OnEditorCancelled;
-        CurrentEditor = editor;
-    }
-
-    private async void OnEditNoteRequested(Note note)
+    // The list only carries summaries: the full note (blocks included) is
+    // loaded here, decrypting on the way when it is password-protected.
+    private async void OnEditNoteRequested(NoteSummary summary)
     {
         string? password = null;
 
-        if (note.IsEncrypted)
+        if (summary.IsEncrypted)
         {
             var dialog = new PasswordDialog(isSetMode: false)
             {
@@ -100,25 +93,20 @@ public partial class MainViewModel : ObservableObject
                 return;
             }
             password = dialog.Password;
-
-            var decryptResult = await _noteService.UnlockNoteAsync(note.Id, password);
-            if (decryptResult.IsFailure)
-            {
-                var error = ((Result<Note, AppError>.Failure)decryptResult).Error;
-                MessageQueue.Enqueue(error.Message);
-                NoteListViewModel.SelectedNote = null;
-                return;
-            }
-            note = ((Result<Note, AppError>.Success)decryptResult).Value;
         }
 
-        var tags = await _tagRepository.GetAllAsync();
-        var allTags = tags.Match(t => t, _ => (IReadOnlyList<Tag>)[]);
+        var noteResult = password is null
+            ? await _noteService.GetNoteByIdAsync(summary.Id)
+            : await _noteService.UnlockNoteAsync(summary.Id, password);
 
-        var editor = new NoteEditorViewModel(_noteService, _tagRepository, allTags, note, password);
-        editor.SaveCompleted += OnNoteSaved;
-        editor.CancelRequested += OnEditorCancelled;
-        CurrentEditor = editor;
+        if (!noteResult.TryGet(out var note, out var error))
+        {
+            MessageQueue.Enqueue(error.Message);
+            NoteListViewModel.SelectedNote = null;
+            return;
+        }
+
+        await OpenEditorAsync(note, password);
     }
 
     private void OnCreateNoteRequested() => CreateNoteCommand.Execute(null);
@@ -129,19 +117,20 @@ public partial class MainViewModel : ObservableObject
         NoteListViewModel.LoadNotesCommand.Execute(null);
 
         if (CurrentEditor is NoteEditorViewModel existingEditor)
-        {
             existingEditor.RefreshAfterSave(note);
-        }
         else
-        {
-            var tags = await _tagRepository.GetAllAsync();
-            var allTags = tags.Match(t => t, _ => (IReadOnlyList<Tag>)[]);
+            await OpenEditorAsync(note, password);
+    }
 
-            var editor = new NoteEditorViewModel(_noteService, _tagRepository, allTags, note, password);
-            editor.SaveCompleted += OnNoteSaved;
-            editor.CancelRequested += OnEditorCancelled;
-            CurrentEditor = editor;
-        }
+    private async Task OpenEditorAsync(Note? note, string? password)
+    {
+        var tags = await _tagRepository.GetAllAsync();
+        var allTags = tags.Match(t => t, _ => (IReadOnlyList<Tag>)[]);
+
+        var editor = new NoteEditorViewModel(_noteService, _tagRepository, allTags, note, password);
+        editor.SaveCompleted += OnNoteSaved;
+        editor.CancelRequested += OnEditorCancelled;
+        CurrentEditor = editor;
     }
 
     // Returning to empty-state leaves the note list intact in the middle pane.

@@ -16,6 +16,7 @@ public partial class BlockViewModel : ObservableObject
 {
     [ObservableProperty] private BlockType _blockType;
     [ObservableProperty] private string _richTextContent = string.Empty;
+    [ObservableProperty] private string _plainTextContent = string.Empty;
     [ObservableProperty] private string _linkUrlText = string.Empty;
     [ObservableProperty] private string _linkDescription = string.Empty;
     [ObservableProperty] private string _fileName = string.Empty;
@@ -98,7 +99,8 @@ public partial class NoteEditorViewModel : ObservableObject
                 {
                     Id = block.Id,
                     BlockType = BlockType.Text,
-                    RichTextContent = t.RichText
+                    RichTextContent = t.RichText,
+                    PlainTextContent = t.PlainText
                 },
                 file: f => new BlockViewModel
                 {
@@ -286,15 +288,12 @@ public partial class NoteEditorViewModel : ObservableObject
         try
         {
             var tags = SelectedTags.ToList() as IReadOnlyList<Tag>;
-            var blocksResult = BuildBlocks();
 
-            if (blocksResult.IsFailure)
+            if (!BuildBlocks().TryGet(out var blocks, out var blocksError))
             {
-                ErrorMessage = ((Result<IReadOnlyList<NoteBlock>, AppError>.Failure)blocksResult).Error.Message;
+                ErrorMessage = blocksError.Message;
                 return;
             }
-
-            var blocks = ((Result<IReadOnlyList<NoteBlock>, AppError>.Success)blocksResult).Value;
 
             // Handle password for encryption
             string? savePassword = null;
@@ -364,7 +363,7 @@ public partial class NoteEditorViewModel : ObservableObject
             switch (vm.BlockType)
             {
                 case BlockType.Text:
-                    noteBlocks.Add(new NoteBlock.Text(vm.RichTextContent)
+                    noteBlocks.Add(new NoteBlock.Text(vm.RichTextContent, vm.PlainTextContent)
                         { Id = vm.Id, SortOrder = i });
                     break;
 
@@ -377,11 +376,8 @@ public partial class NoteEditorViewModel : ObservableObject
                     break;
 
                 case BlockType.Link:
-                    var urlResult = Domain.ValueObjects.LinkUrl.From(vm.LinkUrlText);
-                    if (urlResult.IsFailure)
-                        return Result<IReadOnlyList<NoteBlock>, AppError>.Fail(
-                            ((Result<Domain.ValueObjects.LinkUrl, AppError>.Failure)urlResult).Error);
-                    var url = ((Result<Domain.ValueObjects.LinkUrl, AppError>.Success)urlResult).Value;
+                    if (!LinkUrl.From(vm.LinkUrlText).TryGet(out var url, out var urlError))
+                        return Result<IReadOnlyList<NoteBlock>, AppError>.Fail(urlError);
                     noteBlocks.Add(new NoteBlock.Link(url, vm.LinkDescription)
                         { Id = vm.Id, SortOrder = i });
                     break;

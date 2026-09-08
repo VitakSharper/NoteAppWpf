@@ -85,7 +85,7 @@ public static class EncryptionService
             text: t => new BlockDto
             {
                 Type = "text", Id = b.Id, SortOrder = b.SortOrder,
-                RichText = t.RichText
+                RichText = t.RichText, PlainText = t.PlainText
             },
             file: f => new BlockDto
             {
@@ -112,7 +112,7 @@ public static class EncryptionService
         {
             NoteBlock block = dto.Type switch
             {
-                "text" => new NoteBlock.Text(dto.RichText ?? string.Empty)
+                "text" => new NoteBlock.Text(dto.RichText ?? string.Empty, dto.PlainText ?? string.Empty)
                     { Id = dto.Id, SortOrder = dto.SortOrder },
                 "file" => new NoteBlock.File(
                     Convert.FromBase64String(dto.FileData ?? string.Empty),
@@ -146,6 +146,7 @@ public static class EncryptionService
         public Guid Id { get; init; }
         public int SortOrder { get; init; }
         public string? RichText { get; init; }
+        public string? PlainText { get; init; }
         public string? FileData { get; init; }
         public string? FileName { get; init; }
         public string? FileExtension { get; init; }

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NoteApp.Data.Entities;
+using NoteApp.Data.Queries;
 using NoteApp.Domain.Functional;
 using NoteApp.Domain.Models;
 using NoteApp.Domain.ValueObjects;
@@ -7,28 +8,17 @@ using NoteApp.Services.Mapping;
 
 namespace NoteApp.Data.Repositories;
 
-public sealed class NoteRepository(NoteDbContext context) : INoteRepository
+// One short-lived DbContext per operation. Everything in the app is resolved
+// from the root provider, so a scoped context would live as long as the app
+// and fail as soon as two async operations overlapped.
+public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFactory) : INoteRepository
 {
-    public async Task<Result<IReadOnlyList<Note>, AppError>> GetAllAsync()
-    {
-        try
-        {
-            var entities = await QueryNotes()
-                .OrderByDescending(n => n.UpdatedAt)
-                .ToListAsync();
-            return MapEntities(entities);
-        }
-        catch (Exception ex)
-        {
-            return Result<IReadOnlyList<Note>, AppError>.Fail(AppError.Database(ex.Message));
-        }
-    }
-
     public async Task<Result<Note, AppError>> GetByIdAsync(NoteId id)
     {
         try
         {
-            var entity = await QueryNotes()
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var entity = await QueryNotes(context)
                 .FirstOrDefaultAsync(n => n.Id == id.Value);
 
             return entity is null
@@ -59,8 +49,12 @@ public sealed class NoteRepository(NoteDbContext context) : INoteRepository
                 entity.Blocks = [];
             }
 
-            context.Notes.Add(entity);
-            await context.SaveChangesAsync();
+            await using (var context = await contextFactory.CreateDbContextAsync())
+            {
+                context.Notes.Add(entity);
+                await context.SaveChangesAsync();
+            }
+
             return await GetByIdAsync(note.Id);
         }
         catch (Exception ex)
@@ -73,65 +67,43 @@ public sealed class NoteRepository(NoteDbContext context) : INoteRepository
     {
         try
         {
-            var existing = await context.Notes
-                .Include(n => n.Blocks)
-                .Include(n => n.NoteTags)
-                .FirstOrDefaultAsync(n => n.Id == note.Id.Value);
-
-            if (existing is null)
-                return Result<Note, AppError>.Fail(AppError.NotFound($"Note with ID {note.Id} not found."));
-
-            existing.Title = note.Title.Value;
-            existing.UpdatedAt = note.UpdatedAt;
-
-            // Replace all blocks
-            context.NoteBlocks.RemoveRange(existing.Blocks);
-
-            if (encryptedContent is not null)
+            await using (var context = await contextFactory.CreateDbContextAsync())
             {
-                existing.IsEncrypted = true;
-                existing.EncryptedContent = encryptedContent;
-                existing.Blocks = [];
-            }
-            else
-            {
-                existing.IsEncrypted = false;
-                existing.EncryptedContent = null;
-                existing.Blocks = note.Blocks.Select((block, index) =>
+                var existing = await context.Notes
+                    .Include(n => n.Blocks)
+                    .Include(n => n.NoteTags)
+                    .FirstOrDefaultAsync(n => n.Id == note.Id.Value);
+
+                if (existing is null)
+                    return Result<Note, AppError>.Fail(AppError.NotFound($"Note with ID {note.Id} not found."));
+
+                existing.Title = note.Title.Value;
+                existing.UpdatedAt = note.UpdatedAt;
+
+                // Replace all blocks
+                context.NoteBlocks.RemoveRange(existing.Blocks);
+
+                if (encryptedContent is not null)
                 {
-                    var blockEntity = new NoteBlockEntity
-                    {
-                        Id = block.Id,
-                        NoteId = note.Id.Value,
-                        BlockType = block.Type,
-                        SortOrder = index
-                    };
-                    block.Match<Unit>(
-                        text: t => { blockEntity.TextContent = t.RichText; return Unit.Value; },
-                        file: f =>
-                        {
-                            blockEntity.FileData = f.Data;
-                            blockEntity.FileName = f.FileName;
-                            blockEntity.FileExtension = f.Extension;
-                            blockEntity.FileSizeBytes = f.SizeBytes;
-                            return Unit.Value;
-                        },
-                        link: l =>
-                        {
-                            blockEntity.LinkUrl = l.Url.Value.ToString();
-                            blockEntity.LinkDescription = l.Description;
-                            return Unit.Value;
-                        });
-                    return blockEntity;
-                }).ToList();
+                    existing.IsEncrypted = true;
+                    existing.EncryptedContent = encryptedContent;
+                    existing.Blocks = [];
+                }
+                else
+                {
+                    existing.IsEncrypted = false;
+                    existing.EncryptedContent = null;
+                    existing.Blocks = NoteMapper.ToBlockEntities(note);
+                }
+
+                // Replace tags
+                existing.NoteTags.Clear();
+                foreach (var tag in note.Tags)
+                    existing.NoteTags.Add(new NoteTagEntity { NoteId = note.Id.Value, TagId = tag.Id });
+
+                await context.SaveChangesAsync();
             }
 
-            // Replace tags
-            existing.NoteTags.Clear();
-            foreach (var tag in note.Tags)
-                existing.NoteTags.Add(new NoteTagEntity { NoteId = note.Id.Value, TagId = tag.Id });
-
-            await context.SaveChangesAsync();
             return await GetByIdAsync(note.Id);
         }
         catch (Exception ex)
@@ -144,6 +116,7 @@ public sealed class NoteRepository(NoteDbContext context) : INoteRepository
     {
         try
         {
+            await using var context = await contextFactory.CreateDbContextAsync();
             var content = await context.Notes.AsNoTracking()
                 .Where(n => n.Id == id.Value)
                 .Select(n => n.EncryptedContent)
@@ -160,6 +133,7 @@ public sealed class NoteRepository(NoteDbContext context) : INoteRepository
     {
         try
         {
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.Notes.FindAsync(id.Value);
             if (entity is null)
                 return Result<Unit, AppError>.Fail(AppError.NotFound($"Note with ID {id} not found."));
@@ -174,24 +148,29 @@ public sealed class NoteRepository(NoteDbContext context) : INoteRepository
         }
     }
 
-    public async Task<Result<IReadOnlyList<Note>, AppError>> SearchAsync(
+    public async Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(
         string? searchText,
         IReadOnlyList<Guid>? tagIds,
         BlockType? blockType)
     {
         try
         {
-            var query = QueryNotes();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var query = context.Notes.AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(searchText))
             {
-                var term = searchText.ToLower();
+                // No ToLower(): SQL Server's default collation is already
+                // case-insensitive and lower-casing both sides defeats indexes.
+                // Text blocks match on PlainText; rows saved before that column
+                // existed fall back to the raw rich payload.
+                var term = searchText.Trim();
                 query = query.Where(n =>
-                    n.Title.ToLower().Contains(term) ||
+                    n.Title.Contains(term) ||
                     n.Blocks.Any(b =>
-                        (b.TextContent != null && b.TextContent.ToLower().Contains(term)) ||
-                        (b.LinkDescription != null && b.LinkDescription.ToLower().Contains(term)) ||
-                        (b.FileName != null && b.FileName.ToLower().Contains(term))));
+                        (b.PlainText != null ? b.PlainText.Contains(term) : b.TextContent != null && b.TextContent.Contains(term)) ||
+                        (b.LinkDescription != null && b.LinkDescription.Contains(term)) ||
+                        (b.FileName != null && b.FileName.Contains(term))));
             }
 
             if (tagIds is { Count: > 0 })
@@ -200,35 +179,44 @@ public sealed class NoteRepository(NoteDbContext context) : INoteRepository
             if (blockType.HasValue)
                 query = query.Where(n => n.Blocks.Any(b => b.BlockType == blockType.Value));
 
-            var entities = await query
+            var rows = await query
                 .OrderByDescending(n => n.UpdatedAt)
+                .Select(n => new NoteSummaryRow
+                {
+                    Id = n.Id,
+                    Title = n.Title,
+                    IsEncrypted = n.IsEncrypted,
+                    CreatedAt = n.CreatedAt,
+                    UpdatedAt = n.UpdatedAt,
+                    HasText = n.Blocks.Any(b => b.BlockType == BlockType.Text),
+                    HasFiles = n.Blocks.Any(b => b.BlockType == BlockType.File),
+                    HasLinks = n.Blocks.Any(b => b.BlockType == BlockType.Link),
+                    FirstTextPlain = n.Blocks
+                        .Where(b => b.BlockType == BlockType.Text)
+                        .OrderBy(b => b.SortOrder)
+                        .Select(b => b.PlainText)
+                        .FirstOrDefault(),
+                    // Only pay for the rich payload when there is no PlainText yet.
+                    FirstTextRich = n.Blocks
+                        .Where(b => b.BlockType == BlockType.Text)
+                        .OrderBy(b => b.SortOrder)
+                        .Select(b => b.PlainText == null ? b.TextContent : null)
+                        .FirstOrDefault(),
+                    Tags = n.NoteTags.Select(nt => nt.Tag).OrderBy(t => t.Name).ToList()
+                })
                 .ToListAsync();
 
-            return MapEntities(entities);
+            return Result<IReadOnlyList<NoteSummaryRow>, AppError>.Ok(rows);
         }
         catch (Exception ex)
         {
-            return Result<IReadOnlyList<Note>, AppError>.Fail(AppError.Database(ex.Message));
+            return Result<IReadOnlyList<NoteSummaryRow>, AppError>.Fail(AppError.Database(ex.Message));
         }
     }
 
-    private IQueryable<NoteEntity> QueryNotes() =>
+    private static IQueryable<NoteEntity> QueryNotes(NoteDbContext context) =>
         context.Notes
             .Include(n => n.Blocks.OrderBy(b => b.SortOrder))
             .Include(n => n.NoteTags).ThenInclude(nt => nt.Tag)
             .AsNoTracking();
-
-    private static Result<IReadOnlyList<Note>, AppError> MapEntities(List<NoteEntity> entities)
-    {
-        var notes = new List<Note>();
-        foreach (var entity in entities)
-        {
-            var result = NoteMapper.ToDomain(entity);
-            if (result is Result<Note, AppError>.Failure f)
-                return Result<IReadOnlyList<Note>, AppError>.Fail(f.Error);
-            if (result is Result<Note, AppError>.Success s)
-                notes.Add(s.Value);
-        }
-        return Result<IReadOnlyList<Note>, AppError>.Ok(notes);
-    }
 }

@@ -7,7 +7,9 @@ public abstract record NoteBlock
     public Guid Id { get; init; } = Guid.NewGuid();
     public int SortOrder { get; init; }
 
-    public sealed record Text(string RichText) : NoteBlock;
+    // PlainText is the searchable / previewable form of RichText (a Base64
+    // XamlPackage). It is computed by the editor, which has the document.
+    public sealed record Text(string RichText, string PlainText = "") : NoteBlock;
 
     public sealed record File(
         byte[] Data,

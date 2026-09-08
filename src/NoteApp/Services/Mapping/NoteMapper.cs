@@ -1,4 +1,5 @@
 using NoteApp.Data.Entities;
+using NoteApp.Data.Queries;
 using NoteApp.Domain.Functional;
 using NoteApp.Domain.Models;
 using NoteApp.Domain.ValueObjects;
@@ -9,38 +10,29 @@ public static class NoteMapper
 {
     public static Result<Note, AppError> ToDomain(NoteEntity entity) =>
         NoteTitle.From(entity.Title)
-            .Bind(title =>
-            {
-                var blocks = entity.Blocks
-                    .OrderBy(b => b.SortOrder)
-                    .Select(MapBlock)
-                    .ToList();
-
-                var errors = blocks.Where(r => r.IsFailure).ToList();
-                if (errors.Count > 0)
-                    return Result<Note, AppError>.Fail(
-                        errors.First() is Result<NoteBlock, AppError>.Failure f
-                            ? f.Error
-                            : AppError.Validation("Failed to map note blocks."));
-
-                var domainBlocks = blocks
-                    .Where(r => r.IsSuccess)
-                    .Select(r => ((Result<NoteBlock, AppError>.Success)r).Value)
-                    .ToList();
-
-                var tags = entity.NoteTags
-                    .Select(nt => TagMapper.ToDomain(nt.Tag))
-                    .ToList();
-
-                return Result<Note, AppError>.Ok(new Note(
+            .Bind(title => MapBlocks(entity.Blocks)
+                .Map(blocks => new Note(
                     new NoteId(entity.Id),
                     title,
-                    domainBlocks,
-                    tags,
+                    blocks,
+                    entity.NoteTags.Select(nt => TagMapper.ToDomain(nt.Tag)).ToList(),
                     entity.IsEncrypted,
                     entity.CreatedAt,
-                    entity.UpdatedAt));
-            });
+                    entity.UpdatedAt)));
+
+    public static Result<NoteSummary, AppError> ToSummary(NoteSummaryRow row, string preview) =>
+        NoteTitle.From(row.Title)
+            .Map(title => new NoteSummary(
+                new NoteId(row.Id),
+                title,
+                preview,
+                row.Tags.Select(TagMapper.ToDomain).ToList(),
+                row.IsEncrypted,
+                row.HasText,
+                row.HasFiles,
+                row.HasLinks,
+                row.CreatedAt,
+                row.UpdatedAt));
 
     public static NoteEntity ToEntity(Note note) => new()
     {
@@ -48,10 +40,14 @@ public static class NoteMapper
         Title = note.Title.Value,
         CreatedAt = note.CreatedAt,
         UpdatedAt = note.UpdatedAt,
-        Blocks = note.Blocks.Select((block, index) => MapBlockToEntity(block, note.Id.Value, index)).ToList()
+        Blocks = ToBlockEntities(note)
     };
 
-    private static NoteBlockEntity MapBlockToEntity(NoteBlock block, Guid noteId, int sortOrder) =>
+    // Storage order is the list order: SortOrder is reassigned from the index.
+    public static List<NoteBlockEntity> ToBlockEntities(Note note) =>
+        note.Blocks.Select((block, index) => ToBlockEntity(block, note.Id.Value, index)).ToList();
+
+    private static NoteBlockEntity ToBlockEntity(NoteBlock block, Guid noteId, int sortOrder) =>
         block.Match(
             text: t => new NoteBlockEntity
             {
@@ -59,7 +55,8 @@ public static class NoteMapper
                 NoteId = noteId,
                 BlockType = BlockType.Text,
                 SortOrder = sortOrder,
-                TextContent = t.RichText
+                TextContent = t.RichText,
+                PlainText = t.PlainText
             },
             file: f => new NoteBlockEntity
             {
@@ -82,11 +79,24 @@ public static class NoteMapper
                 LinkDescription = l.Description
             });
 
+    // First failure wins; blocks come out ordered by SortOrder.
+    private static Result<IReadOnlyList<NoteBlock>, AppError> MapBlocks(IEnumerable<NoteBlockEntity> entities)
+    {
+        var blocks = new List<NoteBlock>();
+        foreach (var entity in entities.OrderBy(b => b.SortOrder))
+        {
+            if (!MapBlock(entity).TryGet(out var block, out var error))
+                return Result<IReadOnlyList<NoteBlock>, AppError>.Fail(error);
+            blocks.Add(block);
+        }
+        return Result<IReadOnlyList<NoteBlock>, AppError>.Ok(blocks);
+    }
+
     private static Result<NoteBlock, AppError> MapBlock(NoteBlockEntity entity) =>
         entity.BlockType switch
         {
             BlockType.Text => Result<NoteBlock, AppError>.Ok(
-                new NoteBlock.Text(entity.TextContent ?? string.Empty)
+                new NoteBlock.Text(entity.TextContent ?? string.Empty, entity.PlainText ?? string.Empty)
                     { Id = entity.Id, SortOrder = entity.SortOrder }),
 
             BlockType.File => Result<NoteBlock, AppError>.Ok(

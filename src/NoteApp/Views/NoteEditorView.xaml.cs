@@ -26,19 +26,62 @@ public partial class NoteEditorView : UserControl
     private Guid _pendingSearchBlockId;
     private string _pendingSearchText = string.Empty;
     private bool _suppressTagToggle;
+    private NoteEditorViewModel? _subscribedViewModel;
 
     public NoteEditorView()
     {
         InitializeComponent();
+        DataContextChanged += OnDataContextChanged;
+        Unloaded += OnUnloaded;
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    // The editor pane reuses this view instance across notes, so the view model
+    // subscriptions have to follow the DataContext rather than be wired once.
+    private void OnLoaded(object sender, RoutedEventArgs e) =>
+        Subscribe(DataContext as NoteEditorViewModel);
+
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (DataContext is NoteEditorViewModel vm)
+        ResetBlockRegistrations();
+        Subscribe(e.NewValue as NoteEditorViewModel);
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) => Subscribe(null);
+
+    private void Subscribe(NoteEditorViewModel? vm)
+    {
+        if (ReferenceEquals(_subscribedViewModel, vm))
+            return;
+
+        if (_subscribedViewModel is not null)
+        {
+            _subscribedViewModel.SyncAllBlocksRequested -= SyncAllRichTextBoxes;
+            _subscribedViewModel.PasswordRequested -= OnPasswordRequested;
+        }
+
+        _subscribedViewModel = vm;
+
+        if (vm is not null)
         {
             vm.SyncAllBlocksRequested += SyncAllRichTextBoxes;
             vm.PasswordRequested += OnPasswordRequested;
         }
+    }
+
+    // Element registrations are keyed by block id, and another note means
+    // another set of blocks: stale entries must not survive the swap.
+    private void ResetBlockRegistrations()
+    {
+        foreach (var rtb in _richTextBoxes.Values)
+            CommandManager.RemovePreviewExecutedHandler(rtb, OnPreviewPasteExecuted);
+
+        _richTextBoxes.Clear();
+        _searchBars.Clear();
+        _searchTextBoxes.Clear();
+        _searchStatusBlocks.Clear();
+        _searchMatches.Clear();
+        _searchCurrentIndex.Clear();
+        _searchDebounceTimer?.Stop();
     }
 
     private string? OnPasswordRequested()
@@ -91,15 +134,29 @@ public partial class NoteEditorView : UserControl
 
     private void SyncAllRichTextBoxes()
     {
+        if (DataContext is not NoteEditorViewModel vm)
+            return;
+
         foreach (var (blockId, rtb) in _richTextBoxes)
         {
-            if (DataContext is NoteEditorViewModel vm)
-            {
-                var block = vm.Blocks.FirstOrDefault(b => b.Id == blockId);
-                if (block is not null)
-                    block.RichTextContent = SerializeDocument(rtb.Document);
-            }
+            var block = vm.Blocks.FirstOrDefault(b => b.Id == blockId);
+            if (block is not null)
+                SyncBlock(block, rtb);
         }
+    }
+
+    // Pushes the document into the block: the rich payload for storage and the
+    // plain text the list/search rely on. Search highlights are ordinary document
+    // properties and would be saved with it, so they are stripped and restored.
+    private void SyncBlock(BlockViewModel block, RichTextBox rtb)
+    {
+        var hadHighlights = ClearHighlights(block.Id);
+
+        block.RichTextContent = SerializeDocument(rtb.Document);
+        block.PlainTextContent = new TextRange(rtb.Document.ContentStart, rtb.Document.ContentEnd).Text;
+
+        if (hadHighlights)
+            ReapplyHighlights(block.Id);
     }
 
     private void OnRichTextBoxLoaded(object sender, RoutedEventArgs e)
@@ -107,6 +164,8 @@ public partial class NoteEditorView : UserControl
         if (sender is RichTextBox rtb && rtb.Tag is BlockViewModel block)
         {
             _richTextBoxes[block.Id] = rtb;
+            // Remove first: Loaded can fire again for the same box on re-attach.
+            CommandManager.RemovePreviewExecutedHandler(rtb, OnPreviewPasteExecuted);
             CommandManager.AddPreviewExecutedHandler(rtb, OnPreviewPasteExecuted);
 
             if (!string.IsNullOrEmpty(block.RichTextContent))
@@ -114,12 +173,29 @@ public partial class NoteEditorView : UserControl
         }
     }
 
+    private void OnRichTextBoxUnloaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RichTextBox rtb || rtb.Tag is not BlockViewModel block)
+            return;
+
+        // Only drop the registration while it still points at this very box:
+        // reordering blocks can raise Loaded for the new container first.
+        if (!_richTextBoxes.TryGetValue(block.Id, out var registered) || !ReferenceEquals(registered, rtb))
+            return;
+
+        CommandManager.RemovePreviewExecutedHandler(rtb, OnPreviewPasteExecuted);
+        _richTextBoxes.Remove(block.Id);
+        _searchBars.Remove(block.Id);
+        _searchTextBoxes.Remove(block.Id);
+        _searchStatusBlocks.Remove(block.Id);
+        _searchMatches.Remove(block.Id);
+        _searchCurrentIndex.Remove(block.Id);
+    }
+
     private void OnRichTextLostFocus(object sender, RoutedEventArgs e)
     {
         if (sender is RichTextBox rtb && rtb.Tag is BlockViewModel block)
-        {
-            block.RichTextContent = SerializeDocument(rtb.Document);
-        }
+            SyncBlock(block, rtb);
     }
 
     // --- Image paste & insert ---
@@ -235,15 +311,10 @@ public partial class NoteEditorView : UserControl
         var rtb = FindRichTextBox(sender);
         if (rtb is null) return;
 
-        var list = new List { MarkerStyle = TextMarkerStyle.Disc };
-        var selection = rtb.Selection;
-        var item = !selection.IsEmpty
-            ? new ListItem(new Paragraph(new Run(selection.Text)))
-            : new ListItem(new Paragraph(new Run()));
-
-        if (!selection.IsEmpty) selection.Text = string.Empty;
-        list.ListItems.Add(item);
-        rtb.Document.Blocks.Add(list);
+        // Toggle bullets on the current selection: building a fresh List and
+        // appending it moved the text to the bottom of the document instead.
+        rtb.Focus();
+        EditingCommands.ToggleBullets.Execute(null, rtb);
     }
 
     // --- Search bar element registration ---
@@ -480,13 +551,26 @@ public partial class NoteEditorView : UserControl
         range.ApplyPropertyValue(TextElement.BackgroundProperty, background);
     }
 
-    private void ClearHighlights(Guid blockId)
+    private bool ClearHighlights(Guid blockId)
     {
-        if (!_searchMatches.TryGetValue(blockId, out var matches)) return;
-        if (!_richTextBoxes.TryGetValue(blockId, out var rtb)) return;
+        if (!_searchMatches.TryGetValue(blockId, out var matches) || matches.Count == 0) return false;
+        if (!_richTextBoxes.ContainsKey(blockId)) return false;
 
+        // null rather than Transparent: Transparent is still a value, and it
+        // would be written into the note along with the rest of the document.
         foreach (var match in matches)
-            match.ApplyPropertyValue(TextElement.BackgroundProperty, Brushes.Transparent);
+            match.ApplyPropertyValue(TextElement.BackgroundProperty, null);
+
+        return true;
+    }
+
+    private void ReapplyHighlights(Guid blockId)
+    {
+        if (!_searchMatches.TryGetValue(blockId, out var matches) || matches.Count == 0) return;
+
+        var current = _searchCurrentIndex.GetValueOrDefault(blockId, 0);
+        for (var i = 0; i < matches.Count; i++)
+            ApplyHighlight(matches[i], i == current ? Brushes.Orange : Brushes.Yellow);
     }
 
     private void UpdateSearchStatus(Guid blockId)

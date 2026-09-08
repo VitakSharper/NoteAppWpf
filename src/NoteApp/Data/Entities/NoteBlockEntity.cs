@@ -9,8 +9,9 @@ public class NoteBlockEntity
     public BlockType BlockType { get; set; }
     public int SortOrder { get; set; }
 
-    // Text block
+    // Text block — PlainText is null for rows saved before the column existed
     public string? TextContent { get; set; }
+    public string? PlainText { get; set; }
 
     // File block
     public byte[]? FileData { get; set; }

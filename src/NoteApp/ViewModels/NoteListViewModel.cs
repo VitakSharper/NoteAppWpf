@@ -14,12 +14,12 @@ public sealed record SortOption(string Label, string Field, ListSortDirection Di
 {
     public override string ToString() => Label;
 
-    public static readonly SortOption UpdatedDesc = new("Updated (newest)", nameof(Note.UpdatedAt), ListSortDirection.Descending);
-    public static readonly SortOption UpdatedAsc = new("Updated (oldest)", nameof(Note.UpdatedAt), ListSortDirection.Ascending);
+    public static readonly SortOption UpdatedDesc = new("Updated (newest)", nameof(NoteSummary.UpdatedAt), ListSortDirection.Descending);
+    public static readonly SortOption UpdatedAsc = new("Updated (oldest)", nameof(NoteSummary.UpdatedAt), ListSortDirection.Ascending);
     public static readonly SortOption TitleAsc = new("Title (A–Z)", "Title.Value", ListSortDirection.Ascending);
     public static readonly SortOption TitleDesc = new("Title (Z–A)", "Title.Value", ListSortDirection.Descending);
-    public static readonly SortOption CreatedDesc = new("Created (newest)", nameof(Note.CreatedAt), ListSortDirection.Descending);
-    public static readonly SortOption CreatedAsc = new("Created (oldest)", nameof(Note.CreatedAt), ListSortDirection.Ascending);
+    public static readonly SortOption CreatedDesc = new("Created (newest)", nameof(NoteSummary.CreatedAt), ListSortDirection.Descending);
+    public static readonly SortOption CreatedAsc = new("Created (oldest)", nameof(NoteSummary.CreatedAt), ListSortDirection.Ascending);
 
     public static readonly IReadOnlyList<SortOption> All =
         [UpdatedDesc, UpdatedAsc, TitleAsc, TitleDesc, CreatedDesc, CreatedAsc];
@@ -34,24 +34,26 @@ public partial class TagFilterItem : ObservableObject
     public string Name => Tag.Name.ToString();
 }
 
+// The list works on NoteSummary (no block payloads); the full Note is only
+// loaded when a note is opened in the editor.
 public partial class NoteListViewModel : ObservableObject
 {
     private readonly NoteService _noteService;
     private readonly ITagRepository _tagRepository;
     private readonly AppSettingsService _settingsService;
 
-    [ObservableProperty] private ObservableCollection<Note> _notes = [];
+    [ObservableProperty] private ObservableCollection<NoteSummary> _notes = [];
     [ObservableProperty] private ObservableCollection<TagFilterItem> _allTags = [];
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private NoteTypeFilter _selectedTypeFilter = NoteTypeFilter.All;
     [ObservableProperty] private bool _isLoading;
-    [ObservableProperty] private Note? _selectedNote;
+    [ObservableProperty] private NoteSummary? _selectedNote;
     [ObservableProperty] private SortOption _selectedSort = SortOption.UpdatedDesc;
 
     public IReadOnlyList<NoteTypeFilter> TypeFilters => NoteTypeFilter.AllFilters;
     public IReadOnlyList<SortOption> SortOptions => SortOption.All;
 
-    public event Action<Note>? EditNoteRequested;
+    public event Action<NoteSummary>? EditNoteRequested;
     public event Action? CreateNoteRequested;
     public event Action<string>? ShowMessage;
 
@@ -65,7 +67,7 @@ public partial class NoteListViewModel : ObservableObject
         _settingsService = settingsService;
     }
 
-    partial void OnSelectedNoteChanged(Note? value)
+    partial void OnSelectedNoteChanged(NoteSummary? value)
     {
         if (value is not null)
             EditNoteRequested?.Invoke(value);
@@ -92,7 +94,7 @@ public partial class NoteListViewModel : ObservableObject
                 SelectedTypeFilter.Value);
 
             result.Match(
-                success: notes => Notes = new ObservableCollection<Note>(notes),
+                success: notes => Notes = new ObservableCollection<NoteSummary>(notes),
                 failure: error => ShowMessage?.Invoke(error.Message));
 
             ApplySort();
@@ -123,17 +125,17 @@ public partial class NoteListViewModel : ObservableObject
             ? SelectedSort.Field switch
             {
                 "Title.Value" => Notes.OrderBy(n => n.Title.Value, StringComparer.OrdinalIgnoreCase),
-                nameof(Note.CreatedAt) => Notes.OrderBy(n => n.CreatedAt),
+                nameof(NoteSummary.CreatedAt) => Notes.OrderBy(n => n.CreatedAt),
                 _ => Notes.OrderBy(n => n.UpdatedAt)
             }
             : SelectedSort.Field switch
             {
                 "Title.Value" => Notes.OrderByDescending(n => n.Title.Value, StringComparer.OrdinalIgnoreCase),
-                nameof(Note.CreatedAt) => Notes.OrderByDescending(n => n.CreatedAt),
+                nameof(NoteSummary.CreatedAt) => Notes.OrderByDescending(n => n.CreatedAt),
                 _ => Notes.OrderByDescending(n => n.UpdatedAt)
             };
 
-        Notes = new ObservableCollection<Note>(sorted);
+        Notes = new ObservableCollection<NoteSummary>(sorted);
     }
 
     [RelayCommand]
@@ -163,10 +165,10 @@ public partial class NoteListViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void EditNote(Note note) => EditNoteRequested?.Invoke(note);
+    private void EditNote(NoteSummary note) => EditNoteRequested?.Invoke(note);
 
     [RelayCommand]
-    private async Task DeleteNote(Note note)
+    private async Task DeleteNote(NoteSummary note)
     {
         if (_settingsService.Current.ConfirmNoteDeletion)
         {
@@ -194,17 +196,5 @@ public partial class NoteListViewModel : ObservableObject
     private void CreateNote() => CreateNoteRequested?.Invoke();
 
     [RelayCommand]
-    private void OpenNote(Note note) => EditNoteRequested?.Invoke(note);
-
-    public static string GetBlockSummary(Note note)
-    {
-        var parts = new List<string>();
-        var textCount = note.Blocks.Count(b => b is NoteBlock.Text);
-        var fileCount = note.Blocks.Count(b => b is NoteBlock.File);
-        var linkCount = note.Blocks.Count(b => b is NoteBlock.Link);
-        if (textCount > 0) parts.Add($"{textCount} text");
-        if (fileCount > 0) parts.Add($"{fileCount} file{(fileCount > 1 ? "s" : "")}");
-        if (linkCount > 0) parts.Add($"{linkCount} link{(linkCount > 1 ? "s" : "")}");
-        return string.Join(" · ", parts);
-    }
+    private void OpenNote(NoteSummary note) => EditNoteRequested?.Invoke(note);
 }

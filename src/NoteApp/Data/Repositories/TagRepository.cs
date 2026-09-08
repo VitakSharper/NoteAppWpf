@@ -1,17 +1,18 @@
 using Microsoft.EntityFrameworkCore;
-using NoteApp.Data.Entities;
 using NoteApp.Domain.Functional;
 using NoteApp.Domain.Models;
 using NoteApp.Services.Mapping;
 
 namespace NoteApp.Data.Repositories;
 
-public sealed class TagRepository(NoteDbContext context) : ITagRepository
+// One short-lived DbContext per operation — see NoteRepository.
+public sealed class TagRepository(IDbContextFactory<NoteDbContext> contextFactory) : ITagRepository
 {
     public async Task<Result<IReadOnlyList<Tag>, AppError>> GetAllAsync()
     {
         try
         {
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entities = await context.Tags
                 .OrderBy(t => t.Name)
                 .AsNoTracking()
@@ -30,12 +31,12 @@ public sealed class TagRepository(NoteDbContext context) : ITagRepository
     {
         try
         {
+            await using var context = await contextFactory.CreateDbContextAsync();
             var exists = await context.Tags.AnyAsync(t => t.Name == tag.Name.Value);
             if (exists)
                 return Result<Tag, AppError>.Fail(AppError.Validation($"Tag '{tag.Name}' already exists."));
 
-            var entity = TagMapper.ToEntity(tag);
-            context.Tags.Add(entity);
+            context.Tags.Add(TagMapper.ToEntity(tag));
             await context.SaveChangesAsync();
             return Result<Tag, AppError>.Ok(tag);
         }
@@ -49,6 +50,7 @@ public sealed class TagRepository(NoteDbContext context) : ITagRepository
     {
         try
         {
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.Tags.FindAsync(tag.Id);
             if (entity is null)
                 return Result<Tag, AppError>.Fail(AppError.NotFound($"Tag with ID {tag.Id} not found."));
@@ -71,6 +73,7 @@ public sealed class TagRepository(NoteDbContext context) : ITagRepository
     {
         try
         {
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.Tags.FindAsync(id);
             if (entity is null)
                 return Result<Unit, AppError>.Fail(AppError.NotFound($"Tag with ID {id} not found."));

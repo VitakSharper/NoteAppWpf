@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace NoteApp.Domain.Functional;
 
 public abstract record Result<T, TError>
@@ -52,6 +54,25 @@ public abstract record Result<T, TError>
             Failure f => new Result<T, TNewError>.Failure(mapError(f.Error)),
             _ => throw new InvalidOperationException("Unexpected result state")
         };
+
+    // Imperative escape hatch for early returns, so callers never have to cast
+    // to Success/Failure: `if (!r.TryGet(out var v, out var e)) return Fail(e);`
+    public bool TryGet([MaybeNullWhen(false)] out T value, [MaybeNullWhen(true)] out TError error)
+    {
+        switch (this)
+        {
+            case Success s:
+                value = s.Value;
+                error = default!;
+                return true;
+            case Failure f:
+                value = default!;
+                error = f.Error;
+                return false;
+            default:
+                throw new InvalidOperationException("Unexpected result state");
+        }
+    }
 
     public bool IsSuccess => this is Success;
     public bool IsFailure => this is Failure;

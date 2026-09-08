@@ -1,74 +1,61 @@
 using System.Security.Cryptography;
 using NoteApp.Data.Repositories;
-using NoteApp.Domain.Extensions;
 using NoteApp.Domain.Functional;
 using NoteApp.Domain.Models;
 using NoteApp.Domain.ValueObjects;
+using NoteApp.Services.Mapping;
 
 namespace NoteApp.Services;
 
 public sealed class NoteService(INoteRepository noteRepository)
 {
-    public Task<Result<IReadOnlyList<Note>, AppError>> GetAllNotesAsync() =>
-        noteRepository.GetAllAsync();
-
     public Task<Result<Note, AppError>> GetNoteByIdAsync(NoteId id) =>
         noteRepository.GetByIdAsync(id);
 
     public async Task<Result<Note, AppError>> CreateNoteAsync(
         string title, IReadOnlyList<NoteBlock> blocks, IReadOnlyList<Tag> tags, string? password = null)
     {
-        var titleResult = NoteTitle.From(title);
-        if (titleResult.IsFailure)
-            return Result<Note, AppError>.Fail(((Result<NoteTitle, AppError>.Failure)titleResult).Error);
+        if (!NoteTitle.From(title).TryGet(out var noteTitle, out var titleError))
+            return Result<Note, AppError>.Fail(titleError);
 
-        var noteTitle = ((Result<NoteTitle, AppError>.Success)titleResult).Value;
-        var isEncrypted = password is not null;
-        var noteResult = Note.Create(noteTitle, blocks, tags, isEncrypted);
-        if (noteResult.IsFailure)
-            return noteResult;
+        if (!Note.Create(noteTitle, blocks, tags, isEncrypted: password is not null).TryGet(out var note, out var noteError))
+            return Result<Note, AppError>.Fail(noteError);
 
-        var note = ((Result<Note, AppError>.Success)noteResult).Value;
-        byte[]? encryptedContent = null;
-
-        if (password is not null)
-            encryptedContent = EncryptionService.EncryptBlocks(blocks, password);
-
+        var encryptedContent = password is null ? null : EncryptionService.EncryptBlocks(blocks, password);
         return await noteRepository.CreateAsync(note, encryptedContent);
     }
 
-    public async Task<Result<Note, AppError>> UpdateNoteAsync(Note note, string? password = null)
+    public Task<Result<Note, AppError>> UpdateNoteAsync(Note note, string? password = null)
     {
-        byte[]? encryptedContent = null;
+        if (!note.IsEncrypted)
+            return noteRepository.UpdateAsync(note);
 
-        if (note.IsEncrypted && password is not null)
-            encryptedContent = EncryptionService.EncryptBlocks(note.Blocks, password);
+        // Never let an encrypted note fall through to the plaintext path: without
+        // the password the repository would store the blocks in clear.
+        if (password is null)
+            return Task.FromResult(Result<Note, AppError>.Fail(
+                AppError.Validation("A password is required to save an encrypted note.")));
 
-        return await noteRepository.UpdateAsync(note, encryptedContent);
+        return noteRepository.UpdateAsync(note, EncryptionService.EncryptBlocks(note.Blocks, password));
     }
 
     public async Task<Result<Note, AppError>> UnlockNoteAsync(NoteId id, string password)
     {
         try
         {
-            var noteResult = await noteRepository.GetByIdAsync(id);
-            if (noteResult.IsFailure)
-                return noteResult;
+            if (!(await noteRepository.GetByIdAsync(id)).TryGet(out var note, out var noteError))
+                return Result<Note, AppError>.Fail(noteError);
 
-            var note = ((Result<Note, AppError>.Success)noteResult).Value;
             if (!note.IsEncrypted)
-                return noteResult;
+                return Result<Note, AppError>.Ok(note);
 
-            var contentResult = await noteRepository.GetEncryptedContentAsync(id);
-            if (contentResult.IsFailure)
-                return Result<Note, AppError>.Fail(((Result<byte[]?, AppError>.Failure)contentResult).Error);
+            if (!(await noteRepository.GetEncryptedContentAsync(id)).TryGet(out var encryptedContent, out var contentError))
+                return Result<Note, AppError>.Fail(contentError);
 
-            var encryptedContent = ((Result<byte[]?, AppError>.Success)contentResult).Value;
             if (encryptedContent is null)
                 return Result<Note, AppError>.Fail(AppError.Validation("No encrypted content found."));
 
             var blocks = EncryptionService.DecryptBlocks(encryptedContent, password);
-
             return Result<Note, AppError>.Ok(note with { Blocks = blocks });
         }
         catch (CryptographicException)
@@ -84,7 +71,23 @@ public sealed class NoteService(INoteRepository noteRepository)
     public Task<Result<Unit, AppError>> DeleteNoteAsync(NoteId id) =>
         noteRepository.DeleteAsync(id);
 
-    public Task<Result<IReadOnlyList<Note>, AppError>> SearchAsync(
-        string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType) =>
-        noteRepository.SearchAsync(searchText, tagIds, blockType);
+    // The list never needs full notes: rows come back without block payloads,
+    // and the preview is derived once here rather than per row at render time.
+    public async Task<Result<IReadOnlyList<NoteSummary>, AppError>> SearchAsync(
+        string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType)
+    {
+        if (!(await noteRepository.SearchSummariesAsync(searchText, tagIds, blockType)).TryGet(out var rows, out var error))
+            return Result<IReadOnlyList<NoteSummary>, AppError>.Fail(error);
+
+        var summaries = new List<NoteSummary>(rows.Count);
+        foreach (var row in rows)
+        {
+            var preview = row.IsEncrypted ? string.Empty : RichTextPreview.Snippet(row.FirstTextPlain, row.FirstTextRich);
+            if (!NoteMapper.ToSummary(row, preview).TryGet(out var summary, out var mapError))
+                return Result<IReadOnlyList<NoteSummary>, AppError>.Fail(mapError);
+            summaries.Add(summary);
+        }
+
+        return Result<IReadOnlyList<NoteSummary>, AppError>.Ok(summaries);
+    }
 }

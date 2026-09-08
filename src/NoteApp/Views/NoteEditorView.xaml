@@ -88,6 +88,7 @@
                              BorderThickness="1"
                              Tag="{Binding}"
                              Loaded="OnRichTextBoxLoaded"
+                             Unloaded="OnRichTextBoxUnloaded"
                              LostFocus="OnRichTextLostFocus" />
             </Grid>
         </DataTemplate>
