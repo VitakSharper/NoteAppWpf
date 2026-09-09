@@ -58,8 +58,10 @@ public partial class NoteEditorViewModel : ObservableObject
     public bool IsEditing => _existingNote is not null;
     public string EditorTitle => IsEditing ? "Edit Note" : "New Note";
 
-    // The leave guard puts the list selection back on the note it kept open.
+    // The leave guard puts the list selection back on the note it kept open, and the
+    // shell's trash button needs the stored note behind the editor (null while new).
     public NoteId? EditedNoteId => _existingNote?.Id;
+    public Note? EditedNote => _existingNote;
 
     private bool _isDirty;
 

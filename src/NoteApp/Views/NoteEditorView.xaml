@@ -187,6 +187,19 @@
                     Width="36" Height="36" Margin="0,0,4,0">
                 <materialDesign:PackIcon Kind="FilePdfBox" Width="22" Height="22" />
             </Button>
+            <Button DockPanel.Dock="Right" ToolTip="Export to Word (.docx): text, links and attachment names"
+                    Style="{StaticResource MaterialDesignIconButton}"
+                    Click="OnExportToWord"
+                    Width="36" Height="36" Margin="0,0,4,0">
+                <materialDesign:PackIcon Kind="FileWordBox" Width="22" Height="22" />
+            </Button>
+            <!-- Deletion belongs to the shell (it goes through the list's UNDO), hence the Window binding -->
+            <Button DockPanel.Dock="Right" ToolTip="Move this note to the trash"
+                    Style="{StaticResource MaterialDesignIconButton}"
+                    Command="{Binding DataContext.DeleteOpenNoteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    Width="36" Height="36" Margin="0,0,4,0">
+                <materialDesign:PackIcon Kind="TrashCanOutline" Width="22" Height="22" />
+            </Button>
             <TextBlock Text="{Binding EditorTitle}"
                        Style="{StaticResource MaterialDesignHeadline5TextBlock}"
                        VerticalAlignment="Center" />

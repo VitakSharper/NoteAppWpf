@@ -10,6 +10,7 @@ using System.Windows.Threading;
 using Microsoft.Win32;
 using NoteApp.Domain.Models;
 using NoteApp.Services;
+using NoteApp.Services.Export;
 using NoteApp.ViewModels;
 
 namespace NoteApp.Views;
@@ -740,13 +741,10 @@ public partial class NoteEditorView : UserControl
             return;
         }
 
-        var safeFileName = string.Join("_",
-            vm.Title.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));
-
         var dialog = new SaveFileDialog
         {
             Filter = "PDF Files (*.pdf)|*.pdf",
-            FileName = string.IsNullOrWhiteSpace(safeFileName) ? "note.pdf" : $"{safeFileName}.pdf",
+            FileName = ExportFileName(vm.Title, "pdf"),
             Title = "Export to PDF"
         };
 
@@ -754,10 +752,7 @@ public partial class NoteEditorView : UserControl
 
         try
         {
-            PdfExportService.Export(
-                string.IsNullOrWhiteSpace(vm.Title) ? "Untitled Note" : vm.Title,
-                textContents,
-                dialog.FileName);
+            PdfExportService.Export(ExportTitle(vm.Title), textContents, dialog.FileName);
 
             MessageBox.Show("PDF exported successfully!", "Export to PDF",
                 MessageBoxButton.OK, MessageBoxImage.Information);
@@ -767,5 +762,59 @@ public partial class NoteEditorView : UserControl
             MessageBox.Show($"Failed to export PDF: {ex.Message}", "Export to PDF",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    // Unlike the PDF, Word gets every block in note order: links become hyperlinks
+    // and file blocks are named (their bytes stay in the database).
+    private void OnExportToWord(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not NoteEditorViewModel vm) return;
+
+        SyncAllRichTextBoxes();
+
+        var blocks = vm.Blocks.Select<BlockViewModel, ExportBlock>(b => b.BlockType switch
+        {
+            BlockType.Text => new TextExportBlock(b.RichTextContent),
+            BlockType.Link => new LinkExportBlock(b.LinkUrlText, b.LinkDescription),
+            _ => new FileExportBlock(b.FileName, b.FileSize)
+        }).ToList();
+
+        if (blocks.Count == 0)
+        {
+            MessageBox.Show("Nothing to export.", "Export to Word",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            Filter = "Word documents (*.docx)|*.docx",
+            FileName = ExportFileName(vm.Title, "docx"),
+            Title = "Export to Word"
+        };
+
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            WordExportService.Export(ExportTitle(vm.Title), blocks, dialog.FileName);
+
+            MessageBox.Show("Word document exported successfully!", "Export to Word",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to export Word document: {ex.Message}", "Export to Word",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private static string ExportTitle(string title) =>
+        string.IsNullOrWhiteSpace(title) ? "Untitled Note" : title;
+
+    private static string ExportFileName(string title, string extension)
+    {
+        var safe = string.Join("_", title.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));
+        return string.IsNullOrWhiteSpace(safe) ? $"note.{extension}" : $"{safe}.{extension}";
     }
 }

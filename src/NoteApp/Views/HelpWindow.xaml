@@ -103,7 +103,7 @@
                 <TextBlock Style="{StaticResource Body}"
                            Text="File blocks keep the file itself inside the database; Save file to disk writes it back out. Link blocks hold a checked URL and a description." />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="The PDF button in the editor header exports the text blocks of the open note." />
+                           Text="The PDF and Word buttons in the editor header export the open note. PDF takes the text blocks; Word (.docx) also writes link blocks as clickable hyperlinks and lists the attached files by name." />
 
                 <TextBlock Style="{StaticResource Section}" Text="Search, tags and filters" />
                 <TextBlock Style="{StaticResource Body}"
@@ -113,7 +113,7 @@
 
                 <TextBlock Style="{StaticResource Section}" Text="Trash" />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="Deleting a note moves it to the trash, and the UNDO button in the message that follows puts it straight back. Open the trash with the Trash toggle next to Tags: notes there can be restored or deleted forever, and Empty trash clears all of it." />
+                           Text="Delete a note with the trash button in the editor header, or by right-clicking it in the list. It moves to the trash, and the UNDO button in the message that follows puts it straight back. Open the trash with the bin toggle next to the sort menu: notes there can be restored or deleted forever (right-click), and Empty trash clears all of it." />
                 <TextBlock Style="{StaticResource Body}"
                            Text="Only the permanent gestures ask for confirmation, and Settings lets you switch that confirmation off." />
 

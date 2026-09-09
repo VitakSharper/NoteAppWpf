@@ -99,7 +99,7 @@
             <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding SortOptions}"
                       SelectedItem="{Binding SelectedSort}"
                       materialDesign:HintAssist.Hint="Sort by"
-                      Width="170" FontSize="12" Height="32" Margin="8,0,0,0"
+                      Width="150" FontSize="12" Height="32" Margin="8,0,0,0"
                       VerticalAlignment="Center"
                       materialDesign:ComboBoxAssist.ShowSelectedItem="True">
                 <ComboBox.ItemTemplate>
@@ -109,10 +109,11 @@
                 </ComboBox.ItemTemplate>
             </ComboBox>
 
-            <!-- Trash view toggle: same list, over the soft-deleted notes -->
+            <!-- Trash view toggle: same list, over the soft-deleted notes. Icon only —
+                 at the pane's default 340 px a labelled button squeezed "Tags" out. -->
             <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding IsTrashView}"
-                          Height="32" Padding="8,4" Cursor="Hand" Margin="4,0,0,0"
-                          ToolTip="Show the trash">
+                          Width="32" Height="32" Padding="0" Cursor="Hand" Margin="4,0,0,0"
+                          ToolTip="Trash — restore or permanently delete notes">
                 <ToggleButton.Style>
                     <Style TargetType="ToggleButton" BasedOn="{StaticResource MaterialDesignFlatButton}">
                         <Style.Triggers>
@@ -122,11 +123,8 @@
                         </Style.Triggers>
                     </Style>
                 </ToggleButton.Style>
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="TrashCanOutline" Width="18" Height="18"
-                                             VerticalAlignment="Center" Margin="0,0,4,0" />
-                    <TextBlock Text="Trash" FontSize="12" VerticalAlignment="Center" />
-                </StackPanel>
+                <materialDesign:PackIcon Kind="TrashCanOutline" Width="20" Height="20"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center" />
             </ToggleButton>
 
             <ToggleButton x:Name="TagFilterToggle"

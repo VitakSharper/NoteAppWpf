@@ -1,27 +1,19 @@
-using System.IO;
-using System.Windows;
-using WpfImage = System.Windows.Controls.Image;
-using System.Windows.Documents;
-using System.Windows.Markup;
-using System.Windows.Media.Imaging;
+using NoteApp.Services.Export;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
 namespace NoteApp.Services;
 
+// PDF through QuestPDF. The WPF half — FlowDocument to plain DocElements — is
+// shared with the Word export (RichTextDocument, UI thread); everything below
+// renders data and has no WPF dependency.
 public static class PdfExportService
 {
     public static void Export(string noteTitle, IReadOnlyList<string> textBlockContents, string outputPath)
     {
-        // Step 1: Extract content from FlowDocuments (must run on UI thread)
-        var extractedBlocks = textBlockContents
-            .Where(c => !string.IsNullOrWhiteSpace(c))
-            .Select(DeserializeContent)
-            .SelectMany(ExtractElements)
-            .ToList();
+        var elements = RichTextDocument.Extract(textBlockContents.Select(c => new TextExportBlock(c)));
 
-        // Step 2: Generate PDF (no WPF dependencies from here)
         Document.Create(container =>
         {
             container.Page(page =>
@@ -44,7 +36,7 @@ public static class PdfExportService
                     .Column(column =>
                     {
                         column.Spacing(4);
-                        RenderElements(column, extractedBlocks);
+                        RenderElements(column, elements);
                     });
 
                 page.Footer()
@@ -61,139 +53,26 @@ public static class PdfExportService
         }).GeneratePdf(outputPath);
     }
 
-    // --- Content extraction (WPF-dependent, must run on UI thread) ---
-
-    private static FlowDocument DeserializeContent(string content)
-    {
-        var doc = new FlowDocument();
-
-        try
-        {
-            var bytes = Convert.FromBase64String(content);
-            using var ms = new MemoryStream(bytes);
-            var range = new TextRange(doc.ContentStart, doc.ContentEnd);
-            range.Load(ms, DataFormats.XamlPackage);
-            return doc;
-        }
-        catch { /* Not Base64/XamlPackage */ }
-
-        try
-        {
-            if (XamlReader.Parse(content) is FlowDocument parsed)
-                return parsed;
-        }
-        catch { /* Not valid XAML */ }
-
-        doc.Blocks.Clear();
-        doc.Blocks.Add(new Paragraph(new Run(content)));
-        return doc;
-    }
-
-    private static List<PdfElement> ExtractElements(FlowDocument doc)
-    {
-        var elements = new List<PdfElement>();
-        ExtractBlockElements(doc.Blocks, elements);
-        return elements;
-    }
-
-    private static void ExtractBlockElements(BlockCollection blocks, List<PdfElement> elements)
-    {
-        foreach (var block in blocks)
-        {
-            switch (block)
-            {
-                case Paragraph paragraph:
-                    elements.Add(new PdfParagraph(ExtractInlines(paragraph.Inlines)));
-                    break;
-
-                case List list:
-                    var items = new List<List<PdfInline>>();
-                    foreach (ListItem item in list.ListItems)
-                    {
-                        var itemInlines = new List<PdfInline>();
-                        foreach (var itemBlock in item.Blocks)
-                        {
-                            if (itemBlock is Paragraph p)
-                                itemInlines.AddRange(ExtractInlines(p.Inlines));
-                        }
-                        items.Add(itemInlines);
-                    }
-                    elements.Add(new PdfListElement(list.MarkerStyle, items));
-                    break;
-
-                case Section section:
-                    ExtractBlockElements(section.Blocks, elements);
-                    break;
-
-                case BlockUIContainer { Child: WpfImage img } when img.Source is BitmapSource bmp:
-                    elements.Add(new PdfParagraph([new PdfImageInline(BitmapSourceToBytes(bmp))]));
-                    break;
-            }
-        }
-    }
-
-    private static List<PdfInline> ExtractInlines(InlineCollection inlines)
-    {
-        var result = new List<PdfInline>();
-
-        foreach (var inline in inlines)
-        {
-            switch (inline)
-            {
-                case Run run when !string.IsNullOrEmpty(run.Text):
-                    result.Add(new PdfText(
-                        run.Text,
-                        run.FontWeight == FontWeights.Bold,
-                        run.FontStyle == FontStyles.Italic,
-                        run.TextDecorations?.Contains(TextDecorations.Underline[0]) == true));
-                    break;
-
-                case Span span:
-                    result.AddRange(ExtractInlines(span.Inlines));
-                    break;
-
-                case InlineUIContainer { Child: WpfImage img } when img.Source is BitmapSource bmp:
-                    result.Add(new PdfImageInline(BitmapSourceToBytes(bmp)));
-                    break;
-
-                case LineBreak:
-                    result.Add(new PdfLineBreakInline());
-                    break;
-            }
-        }
-
-        return result;
-    }
-
-    private static byte[] BitmapSourceToBytes(BitmapSource source)
-    {
-        var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(source));
-        using var ms = new MemoryStream();
-        encoder.Save(ms);
-        return ms.ToArray();
-    }
-
-    // --- PDF rendering (no WPF dependencies) ---
-
-    private static void RenderElements(ColumnDescriptor column, List<PdfElement> elements)
+    // Links and attachments never reach the PDF: it is only ever given text blocks.
+    private static void RenderElements(ColumnDescriptor column, IReadOnlyList<DocElement> elements)
     {
         foreach (var element in elements)
         {
             switch (element)
             {
-                case PdfParagraph para:
-                    RenderParagraphInlines(column, para.Inlines);
+                case DocParagraph paragraph:
+                    RenderParagraphInlines(column, paragraph.Inlines);
                     break;
 
-                case PdfListElement list:
-                    RenderListElement(column, list);
+                case DocList list:
+                    RenderList(column, list);
                     break;
             }
         }
     }
 
-    private static void RenderParagraphInlines(ColumnDescriptor column, List<PdfInline> inlines)
+    // Images break the text flow: a paragraph becomes text / image / text items.
+    private static void RenderParagraphInlines(ColumnDescriptor column, IReadOnlyList<DocInline> inlines)
     {
         if (inlines.Count == 0)
         {
@@ -201,45 +80,45 @@ public static class PdfExportService
             return;
         }
 
-        var currentTextGroup = new List<PdfInline>();
+        var textGroup = new List<DocInline>();
 
         foreach (var inline in inlines)
         {
-            if (inline is PdfImageInline imgInline)
+            if (inline is DocImage image)
             {
-                if (currentTextGroup.Count > 0)
+                if (textGroup.Count > 0)
                 {
-                    RenderTextSegments(column, currentTextGroup);
-                    currentTextGroup.Clear();
+                    RenderTextSegments(column, textGroup);
+                    textGroup.Clear();
                 }
-                column.Item().Image(imgInline.Data);
+                column.Item().Image(image.Png);
             }
             else
             {
-                currentTextGroup.Add(inline);
+                textGroup.Add(inline);
             }
         }
 
-        if (currentTextGroup.Count > 0)
-            RenderTextSegments(column, currentTextGroup);
+        if (textGroup.Count > 0)
+            RenderTextSegments(column, textGroup);
     }
 
-    private static void RenderTextSegments(ColumnDescriptor column, List<PdfInline> segments)
+    private static void RenderTextSegments(ColumnDescriptor column, List<DocInline> segments)
     {
         column.Item().Text(text =>
         {
-            foreach (var seg in segments)
+            foreach (var segment in segments)
             {
-                switch (seg)
+                switch (segment)
                 {
-                    case PdfText t:
-                        var span = text.Span(t.Content);
+                    case DocText t:
+                        var span = text.Span(t.Text);
                         if (t.IsBold) span.Bold();
                         if (t.IsItalic) span.Italic();
                         if (t.IsUnderline) span.Underline();
                         break;
 
-                    case PdfLineBreakInline:
+                    case DocLineBreak:
                         text.Span("\n");
                         break;
                 }
@@ -247,33 +126,13 @@ public static class PdfExportService
         });
     }
 
-    private static void RenderListElement(ColumnDescriptor column, PdfListElement list)
+    private static void RenderList(ColumnDescriptor column, DocList list)
     {
         for (var i = 0; i < list.Items.Count; i++)
         {
-            var marker = list.MarkerStyle switch
-            {
-                TextMarkerStyle.Decimal => $"{i + 1}. ",
-                TextMarkerStyle.LowerLatin => $"{(char)('a' + i)}. ",
-                TextMarkerStyle.UpperLatin => $"{(char)('A' + i)}. ",
-                _ => "\u2022 "
-            };
-
-            var itemInlines = new List<PdfInline>();
-            itemInlines.Add(new PdfText(marker, false, false, false));
+            var itemInlines = new List<DocInline> { new DocText(DocListMarkers.Text(list.Marker, i), false, false, false) };
             itemInlines.AddRange(list.Items[i]);
             RenderParagraphInlines(column, itemInlines);
         }
     }
-
-    // --- Data types ---
-
-    private abstract record PdfElement;
-    private sealed record PdfParagraph(List<PdfInline> Inlines) : PdfElement;
-    private sealed record PdfListElement(TextMarkerStyle MarkerStyle, List<List<PdfInline>> Items) : PdfElement;
-
-    private abstract record PdfInline;
-    private sealed record PdfText(string Content, bool IsBold, bool IsItalic, bool IsUnderline) : PdfInline;
-    private sealed record PdfImageInline(byte[] Data) : PdfInline;
-    private sealed record PdfLineBreakInline() : PdfInline;
 }

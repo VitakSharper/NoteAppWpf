@@ -17,6 +17,7 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **In-app help** — `F1` or the `?` in the rail opens a non-modal help window: getting started, the shortcut table, blocks, search and tags, encryption, backup, and where settings and logs live
 - **Encrypted notes** — Optional per-note password; blocks are stored AES-GCM encrypted (PBKDF2 key derivation)
 - **PDF export** — Export the text blocks of a note to PDF (QuestPDF)
+- **Word export** — Export a note to `.docx` (Open XML SDK): text blocks with formatting and images, link blocks as clickable hyperlinks, attachments listed by name and size
 - **Encrypted backups** — BACPAC export of the database packed into an AES-256 zip
 - **Material Design UI** — Three-pane layout (icon rail · note list / tags · editor), cards, chips, snackbar, light/dark theme
 

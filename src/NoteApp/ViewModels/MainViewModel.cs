@@ -19,12 +19,12 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private ObservableObject? _middlePaneContent;
     // Right pane: a NoteEditorViewModel, or null => empty-state placeholder
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SaveCurrentEditorCommand), nameof(DismissCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SaveCurrentEditorCommand), nameof(DismissCommand), nameof(DeleteOpenNoteCommand))]
     private ObservableObject? _currentEditor;
     // Settings modal (hosted in RootDialog). The keyboard shortcuts stay inert while
     // it is open: Ctrl+N would otherwise create a note underneath the overlay.
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(CreateNoteCommand), nameof(SaveCurrentEditorCommand), nameof(DismissCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CreateNoteCommand), nameof(SaveCurrentEditorCommand), nameof(DismissCommand), nameof(DeleteOpenNoteCommand))]
     private bool _isSettingsOpen;
 
     public NoteListViewModel NoteListViewModel { get; }
@@ -116,6 +116,26 @@ public partial class MainViewModel : ObservableObject
             await editor.SaveCommand.ExecuteAsync(null);
     }
 
+    // Only a stored note can go to the trash; a new, unsaved one is simply cancelled.
+    private bool CanDeleteOpenNote => !IsSettingsOpen && CurrentEditor is NoteEditorViewModel { EditedNote: not null };
+
+    // The editor's trash button. Routed through the list so it gets the same UNDO and
+    // the same editor close (NoteDeleted). A note the current filters hide is not in
+    // the list, so its summary is built from the note itself: DeleteNote only needs
+    // the id and the title.
+    [RelayCommand(CanExecute = nameof(CanDeleteOpenNote))]
+    private async Task DeleteOpenNote()
+    {
+        if (CurrentEditor is not NoteEditorViewModel { EditedNote: { } note })
+            return;
+
+        var summary = NoteListViewModel.Notes.FirstOrDefault(n => n.Id == note.Id)
+            ?? new NoteSummary(note.Id, note.Title, string.Empty, note.Tags, note.IsEncrypted,
+                note.HasText, note.HasFiles, note.HasLinks, note.CreatedAt, note.UpdatedAt);
+
+        await NoteListViewModel.DeleteNoteCommand.ExecuteAsync(summary);
+    }
+
     // Escape closes whatever is on top: the Settings dialog, else the editor.
     [RelayCommand(CanExecute = nameof(CanDismiss))]
     private async Task Dismiss()
@@ -183,6 +203,9 @@ public partial class MainViewModel : ObservableObject
             existingEditor.RefreshAfterSave(note);
         else
             await OpenEditorAsync(note, password);
+
+        // A just-created note now has a stored identity: its trash button wakes up.
+        DeleteOpenNoteCommand.NotifyCanExecuteChanged();
     }
 
     private async Task OpenEditorAsync(Note? note, string? password)
