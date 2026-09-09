@@ -55,7 +55,7 @@
                             <materialDesign:PackIcon Kind="ImageOutline" Width="20" Height="20" />
                         </Button>
                         <Rectangle Style="{StaticResource FormatToolSeparator}" />
-                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Search Text" Click="OnToggleSearch" Tag="{Binding}">
+                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Search text (Ctrl+F)" Click="OnToggleSearch" Tag="{Binding}">
                             <materialDesign:PackIcon Kind="Magnify" Width="20" Height="20" />
                         </Button>
                     </StackPanel>
@@ -175,7 +175,7 @@
 
         <!-- Header -->
         <DockPanel Grid.Row="0" Margin="0,0,0,16">
-            <Button DockPanel.Dock="Right" ToolTip="Close"
+            <Button DockPanel.Dock="Right" ToolTip="Close editor (Esc)"
                     Style="{StaticResource MaterialDesignIconButton}"
                     Command="{Binding CancelCommand}"
                     Width="36" Height="36">
@@ -425,9 +425,11 @@
                        VerticalAlignment="Center" Margin="0,0,16,0" />
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
                 <Button Content="Cancel" Style="{StaticResource MaterialDesignOutlinedButton}"
-                        Command="{Binding CancelCommand}" Margin="0,0,8,0" />
+                        Command="{Binding CancelCommand}" Margin="0,0,8,0"
+                        ToolTip="Close editor (Esc)" />
                 <Button Content="Save" Style="{StaticResource MaterialDesignRaisedButton}"
-                        Command="{Binding SaveCommand}" />
+                        Command="{Binding SaveCommand}"
+                        ToolTip="Save (Ctrl+S)" />
             </StackPanel>
         </DockPanel>
     </Grid>

@@ -15,4 +15,12 @@ public partial class NoteListView : UserControl
         if (DataContext is ViewModels.NoteListViewModel vm)
             vm.LoadNotesCommand.Execute(null);
     }
+
+    // Ctrl+F from anywhere outside a text block (MainWindow.OnFocusSearch). The
+    // existing text is selected so the next keystroke replaces it.
+    public void FocusSearchBox()
+    {
+        SearchBox.Focus();
+        SearchBox.SelectAll();
+    }
 }

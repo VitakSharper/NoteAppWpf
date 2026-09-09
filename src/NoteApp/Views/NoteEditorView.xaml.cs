@@ -409,18 +409,24 @@ public partial class NoteEditorView : UserControl
     {
         if (sender is not Button btn || btn.Tag is not BlockViewModel block) return;
 
-        if (_searchBars.TryGetValue(block.Id, out var bar))
+        if (_searchBars.TryGetValue(block.Id, out var bar) && bar.Visibility == Visibility.Visible)
+            CloseSearch(block.Id);
+        else
+            OpenSearch(block.Id);
+    }
+
+    // Also the Ctrl+F target when the focus sits in this block (MainWindow.OnFocusSearch).
+    // An already-open bar just takes the focus back, the way a browser's find bar does.
+    public void OpenSearch(Guid blockId)
+    {
+        if (!_searchBars.TryGetValue(blockId, out var bar))
+            return;
+
+        bar.Visibility = Visibility.Visible;
+        if (_searchTextBoxes.TryGetValue(blockId, out var tb))
         {
-            if (bar.Visibility == Visibility.Visible)
-            {
-                CloseSearch(block.Id);
-            }
-            else
-            {
-                bar.Visibility = Visibility.Visible;
-                if (_searchTextBoxes.TryGetValue(block.Id, out var tb))
-                    tb.Focus();
-            }
+            tb.Focus();
+            tb.SelectAll();
         }
     }
 

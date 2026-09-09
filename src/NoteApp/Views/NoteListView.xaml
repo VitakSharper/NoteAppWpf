@@ -63,7 +63,7 @@
                     Visibility="{Binding HasActiveFilters, Converter={StaticResource BoolToVis}}">
                 <materialDesign:PackIcon Kind="FilterRemoveOutline" Width="20" Height="20" />
             </Button>
-            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+            <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Search notes (Ctrl+F)"
                      Style="{StaticResource MaterialDesignOutlinedTextBox}"
                      materialDesign:HintAssist.Hint="Search notes…"
                      materialDesign:HintAssist.IsFloating="False"

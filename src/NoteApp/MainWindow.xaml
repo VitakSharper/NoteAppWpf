@@ -7,11 +7,26 @@
         xmlns:vm="clr-namespace:NoteApp.ViewModels"
         xmlns:views="clr-namespace:NoteApp.Views"
         xmlns:converters="clr-namespace:NoteApp.Converters"
+        xmlns:local="clr-namespace:NoteApp"
         mc:Ignorable="d"
         Title="NoteApp" Height="720" Width="1180" MinHeight="560" MinWidth="980"
         WindowStartupLocation="CenterScreen"
         Closing="OnClosing"
         Style="{StaticResource MaterialDesignWindow}">
+
+    <!-- App-wide shortcuts. None of these is consumed by the RichTextBox (which keeps
+         its native Ctrl+B/I/U), and the block search bar handles its own Escape first.
+         The commands go inert while the Settings dialog is open (see MainViewModel). -->
+    <Window.InputBindings>
+        <KeyBinding Gesture="Ctrl+N" Command="{Binding CreateNoteCommand}" />
+        <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCurrentEditorCommand}" />
+        <KeyBinding Key="Escape" Command="{Binding DismissCommand}" />
+        <KeyBinding Gesture="Ctrl+F" Command="{x:Static local:MainWindow.FocusSearchCommand}" />
+    </Window.InputBindings>
+    <Window.CommandBindings>
+        <!-- Focus is a view concern, hence code-behind rather than a view-model command. -->
+        <CommandBinding Command="{x:Static local:MainWindow.FocusSearchCommand}" Executed="OnFocusSearch" />
+    </Window.CommandBindings>
 
     <Window.Resources>
         <converters:NullToVisibilityConverter x:Key="NullToVis" />
@@ -68,7 +83,7 @@
                     </Button>
                     <Button DockPanel.Dock="Top" Style="{StaticResource MaterialDesignIconButton}"
                             Foreground="{StaticResource RailForegroundBrush}" Height="48"
-                            Command="{Binding CreateNoteCommand}" ToolTip="New note">
+                            Command="{Binding CreateNoteCommand}" ToolTip="New note (Ctrl+N)">
                         <materialDesign:PackIcon Kind="Plus" Width="24" Height="24" />
                     </Button>
 
@@ -83,7 +98,7 @@
 
             <!-- Middle pane -->
             <Grid Grid.Column="1" Background="{DynamicResource MaterialDesignPaper}">
-                <ContentControl Content="{Binding MiddlePaneContent}" />
+                <ContentControl x:Name="MiddlePane" Content="{Binding MiddlePaneContent}" />
                 <materialDesign:Snackbar VerticalAlignment="Bottom"
                                          MessageQueue="{Binding MessageQueue}" />
             </Grid>

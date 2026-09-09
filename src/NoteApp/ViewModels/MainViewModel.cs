@@ -18,9 +18,14 @@ public partial class MainViewModel : ObservableObject
     // Middle pane: NoteList <-> TagManager
     [ObservableProperty] private ObservableObject? _middlePaneContent;
     // Right pane: a NoteEditorViewModel, or null => empty-state placeholder
-    [ObservableProperty] private ObservableObject? _currentEditor;
-    // Settings modal (hosted in RootDialog)
-    [ObservableProperty] private bool _isSettingsOpen;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCurrentEditorCommand), nameof(DismissCommand))]
+    private ObservableObject? _currentEditor;
+    // Settings modal (hosted in RootDialog). The keyboard shortcuts stay inert while
+    // it is open: Ctrl+N would otherwise create a note underneath the overlay.
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CreateNoteCommand), nameof(SaveCurrentEditorCommand), nameof(DismissCommand))]
+    private bool _isSettingsOpen;
 
     public NoteListViewModel NoteListViewModel { get; }
     public TagManagerViewModel TagManagerViewModel { get; }
@@ -72,13 +77,38 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenSettings() => IsSettingsOpen = true;
 
-    [RelayCommand]
+    private bool CanActOnShell => !IsSettingsOpen;
+    private bool HasOpenEditor => !IsSettingsOpen && CurrentEditor is NoteEditorViewModel;
+    private bool CanDismiss => IsSettingsOpen || CurrentEditor is NoteEditorViewModel;
+
+    [RelayCommand(CanExecute = nameof(CanActOnShell))]
     private async Task CreateNote()
     {
         if (!await ConfirmLeaveEditorAsync())
             return;
 
         await OpenEditorAsync(note: null, password: null);
+    }
+
+    // Ctrl+S. Save() syncs the rich text itself, so it is safe mid-typing.
+    [RelayCommand(CanExecute = nameof(HasOpenEditor))]
+    private async Task SaveCurrentEditor()
+    {
+        if (CurrentEditor is NoteEditorViewModel editor)
+            await editor.SaveCommand.ExecuteAsync(null);
+    }
+
+    // Escape closes whatever is on top: the Settings dialog, else the editor.
+    [RelayCommand(CanExecute = nameof(CanDismiss))]
+    private async Task Dismiss()
+    {
+        if (IsSettingsOpen)
+        {
+            SettingsViewModel.CloseCommand.Execute(null);
+            return;
+        }
+
+        await CloseEditorAsync();
     }
 
     // The list only carries summaries: the full note (blocks included) is
@@ -148,9 +178,11 @@ public partial class MainViewModel : ObservableObject
         CurrentEditor = editor;
     }
 
+    private async void OnEditorCancelled() => await CloseEditorAsync();
+
     // Returning to empty-state leaves the note list intact in the middle pane.
     // Also clear SelectedNote so the user can re-select the same note immediately.
-    private async void OnEditorCancelled()
+    private async Task CloseEditorAsync()
     {
         if (!await ConfirmLeaveEditorAsync())
             return;

@@ -1,13 +1,19 @@
 ﻿using System.ComponentModel;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+using NoteApp.Domain.Models;
 using NoteApp.ViewModels;
+using NoteApp.Views;
 
 namespace NoteApp;
 
 public partial class MainWindow : Window
 {
+    public static readonly RoutedCommand FocusSearchCommand = new(nameof(FocusSearchCommand), typeof(MainWindow));
+
     private bool _closeConfirmed;
 
     public MainWindow()
@@ -15,6 +21,69 @@ public partial class MainWindow : Window
         InitializeComponent();
         Icon = CreateAppIcon();
     }
+
+    // Ctrl+F: search the text block the focus is in; from anywhere else, search the notes.
+    private void OnFocusSearch(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || vm.IsSettingsOpen)
+            return;
+
+        var focused = Keyboard.FocusedElement as DependencyObject;
+        if (FindTextBlockOwner(focused) is { } block && FindAncestor<NoteEditorView>(focused) is { } editor)
+        {
+            editor.OpenSearch(block.Id);
+            return;
+        }
+
+        vm.NavigateToNotesCommand.Execute(null);
+
+        // The middle pane may have just swapped to the list: its template is only
+        // instantiated on the next layout pass, so the box does not exist yet.
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Loaded,
+            new Action(() => FindDescendant<NoteListView>(MiddlePane)?.FocusSearchBox()));
+    }
+
+    // Every element of a text block card — the RichTextBox, its toolbar buttons, its
+    // search bar — carries the block as its Tag, so the owner is the nearest one.
+    private static BlockViewModel? FindTextBlockOwner(DependencyObject? start)
+    {
+        for (var node = start; node is not null; node = GetParent(node))
+        {
+            if (node is FrameworkElement { Tag: BlockViewModel { BlockType: BlockType.Text } block })
+                return block;
+        }
+
+        return null;
+    }
+
+    private static T? FindAncestor<T>(DependencyObject? start) where T : DependencyObject
+    {
+        for (var node = start; node is not null; node = GetParent(node))
+        {
+            if (node is T hit)
+                return hit;
+        }
+
+        return null;
+    }
+
+    private static T? FindDescendant<T>(DependencyObject root) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T hit)
+                return hit;
+            if (FindDescendant<T>(child) is { } deeper)
+                return deeper;
+        }
+
+        return null;
+    }
+
+    // Focus can sit on a content element (a FlowDocument part), which has no visual parent.
+    private static DependencyObject? GetParent(DependencyObject node) =>
+        node is Visual ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node);
 
     // Closing cannot await, so when there IS something to ask the first pass is
     // cancelled and the window closes itself again once the guard has an answer.
