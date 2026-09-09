@@ -1,0 +1,134 @@
+<Window x:Class="NoteApp.Views.HelpWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="NoteApp Help"
+        Width="660" Height="740" MinWidth="480" MinHeight="420"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Style="{StaticResource MaterialDesignWindow}">
+
+    <!-- Non-modal on purpose: the window can stay open beside the app while a shortcut
+         is tried out. Escape closes it; F1 in the main window brings it back to the front. -->
+    <Window.InputBindings>
+        <KeyBinding Key="Escape" Command="Close" />
+    </Window.InputBindings>
+    <Window.CommandBindings>
+        <CommandBinding Command="Close" Executed="OnClose" />
+    </Window.CommandBindings>
+
+    <Window.Resources>
+        <Style x:Key="Section" TargetType="TextBlock" BasedOn="{StaticResource MaterialDesignSubtitle1TextBlock}">
+            <Setter Property="Margin" Value="0,22,0,8" />
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+        </Style>
+        <Style x:Key="Body" TargetType="TextBlock" BasedOn="{StaticResource MaterialDesignBody2TextBlock}">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="LineHeight" Value="20" />
+        </Style>
+        <Style x:Key="Keycap" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource MaterialDesignChipBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesignDivider}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="Margin" Value="0,0,14,0" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+        <Style x:Key="KeyText" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Consolas" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </Window.Resources>
+
+    <DockPanel Background="{DynamicResource MaterialDesignPaper}">
+        <!-- Header -->
+        <Border DockPanel.Dock="Top" Padding="28,22,28,16"
+                Background="{DynamicResource MaterialDesignCardBackground}"
+                BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <materialDesign:PackIcon Kind="HelpCircleOutline" Width="30" Height="30"
+                                         VerticalAlignment="Center" Margin="0,0,14,0"
+                                         Foreground="{StaticResource AccentBrush}" />
+                <TextBlock x:Name="VersionText" DockPanel.Dock="Right" VerticalAlignment="Center"
+                           Foreground="{DynamicResource MaterialDesignBodyLight}" FontSize="12" />
+                <TextBlock Text="NoteApp" Style="{StaticResource MaterialDesignHeadline5TextBlock}"
+                           VerticalAlignment="Center" />
+            </DockPanel>
+        </Border>
+
+        <!-- Footer -->
+        <Border DockPanel.Dock="Bottom" Padding="28,12"
+                BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="0,1,0,0">
+            <Button Content="Close" HorizontalAlignment="Right"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Command="Close" ToolTip="Close (Esc)" />
+        </Border>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="28,4,28,20">
+            <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+
+                <TextBlock Style="{StaticResource Section}" Text="Getting started" />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="Your notes are listed in the middle pane. Click one to open it on the right, or press Ctrl+N to start a new one." />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="A note is a title followed by ordered blocks: text, file or link. Add blocks with the Text / File / Link buttons under the title, and reorder them with the arrows on each block. A note needs at least one block." />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="Save with Ctrl+S or the Save button. If you leave a note with unsaved changes (by opening another one, pressing Escape or closing the app) NoteApp asks whether to save, discard or stay." />
+
+                <TextBlock Style="{StaticResource Section}" Text="Keyboard shortcuts" />
+                <ItemsControl x:Name="ShortcutsList" Grid.IsSharedSizeScope="True">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Keys" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource Keycap}">
+                                    <TextBlock Style="{StaticResource KeyText}" Text="{Binding Keys}" />
+                                </Border>
+                                <TextBlock Grid.Column="1" Style="{StaticResource Body}" Margin="0"
+                                           Text="{Binding Description}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Style="{StaticResource Section}" Text="Notes and blocks" />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="Text blocks are rich text: bold, italic, underline and bullet lists from the toolbar, images pasted from the clipboard or inserted from a file. Each text block has its own find bar (the magnifier, or Ctrl+F while typing in it)." />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="File blocks keep the file itself inside the database; Save file to disk writes it back out. Link blocks hold a checked URL and a description." />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="The PDF button in the editor header exports the text blocks of the open note." />
+
+                <TextBlock Style="{StaticResource Section}" Text="Search, tags and filters" />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="The search box matches titles, text, link descriptions and file names; press Enter to run it. Narrow the list with the All / Text / File / Link chips and with tags under Tags; the sort menu orders by date or title. The filter icon next to the search box clears everything at once." />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="Tags are created inline from the editor, and renamed or deleted from the Tags page in the rail." />
+
+                <TextBlock Style="{StaticResource Section}" Text="Encrypted notes" />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="Switch encryption on in the editor and choose a password: the blocks of the note are stored encrypted (AES-GCM, key derived with PBKDF2). In the list the note shows a lock and no preview, and its content is not searchable." />
+                <TextBlock Style="{StaticResource Body}" FontWeight="SemiBold"
+                           Text="The password is asked every time the note is opened and is stored nowhere. A forgotten password means the content cannot be recovered." />
+
+                <TextBlock Style="{StaticResource Section}" Text="Backup" />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="Settings > Backup Now exports the whole database as a BACPAC and packs it into a password-protected AES-256 zip in the backup folder you chose. The backup password is kept encrypted for your Windows account." />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="Restoring is manual for now: unzip the archive, then import the .bacpac with SqlPackage or SQL Server Management Studio." />
+
+                <TextBlock Style="{StaticResource Section}" Text="Where things live" />
+                <TextBlock Style="{StaticResource Body}" Text="Settings (settings.json) and the crash log (crash.log) are in:" />
+                <TextBlock x:Name="DataFolderText" Style="{StaticResource Body}" FontFamily="Consolas" />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="The database connection string is read from .NET user secrets (ConnectionStrings:NoteDb), or from an appsettings.json placed next to the executable." />
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

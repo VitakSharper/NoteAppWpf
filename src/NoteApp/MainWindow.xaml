@@ -22,6 +22,7 @@
         <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCurrentEditorCommand}" />
         <KeyBinding Key="Escape" Command="{Binding DismissCommand}" />
         <KeyBinding Gesture="Ctrl+F" Command="{x:Static local:MainWindow.FocusSearchCommand}" />
+        <KeyBinding Key="F1" Command="{Binding ShowHelpCommand}" />
     </Window.InputBindings>
     <Window.CommandBindings>
         <!-- Focus is a view concern, hence code-behind rather than a view-model command. -->
@@ -92,6 +93,12 @@
                             Foreground="{StaticResource RailForegroundBrush}" Height="48" Margin="0,0,0,12"
                             Command="{Binding OpenSettingsCommand}" ToolTip="Settings">
                         <materialDesign:PackIcon Kind="CogOutline" Width="24" Height="24" />
+                    </Button>
+                    <!-- Declared after Settings so it docks above it -->
+                    <Button DockPanel.Dock="Bottom" Style="{StaticResource MaterialDesignIconButton}"
+                            Foreground="{StaticResource RailForegroundBrush}" Height="48"
+                            Command="{Binding ShowHelpCommand}" ToolTip="Help (F1)">
+                        <materialDesign:PackIcon Kind="HelpCircleOutline" Width="24" Height="24" />
                     </Button>
                 </DockPanel>
             </Border>

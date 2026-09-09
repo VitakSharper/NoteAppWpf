@@ -77,6 +77,23 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenSettings() => IsSettingsOpen = true;
 
+    private HelpWindow? _helpWindow;
+
+    // F1 and the rail button. One instance: asking again brings it back to the front.
+    [RelayCommand]
+    private void ShowHelp()
+    {
+        if (_helpWindow is { IsLoaded: true })
+        {
+            _helpWindow.Activate();
+            return;
+        }
+
+        _helpWindow = new HelpWindow { Owner = Application.Current.MainWindow };
+        _helpWindow.Closed += (_, _) => _helpWindow = null;
+        _helpWindow.Show();
+    }
+
     private bool CanActOnShell => !IsSettingsOpen;
     private bool HasOpenEditor => !IsSettingsOpen && CurrentEditor is NoteEditorViewModel;
     private bool CanDismiss => IsSettingsOpen || CurrentEditor is NoteEditorViewModel;
