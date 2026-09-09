@@ -16,11 +16,15 @@ public partial class MainWindow : Window
         Icon = CreateAppIcon();
     }
 
-    // Closing cannot await, so the first pass is cancelled and the window closes
-    // itself again once the guard has an answer.
+    // Closing cannot await, so when there IS something to ask the first pass is
+    // cancelled and the window closes itself again once the guard has an answer.
     private async void OnClosing(object sender, CancelEventArgs e)
     {
-        if (_closeConfirmed || DataContext is not MainViewModel vm)
+        // Nothing to guard: let this pass close the window. Cancelling here and
+        // re-closing would only be a detour — and the guard answers synchronously in
+        // that case, so the re-close would land inside this very Closing pass, which
+        // WPF forbids ("...while a Window is closing").
+        if (_closeConfirmed || DataContext is not MainViewModel vm || !vm.HasUnsavedChanges)
             return;
 
         e.Cancel = true;
@@ -29,7 +33,10 @@ public partial class MainWindow : Window
             return;
 
         _closeConfirmed = true;
-        Close();
+
+        // Queue it: answering the dialog can also complete synchronously, and Close()
+        // is illegal until this handler has returned.
+        _ = Dispatcher.BeginInvoke(new Action(Close));
     }
 
     private static BitmapSource CreateAppIcon()

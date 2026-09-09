@@ -173,6 +173,10 @@ public partial class MainViewModel : ObservableObject
     // EditNoteRequested again, which would re-open the dialog for ever.
     private bool _suppressEditRequest;
 
+    // Lets the window skip the guard entirely when there is nothing to ask about,
+    // which is the ordinary way to quit.
+    public bool HasUnsavedChanges => CurrentEditor is NoteEditorViewModel { IsDirty: true };
+
     // Every exit from the editor goes through here — opening another note, creating
     // one, cancelling, closing the window. true = it is safe to go on, false = the
     // user chose to stay in the editor.
@@ -189,18 +193,22 @@ public partial class MainViewModel : ObservableObject
             MessageBoxButton.YesNoCancel,
             MessageBoxImage.Warning);
 
-        if (answer == MessageBoxResult.Cancel)
-            return false;
+        switch (EditorLeave.Choose(answer))
+        {
+            case LeaveChoice.Discard:
+                return true;
 
-        if (answer == MessageBoxResult.No)
-            return true;
+            case LeaveChoice.Stay:
+                return false;
 
-        await editor.SaveCommand.ExecuteAsync(null);
+            default:
+                await editor.SaveCommand.ExecuteAsync(null);
 
-        // A save that failed validation — no block, invalid link, missing password —
-        // leaves the note dirty with its ErrorMessage on screen. Staying in the editor
-        // is then the only sane outcome.
-        return !editor.IsDirty;
+                // A save that failed validation — no block, invalid link, missing
+                // password — leaves the note dirty with its ErrorMessage on screen.
+                // Staying in the editor is then the only sane outcome.
+                return !editor.IsDirty;
+        }
     }
 
     private void RestoreListSelectionToOpenNote()
