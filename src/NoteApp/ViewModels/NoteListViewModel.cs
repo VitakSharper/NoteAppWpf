@@ -62,6 +62,8 @@ public partial class NoteListViewModel : ObservableObject
     public event Action<NoteSummary>? EditNoteRequested;
     public event Action? CreateNoteRequested;
     public event Action<string>? ShowMessage;
+    // The shell closes the editor when the note it holds has just been deleted.
+    public event Action<NoteSummary>? NoteDeleted;
 
     public NoteListViewModel(
         NoteService noteService,
@@ -209,6 +211,7 @@ public partial class NoteListViewModel : ObservableObject
             success: _ =>
             {
                 Notes.Remove(note);
+                NoteDeleted?.Invoke(note);
                 ShowMessage?.Invoke($"Note '{note.Title}' deleted.");
             },
             failure: error => ShowMessage?.Invoke(error.Message));

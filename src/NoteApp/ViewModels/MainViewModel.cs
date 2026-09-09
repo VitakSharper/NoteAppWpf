@@ -45,6 +45,7 @@ public partial class MainViewModel : ObservableObject
         noteListViewModel.EditNoteRequested += OnEditNoteRequested;
         noteListViewModel.CreateNoteRequested += OnCreateNoteRequested;
         noteListViewModel.ShowMessage += OnShowMessage;
+        noteListViewModel.NoteDeleted += OnNoteDeleted;
 
         tagManagerViewModel.ShowMessage += OnShowMessage;
         settingsViewModel.ShowMessage += OnShowMessage;
@@ -72,13 +73,27 @@ public partial class MainViewModel : ObservableObject
     private void OpenSettings() => IsSettingsOpen = true;
 
     [RelayCommand]
-    private async Task CreateNote() =>
+    private async Task CreateNote()
+    {
+        if (!await ConfirmLeaveEditorAsync())
+            return;
+
         await OpenEditorAsync(note: null, password: null);
+    }
 
     // The list only carries summaries: the full note (blocks included) is
     // loaded here, decrypting on the way when it is password-protected.
     private async void OnEditNoteRequested(NoteSummary summary)
     {
+        if (_suppressEditRequest)
+            return;
+
+        if (!await ConfirmLeaveEditorAsync())
+        {
+            RestoreListSelectionToOpenNote();
+            return;
+        }
+
         string? password = null;
 
         if (summary.IsEncrypted)
@@ -135,10 +150,74 @@ public partial class MainViewModel : ObservableObject
 
     // Returning to empty-state leaves the note list intact in the middle pane.
     // Also clear SelectedNote so the user can re-select the same note immediately.
-    private void OnEditorCancelled()
+    private async void OnEditorCancelled()
     {
+        if (!await ConfirmLeaveEditorAsync())
+            return;
+
         CurrentEditor = null;
         NoteListViewModel.SelectedNote = null;
+    }
+
+    // The note is gone: drop its editor without asking anything, there is
+    // nothing left to save it into.
+    private void OnNoteDeleted(NoteSummary deleted)
+    {
+        if (CurrentEditor is NoteEditorViewModel editor && editor.EditedNoteId == deleted.Id)
+            CurrentEditor = null;
+    }
+
+    // --- Unsaved changes guard ---
+
+    // Set while the list selection is being put back: assigning SelectedNote raises
+    // EditNoteRequested again, which would re-open the dialog for ever.
+    private bool _suppressEditRequest;
+
+    // Every exit from the editor goes through here — opening another note, creating
+    // one, cancelling, closing the window. true = it is safe to go on, false = the
+    // user chose to stay in the editor.
+    public async Task<bool> ConfirmLeaveEditorAsync()
+    {
+        if (CurrentEditor is not NoteEditorViewModel editor || !editor.IsDirty)
+            return true;
+
+        var name = string.IsNullOrWhiteSpace(editor.Title) ? "This note" : $"'{editor.Title}'";
+        var answer = MessageBox.Show(
+            Application.Current.MainWindow,
+            $"{name} has unsaved changes.\n\nSave them before leaving?",
+            "Unsaved changes",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Warning);
+
+        if (answer == MessageBoxResult.Cancel)
+            return false;
+
+        if (answer == MessageBoxResult.No)
+            return true;
+
+        await editor.SaveCommand.ExecuteAsync(null);
+
+        // A save that failed validation — no block, invalid link, missing password —
+        // leaves the note dirty with its ErrorMessage on screen. Staying in the editor
+        // is then the only sane outcome.
+        return !editor.IsDirty;
+    }
+
+    private void RestoreListSelectionToOpenNote()
+    {
+        var openId = (CurrentEditor as NoteEditorViewModel)?.EditedNoteId;
+
+        _suppressEditRequest = true;
+        try
+        {
+            NoteListViewModel.SelectedNote = openId is null
+                ? null
+                : NoteListViewModel.Notes.FirstOrDefault(n => n.Id == openId.Value);
+        }
+        finally
+        {
+            _suppressEditRequest = false;
+        }
     }
 
     private void OnShowMessage(string message) => MessageQueue.Enqueue(message);

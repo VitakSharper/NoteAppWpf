@@ -109,6 +109,7 @@
                              Loaded="OnRichTextBoxLoaded"
                              Unloaded="OnRichTextBoxUnloaded"
                              LostFocus="OnRichTextLostFocus"
+                             TextChanged="OnRichTextChanged"
                              PreviewMouseWheel="OnRichTextBoxPreviewMouseWheel" />
             </Grid>
         </DataTemplate>

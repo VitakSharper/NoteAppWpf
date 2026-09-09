@@ -179,7 +179,7 @@ public partial class NoteEditorView : UserControl
     // Pushes the document into the block: the rich payload for storage and the
     // plain text the list/search rely on. Search highlights are ordinary document
     // properties and would be saved with it, so they are stripped and restored.
-    private void SyncBlock(BlockViewModel block, RichTextBox rtb)
+    private void SyncBlock(BlockViewModel block, RichTextBox rtb) => WithoutDirtyTracking(() =>
     {
         var hadHighlights = ClearHighlights(block.Id);
 
@@ -188,6 +188,26 @@ public partial class NoteEditorView : UserControl
 
         if (hadHighlights)
             ReapplyHighlights(block.Id);
+    });
+
+    // --- Modified state ---
+
+    // Every write to the document raises TextChanged, the user's and ours alike:
+    // loading a block, and the search highlights, which are plain document properties.
+    // Bracketing our own writes keeps a note from looking edited when it is not.
+    private int _suppressDirty;
+
+    private void WithoutDirtyTracking(Action action)
+    {
+        _suppressDirty++;
+        try { action(); }
+        finally { _suppressDirty--; }
+    }
+
+    private void OnRichTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_suppressDirty == 0 && DataContext is NoteEditorViewModel vm)
+            vm.MarkDirty();
     }
 
     private void OnRichTextBoxLoaded(object sender, RoutedEventArgs e)
@@ -200,7 +220,7 @@ public partial class NoteEditorView : UserControl
             CommandManager.AddPreviewExecutedHandler(rtb, OnPreviewPasteExecuted);
 
             if (!string.IsNullOrEmpty(block.RichTextContent))
-                DeserializeIntoRichTextBox(rtb, block.RichTextContent);
+                WithoutDirtyTracking(() => DeserializeIntoRichTextBox(rtb, block.RichTextContent));
         }
     }
 
@@ -592,10 +612,8 @@ public partial class NoteEditorView : UserControl
         return matches;
     }
 
-    private static void ApplyHighlight(TextRange range, Brush background)
-    {
-        range.ApplyPropertyValue(TextElement.BackgroundProperty, background);
-    }
+    private void ApplyHighlight(TextRange range, Brush background) => WithoutDirtyTracking(() =>
+        range.ApplyPropertyValue(TextElement.BackgroundProperty, background));
 
     private bool ClearHighlights(Guid blockId)
     {
@@ -604,8 +622,11 @@ public partial class NoteEditorView : UserControl
 
         // null rather than Transparent: Transparent is still a value, and it
         // would be written into the note along with the rest of the document.
-        foreach (var match in matches)
-            match.ApplyPropertyValue(TextElement.BackgroundProperty, null);
+        WithoutDirtyTracking(() =>
+        {
+            foreach (var match in matches)
+                match.ApplyPropertyValue(TextElement.BackgroundProperty, null);
+        });
 
         return true;
     }

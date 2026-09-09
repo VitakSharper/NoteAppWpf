@@ -1,15 +1,35 @@
-﻿using System.Windows;
+﻿using System.ComponentModel;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using NoteApp.ViewModels;
 
 namespace NoteApp;
 
 public partial class MainWindow : Window
 {
+    private bool _closeConfirmed;
+
     public MainWindow()
     {
         InitializeComponent();
         Icon = CreateAppIcon();
+    }
+
+    // Closing cannot await, so the first pass is cancelled and the window closes
+    // itself again once the guard has an answer.
+    private async void OnClosing(object sender, CancelEventArgs e)
+    {
+        if (_closeConfirmed || DataContext is not MainViewModel vm)
+            return;
+
+        e.Cancel = true;
+
+        if (!await vm.ConfirmLeaveEditorAsync())
+            return;
+
+        _closeConfirmed = true;
+        Close();
     }
 
     private static BitmapSource CreateAppIcon()

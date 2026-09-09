@@ -11,6 +11,7 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **Tagging system** — Create, rename, delete tags and assign them to notes
 - **Search & filter** — Search by title/content, filter by tags or note type
 - **Full CRUD** — Create, read, update, delete notes and tags
+- **Unsaved-changes guard** — Leaving a modified note (opening another one, New note, Cancel, closing the window) offers to save, discard, or stay in the editor
 - **Encrypted notes** — Optional per-note password; blocks are stored AES-GCM encrypted (PBKDF2 key derivation)
 - **PDF export** — Export the text blocks of a note to PDF (QuestPDF)
 - **Encrypted backups** — BACPAC export of the database packed into an AES-256 zip

@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -56,11 +58,31 @@ public partial class NoteEditorViewModel : ObservableObject
     public bool IsEditing => _existingNote is not null;
     public string EditorTitle => IsEditing ? "Edit Note" : "New Note";
 
+    // The leave guard puts the list selection back on the note it kept open.
+    public NoteId? EditedNoteId => _existingNote?.Id;
+
+    private bool _isDirty;
+
+    // Set at the source of every change rather than by comparing a snapshot on the way
+    // out: TextRange.Save(XamlPackage) is a binary container with no promise of being
+    // byte-identical for the same document, so comparing would report phantom edits.
+    public bool IsDirty
+    {
+        get => _isDirty;
+        private set => SetProperty(ref _isDirty, value);
+    }
+
+    // The rich text lives in the view's RichTextBox and only reaches the block on
+    // LostFocus or right before a save — far too late to guard the exits, so the view
+    // reports its edits here as they happen.
+    public void MarkDirty() => IsDirty = true;
+
     public void RefreshAfterSave(Note savedNote)
     {
         _existingNote = savedNote;
         OnPropertyChanged(nameof(IsEditing));
         OnPropertyChanged(nameof(EditorTitle));
+        IsDirty = false;
     }
 
     public event Action<Note, string?>? SaveCompleted;
@@ -81,6 +103,45 @@ public partial class NoteEditorViewModel : ObservableObject
 
         if (existingNote is not null)
             LoadFromNote(existingNote);
+
+        // Only now: filling the fields from the stored note is not an edit.
+        PropertyChanged += OnEditorPropertyChanged;
+        Blocks.CollectionChanged += OnBlocksCollectionChanged;
+        SelectedTags.CollectionChanged += OnSelectedTagsCollectionChanged;
+        foreach (var block in Blocks)
+            block.PropertyChanged += OnBlockPropertyChanged;
+    }
+
+    // Title and IsEncrypted are the only editable scalars on this view model; the rest
+    // is transient UI state (IsSaving, ErrorMessage, SelectedBlock, NewTagName...).
+    private void OnEditorPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(Title) or nameof(IsEncrypted))
+            MarkDirty();
+    }
+
+    private void OnBlocksCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        foreach (var block in e.OldItems?.OfType<BlockViewModel>() ?? [])
+            block.PropertyChanged -= OnBlockPropertyChanged;
+
+        foreach (var block in e.NewItems?.OfType<BlockViewModel>() ?? [])
+            block.PropertyChanged += OnBlockPropertyChanged;
+
+        MarkDirty();
+    }
+
+    private void OnSelectedTagsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+        MarkDirty();
+
+    // RichTextContent and PlainTextContent are written by the view's SyncBlock, not by
+    // the user: that write is a serialization artefact and must not look like an edit.
+    private void OnBlockPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(BlockViewModel.RichTextContent) or nameof(BlockViewModel.PlainTextContent))
+            return;
+
+        MarkDirty();
     }
 
     public bool IsTagSelected(Tag tag) =>
