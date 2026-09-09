@@ -18,10 +18,14 @@ internal static class TestHelpers
     public static Note SampleNote(params NoteBlock[] blocks) =>
         Note.Create(Title("Sample"), blocks, [Tag.Create(Name("work"))]).Unwrap();
 
+    // One of every block kind: the mapper and encryption round-trips run over this,
+    // so a new kind is covered by them as soon as it lands here.
     public static NoteBlock[] SampleBlocks() =>
     [
         new NoteBlock.Text("<rich/>", "plain text") { SortOrder = 0 },
         new NoteBlock.File([1, 2, 3], "a.bin", ".bin", 3) { SortOrder = 1 },
-        new NoteBlock.Link(Url("https://example.com/page"), "example") { SortOrder = 2 }
+        new NoteBlock.Link(Url("https://example.com/page"), "example") { SortOrder = 2 },
+        new NoteBlock.Checklist([new ChecklistItem("buy milk", true), new ChecklistItem("call the bank", false)])
+            { SortOrder = 3 }
     ];
 }

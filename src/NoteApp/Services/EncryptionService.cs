@@ -97,6 +97,13 @@ public static class EncryptionService
             {
                 Type = "link", Id = b.Id, SortOrder = b.SortOrder,
                 LinkUrl = l.Url.Value.ToString(), LinkDescription = l.Description
+            },
+            // Same string the NoteBlocks.ChecklistJson column holds, so there is one
+            // item format whether the note is encrypted or not.
+            checklist: c => new BlockDto
+            {
+                Type = "checklist", Id = b.Id, SortOrder = b.SortOrder,
+                ChecklistJson = ChecklistJson.Serialize(c.Items)
             }
         )).ToList();
 
@@ -121,6 +128,8 @@ public static class EncryptionService
                     dto.FileSizeBytes ?? 0)
                     { Id = dto.Id, SortOrder = dto.SortOrder },
                 "link" => CreateLinkBlock(dto),
+                "checklist" => new NoteBlock.Checklist(ChecklistJson.Deserialize(dto.ChecklistJson))
+                    { Id = dto.Id, SortOrder = dto.SortOrder },
                 _ => throw new InvalidOperationException($"Unknown block type: {dto.Type}")
             };
             blocks.Add(block);
@@ -153,5 +162,6 @@ public static class EncryptionService
         public long? FileSizeBytes { get; init; }
         public string? LinkUrl { get; init; }
         public string? LinkDescription { get; init; }
+        public string? ChecklistJson { get; init; }
     }
 }

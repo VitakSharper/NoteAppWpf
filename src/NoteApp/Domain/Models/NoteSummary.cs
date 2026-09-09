@@ -14,6 +14,7 @@ public sealed record NoteSummary(
     bool HasText,
     bool HasFiles,
     bool HasLinks,
+    bool HasChecklists,
     DateTime CreatedAt,
     DateTime UpdatedAt,
     DateTime? DeletedAt = null)

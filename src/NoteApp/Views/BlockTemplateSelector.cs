@@ -10,6 +10,7 @@ public sealed class BlockTemplateSelector : DataTemplateSelector
     public DataTemplate? TextBlockTemplate { get; set; }
     public DataTemplate? FileBlockTemplate { get; set; }
     public DataTemplate? LinkBlockTemplate { get; set; }
+    public DataTemplate? ChecklistBlockTemplate { get; set; }
 
     public override DataTemplate? SelectTemplate(object item, DependencyObject container) =>
         item is BlockViewModel vm
@@ -18,6 +19,7 @@ public sealed class BlockTemplateSelector : DataTemplateSelector
                 BlockType.Text => TextBlockTemplate,
                 BlockType.File => FileBlockTemplate,
                 BlockType.Link => LinkBlockTemplate,
+                BlockType.Checklist => ChecklistBlockTemplate,
                 _ => base.SelectTemplate(item, container)
             }
             : base.SelectTemplate(item, container);

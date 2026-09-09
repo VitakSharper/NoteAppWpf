@@ -10,9 +10,9 @@ namespace NoteApp.Services;
 // renders data and has no WPF dependency.
 public static class PdfExportService
 {
-    public static void Export(string noteTitle, IReadOnlyList<string> textBlockContents, string outputPath)
+    public static void Export(string noteTitle, IReadOnlyList<ExportBlock> blocks, string outputPath)
     {
-        var elements = RichTextDocument.Extract(textBlockContents.Select(c => new TextExportBlock(c)));
+        var elements = RichTextDocument.Extract(blocks);
 
         Document.Create(container =>
         {
@@ -53,7 +53,6 @@ public static class PdfExportService
         }).GeneratePdf(outputPath);
     }
 
-    // Links and attachments never reach the PDF: it is only ever given text blocks.
     private static void RenderElements(ColumnDescriptor column, IReadOnlyList<DocElement> elements)
     {
         foreach (var element in elements)
@@ -67,9 +66,51 @@ public static class PdfExportService
                 case DocList list:
                     RenderList(column, list);
                     break;
+
+                case DocChecklist checklist:
+                    RenderChecklist(column, checklist);
+                    break;
+
+                case DocLink link:
+                    RenderLink(column, link);
+                    break;
+
+                case DocAttachment attachment:
+                    column.Item().Text($"Attachment: {attachment.FileName} ({FormatSize(attachment.SizeBytes)})")
+                        .Italic().FontColor(Colors.Grey.Darken1);
+                    break;
             }
         }
     }
+
+    // ASCII boxes, not ☐/☑: QuestPDF verifies every glyph against the font and throws
+    // on a missing one, and the bundled Lato has no ballot-box characters.
+    private static void RenderChecklist(ColumnDescriptor column, DocChecklist checklist)
+    {
+        foreach (var item in checklist.Items)
+        {
+            var text = column.Item().PaddingLeft(12).Text($"{(item.IsDone ? "[x]" : "[ ]")} {item.Text}");
+            if (item.IsDone)
+                text.Strikethrough().FontColor(Colors.Grey.Darken1);
+        }
+    }
+
+    private static void RenderLink(ColumnDescriptor column, DocLink link)
+    {
+        var label = string.IsNullOrWhiteSpace(link.Description) ? link.Url : link.Description;
+        column.Item().Hyperlink(link.Url).Text(label).Underline().FontColor(Colors.Blue.Medium);
+
+        // Keep the address readable on paper when the label is a description.
+        if (label != link.Url)
+            column.Item().Text(link.Url).FontSize(9).FontColor(Colors.Grey.Darken1);
+    }
+
+    private static string FormatSize(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:0.#} KB",
+        _ => $"{bytes / (1024.0 * 1024.0):0.#} MB"
+    };
 
     // Images break the text flow: a paragraph becomes text / image / text items.
     private static void RenderParagraphInlines(ColumnDescriptor column, IReadOnlyList<DocInline> inlines)

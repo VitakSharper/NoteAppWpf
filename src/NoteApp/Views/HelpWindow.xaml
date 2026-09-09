@@ -74,7 +74,7 @@
                 <TextBlock Style="{StaticResource Body}"
                            Text="Your notes are listed in the middle pane. Click one to open it on the right, or press Ctrl+N to start a new one." />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="A note is a title followed by ordered blocks: text, file or link. Add blocks with the Text / File / Link buttons under the title, and reorder them with the arrows on each block. A note needs at least one block." />
+                           Text="A note is a title followed by ordered blocks: text, file, link or checklist. Add blocks with the buttons under the title, and reorder them with the arrows on each block. A note needs at least one block." />
                 <TextBlock Style="{StaticResource Body}"
                            Text="Save with Ctrl+S or the Save button. If you leave a note with unsaved changes (by opening another one, pressing Escape or closing the app) NoteApp asks whether to save, discard or stay." />
 
@@ -103,11 +103,13 @@
                 <TextBlock Style="{StaticResource Body}"
                            Text="File blocks keep the file itself inside the database; Save file to disk writes it back out. Link blocks hold a checked URL and a description." />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="The PDF and Word buttons in the editor header export the open note. PDF takes the text blocks; Word (.docx) also writes link blocks as clickable hyperlinks and lists the attached files by name." />
+                           Text="Checklist blocks hold tickable items: press Enter in an item to add the next one, tick one to strike it through, and the block counts what is done. Empty items are dropped when the note is saved, and the item texts are searchable like any other text." />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="The PDF and Word buttons in the editor header export the whole open note: text with its formatting and images, checklists as ticked boxes, links (clickable in Word) and the attached files listed by name — their bytes stay in the database." />
 
                 <TextBlock Style="{StaticResource Section}" Text="Search, tags and filters" />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="The search box matches titles, text, link descriptions and file names; press Enter to run it. Narrow the list with the All / Text / File / Link chips and with tags under Tags; the sort menu orders by date or title. The filter icon next to the search box clears everything at once." />
+                           Text="The search box matches titles, text, checklist items, link descriptions and file names; press Enter to run it. Narrow the list with the All / Text / File / Link / Tasks chips and with tags under Tags; the sort menu orders by date or title. The filter icon next to the search box clears everything at once." />
                 <TextBlock Style="{StaticResource Body}"
                            Text="Tags are created inline from the editor, and renamed or deleted from the Tags page in the rail." />
 

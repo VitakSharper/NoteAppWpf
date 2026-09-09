@@ -3,6 +3,7 @@ using NoteApp.Data.Queries;
 using NoteApp.Domain.Functional;
 using NoteApp.Domain.Models;
 using NoteApp.Domain.ValueObjects;
+using NoteApp.Services;
 
 namespace NoteApp.Services.Mapping;
 
@@ -31,6 +32,7 @@ public static class NoteMapper
                 row.HasText,
                 row.HasFiles,
                 row.HasLinks,
+                row.HasChecklists,
                 row.CreatedAt,
                 row.UpdatedAt,
                 row.DeletedAt));
@@ -78,6 +80,16 @@ public static class NoteMapper
                 SortOrder = sortOrder,
                 LinkUrl = l.Url.Value.ToString(),
                 LinkDescription = l.Description
+            },
+            // PlainText is filled here too: it is what search and the preview read.
+            checklist: c => new NoteBlockEntity
+            {
+                Id = block.Id,
+                NoteId = noteId,
+                BlockType = BlockType.Checklist,
+                SortOrder = sortOrder,
+                ChecklistJson = ChecklistJson.Serialize(c.Items),
+                PlainText = c.PlainText
             });
 
     // First failure wins; blocks come out ordered by SortOrder.
@@ -110,6 +122,10 @@ public static class NoteMapper
 
             BlockType.Link => LinkUrl.From(entity.LinkUrl)
                 .Map<NoteBlock>(url => new NoteBlock.Link(url, entity.LinkDescription ?? string.Empty)
+                    { Id = entity.Id, SortOrder = entity.SortOrder }),
+
+            BlockType.Checklist => Result<NoteBlock, AppError>.Ok(
+                new NoteBlock.Checklist(ChecklistJson.Deserialize(entity.ChecklistJson))
                     { Id = entity.Id, SortOrder = entity.SortOrder }),
 
             _ => Result<NoteBlock, AppError>.Fail(

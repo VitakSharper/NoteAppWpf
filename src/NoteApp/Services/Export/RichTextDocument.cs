@@ -29,6 +29,10 @@ public static class RichTextDocument
                 case FileExportBlock file:
                     elements.Add(new DocAttachment(file.FileName, file.SizeBytes));
                     break;
+
+                case ChecklistExportBlock checklist:
+                    elements.Add(new DocChecklist(checklist.Items));
+                    break;
             }
         }
 

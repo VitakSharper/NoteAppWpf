@@ -156,10 +156,70 @@
             </StackPanel>
         </DataTemplate>
 
+        <!-- Checklist Block Template -->
+        <DataTemplate x:Key="ChecklistBlockTemplate" DataType="{x:Type vm:BlockViewModel}">
+            <StackPanel>
+                <ItemsControl ItemsSource="{Binding ChecklistItems}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:ChecklistItemViewModel}">
+                            <DockPanel Margin="0,1">
+                                <CheckBox DockPanel.Dock="Left" IsChecked="{Binding IsDone}"
+                                          VerticalAlignment="Center" Margin="0,0,8,0"
+                                          ToolTip="Mark as done" />
+                                <Button DockPanel.Dock="Right" ToolTip="Remove item"
+                                        Style="{StaticResource MaterialDesignIconButton}"
+                                        Width="26" Height="26" Margin="4,0,0,0"
+                                        Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                        Command="{Binding DataContext.RemoveChecklistItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}">
+                                    <materialDesign:PackIcon Kind="Close" Width="14" Height="14" />
+                                </Button>
+                                <!-- Tag carries the item so the code-behind can find and focus
+                                     the row it just created (Enter adds one below). -->
+                                <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                                         Tag="{Binding}"
+                                         KeyDown="OnChecklistItemKeyDown"
+                                         materialDesign:HintAssist.Hint="List item"
+                                         BorderThickness="0" VerticalAlignment="Center" Padding="0,4">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox" BasedOn="{StaticResource MaterialDesignTextBox}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDone}" Value="True">
+                                                    <Setter Property="TextDecorations" Value="Strikethrough" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
+                            </DockPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <DockPanel Margin="0,6,0,0">
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding ChecklistSummary}"
+                               VerticalAlignment="Center" FontSize="12"
+                               Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                    <Button HorizontalAlignment="Left" Height="28" Padding="8,0"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Command="{Binding DataContext.AddChecklistItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}"
+                            ToolTip="Add an item (or press Enter in one)">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Plus" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBlock Text="Add item" FontSize="12" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </DockPanel>
+            </StackPanel>
+        </DataTemplate>
+
         <views:BlockTemplateSelector x:Key="BlockSelector"
                                      TextBlockTemplate="{StaticResource TextBlockTemplate}"
                                      FileBlockTemplate="{StaticResource FileBlockTemplate}"
-                                     LinkBlockTemplate="{StaticResource LinkBlockTemplate}" />
+                                     LinkBlockTemplate="{StaticResource LinkBlockTemplate}"
+                                     ChecklistBlockTemplate="{StaticResource ChecklistBlockTemplate}" />
     </UserControl.Resources>
 
     <!-- The pane itself is Paper (set in MainWindow) so the block cards stand out. -->
@@ -181,13 +241,13 @@
                     Width="36" Height="36">
                 <materialDesign:PackIcon Kind="Close" Width="22" Height="22" />
             </Button>
-            <Button DockPanel.Dock="Right" ToolTip="Export text blocks to PDF"
+            <Button DockPanel.Dock="Right" ToolTip="Export to PDF"
                     Style="{StaticResource MaterialDesignIconButton}"
                     Click="OnExportToPdf"
                     Width="36" Height="36" Margin="0,0,4,0">
                 <materialDesign:PackIcon Kind="FilePdfBox" Width="22" Height="22" />
             </Button>
-            <Button DockPanel.Dock="Right" ToolTip="Export to Word (.docx): text, links and attachment names"
+            <Button DockPanel.Dock="Right" ToolTip="Export to Word (.docx)"
                     Style="{StaticResource MaterialDesignIconButton}"
                     Click="OnExportToWord"
                     Width="36" Height="36" Margin="0,0,4,0">
@@ -240,6 +300,12 @@
                     <StackPanel Orientation="Horizontal">
                         <materialDesign:PackIcon Kind="Link" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center" />
                         <TextBlock Text="Link" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Command="{Binding AddChecklistBlockCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="FormatListChecks" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Checklist" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
             </StackPanel>

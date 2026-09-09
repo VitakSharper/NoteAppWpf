@@ -258,14 +258,18 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
                     HasText = n.Blocks.Any(b => b.BlockType == BlockType.Text),
                     HasFiles = n.Blocks.Any(b => b.BlockType == BlockType.File),
                     HasLinks = n.Blocks.Any(b => b.BlockType == BlockType.Link),
+                    HasChecklists = n.Blocks.Any(b => b.BlockType == BlockType.Checklist),
+                    // Both kinds of block fill PlainText, so a note that opens with a
+                    // checklist previews its items. Same Where on both sub-queries, or
+                    // the two would not describe the same "first" block.
                     FirstTextPlain = n.Blocks
-                        .Where(b => b.BlockType == BlockType.Text)
+                        .Where(b => b.BlockType == BlockType.Text || b.BlockType == BlockType.Checklist)
                         .OrderBy(b => b.SortOrder)
                         .Select(b => b.PlainText)
                         .FirstOrDefault(),
                     // Only pay for the rich payload when there is no PlainText yet.
                     FirstTextRich = n.Blocks
-                        .Where(b => b.BlockType == BlockType.Text)
+                        .Where(b => b.BlockType == BlockType.Text || b.BlockType == BlockType.Checklist)
                         .OrderBy(b => b.SortOrder)
                         .Select(b => b.PlainText == null ? b.TextContent : null)
                         .FirstOrDefault(),

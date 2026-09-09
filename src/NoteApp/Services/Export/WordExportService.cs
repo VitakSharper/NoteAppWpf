@@ -64,6 +64,11 @@ public static class WordExportService
                 case DocAttachment attachment:
                     body.Append(AttachmentParagraph(attachment));
                     break;
+
+                case DocChecklist checklist:
+                    foreach (var item in checklist.Items)
+                        body.Append(ChecklistParagraph(item));
+                    break;
             }
         }
 
@@ -151,6 +156,26 @@ public static class WordExportService
             paragraph.Append(new Run(new RunProperties(new Color { Val = "808080" }), PreservedText($"  {link.Url}")));
 
         return paragraph;
+    }
+
+    // Real Word checkboxes are content controls (or a legacy form field): a ballot-box
+    // character reads the same everywhere and survives a copy-paste into any editor.
+    // A ticked item is struck through, the way the editor shows it.
+    private static Paragraph ChecklistParagraph(DocChecklistItem item)
+    {
+        var properties = new RunProperties();
+        if (item.IsDone)
+        {
+            properties.Append(new Strike());
+            properties.Append(new Color { Val = "595959" });
+        }
+
+        var run = new Run();
+        if (properties.HasChildren)
+            run.Append(properties);
+        run.Append(PreservedText($"{(item.IsDone ? "☑" : "☐")} {item.Text}"));
+
+        return new Paragraph(new ParagraphProperties(new Indentation { Left = "360" }), run);
     }
 
     private static Paragraph AttachmentParagraph(DocAttachment attachment) =>

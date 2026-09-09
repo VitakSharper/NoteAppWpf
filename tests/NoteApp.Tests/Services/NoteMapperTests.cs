@@ -22,7 +22,7 @@ public class NoteMapperTests
 
         Assert.Equal(note.Id, mapped.Id);
         Assert.Equal("Sample", mapped.Title.Value);
-        Assert.Equal(3, mapped.Blocks.Count);
+        Assert.Equal(4, mapped.Blocks.Count);
 
         var text = Assert.IsType<NoteBlock.Text>(mapped.Blocks[0]);
         Assert.Equal("<rich/>", text.RichText);
@@ -36,7 +36,26 @@ public class NoteMapperTests
         Assert.Equal("https://example.com/page", link.Url.ToString());
         Assert.Equal("example", link.Description);
 
+        var checklist = Assert.IsType<NoteBlock.Checklist>(mapped.Blocks[3]);
+        Assert.Equal(["buy milk", "call the bank"], checklist.Items.Select(i => i.Text));
+        Assert.Equal([true, false], checklist.Items.Select(i => i.IsDone));
+
         Assert.Equal("work", Assert.Single(mapped.Tags).Name.Value);
+    }
+
+    // The checklist's searchable form has to reach the column search reads, or a
+    // note's tasks would be invisible to it.
+    [Fact]
+    public void ToBlockEntities_WritesChecklistItemsAsJsonAndFillsPlainText()
+    {
+        var note = SampleNote(
+            new NoteBlock.Checklist([new ChecklistItem("buy milk", true), new ChecklistItem("call the bank", false)]));
+
+        var entity = Assert.Single(NoteMapper.ToBlockEntities(note));
+
+        Assert.Equal(BlockType.Checklist, entity.BlockType);
+        Assert.Equal("buy milk\ncall the bank", entity.PlainText);
+        Assert.Equal("""[{"t":"buy milk","d":true},{"t":"call the bank"}]""", entity.ChecklistJson);
     }
 
     [Fact]
@@ -118,6 +137,7 @@ public class NoteMapperTests
         Assert.True(summary.HasText);
         Assert.False(summary.HasFiles);
         Assert.True(summary.HasLinks);
+        Assert.False(summary.HasChecklists);
         Assert.Equal("work", Assert.Single(summary.Tags).Name.Value);
     }
 

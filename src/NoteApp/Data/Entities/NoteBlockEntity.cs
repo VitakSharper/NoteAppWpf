@@ -9,7 +9,9 @@ public class NoteBlockEntity
     public BlockType BlockType { get; set; }
     public int SortOrder { get; set; }
 
-    // Text block — PlainText is null for rows saved before the column existed
+    // Text block — PlainText is null for rows saved before the column existed.
+    // A checklist fills PlainText too (its item texts), so search and the list
+    // preview need no special case.
     public string? TextContent { get; set; }
     public string? PlainText { get; set; }
 
@@ -22,6 +24,9 @@ public class NoteBlockEntity
     // Link block
     public string? LinkUrl { get; set; }
     public string? LinkDescription { get; set; }
+
+    // Checklist block — see Services/ChecklistJson.cs for the shape
+    public string? ChecklistJson { get; set; }
 
     public NoteEntity Note { get; set; } = null!;
 }

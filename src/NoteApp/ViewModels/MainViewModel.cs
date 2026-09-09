@@ -131,7 +131,7 @@ public partial class MainViewModel : ObservableObject
 
         var summary = NoteListViewModel.Notes.FirstOrDefault(n => n.Id == note.Id)
             ?? new NoteSummary(note.Id, note.Title, string.Empty, note.Tags, note.IsEncrypted,
-                note.HasText, note.HasFiles, note.HasLinks, note.CreatedAt, note.UpdatedAt);
+                note.HasText, note.HasFiles, note.HasLinks, note.HasChecklists, note.CreatedAt, note.UpdatedAt);
 
         await NoteListViewModel.DeleteNoteCommand.ExecuteAsync(summary);
     }

@@ -4,7 +4,8 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 
 ## Features
 
-- **Multi-block notes** — Each note can contain multiple content blocks: rich text, files, and links — all in one note
+- **Multi-block notes** — Each note can contain multiple content blocks: rich text, files, links and checklists — all in one note
+- **Checklists** — Tickable items inside a note: Enter adds the next one, done items are struck through, the block counts progress, and item texts are searchable
 - **Rich text editing** — Bold, italic, underline, bullet lists via a toolbar
 - **File attachments** — Browse and attach files stored directly in the database
 - **Block ordering** — Drag-free move up/down to reorder content blocks within a note
@@ -16,8 +17,7 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **Keyboard shortcuts** — `Ctrl+N` new note, `Ctrl+S` save, `Esc` close the editor (or the Settings dialog), `Ctrl+F` search the text block under the cursor or, from anywhere else, the note list; `Ctrl+B/I/U` are native to the rich text box
 - **In-app help** — `F1` or the `?` in the rail opens a non-modal help window: getting started, the shortcut table, blocks, search and tags, encryption, backup, and where settings and logs live
 - **Encrypted notes** — Optional per-note password; blocks are stored AES-GCM encrypted (PBKDF2 key derivation)
-- **PDF export** — Export the text blocks of a note to PDF (QuestPDF)
-- **Word export** — Export a note to `.docx` (Open XML SDK): text blocks with formatting and images, link blocks as clickable hyperlinks, attachments listed by name and size
+- **PDF & Word export** — Export a note to PDF (QuestPDF) or `.docx` (Open XML SDK): text with formatting and images, checklists as ticked boxes, links (clickable in Word) and attachments listed by name and size
 - **Encrypted backups** — BACPAC export of the database packed into an AES-256 zip
 - **Material Design UI** — Three-pane layout (icon rail · note list / tags · editor), cards, chips, snackbar, light/dark theme
 
@@ -122,7 +122,7 @@ This project follows **functional programming patterns** inspired by [Zoran Horv
 ```
 noteDb
 ├── Notes        — Id, Title, IsEncrypted, EncryptedContent, CreatedAt, UpdatedAt, DeletedAt (soft delete)
-├── NoteBlocks   — Id, NoteId (FK), BlockType (Text/File/Link), SortOrder,
+├── NoteBlocks   — Id, NoteId (FK), BlockType (Text/File/Link/Checklist), SortOrder,
 │                  TextContent (rich), PlainText (searchable), FileData, FileName,
 │                  FileExtension, FileSizeBytes, LinkUrl, LinkDescription
 ├── Tags         — Id, Name (unique)

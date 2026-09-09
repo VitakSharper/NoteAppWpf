@@ -14,6 +14,12 @@ using NoteApp.Services;
 
 namespace NoteApp.ViewModels;
 
+public partial class ChecklistItemViewModel : ObservableObject
+{
+    [ObservableProperty] private string _text = string.Empty;
+    [ObservableProperty] private bool _isDone;
+}
+
 public partial class BlockViewModel : ObservableObject
 {
     [ObservableProperty] private BlockType _blockType;
@@ -28,11 +34,39 @@ public partial class BlockViewModel : ObservableObject
 
     public Guid Id { get; init; } = Guid.NewGuid();
 
+    public ObservableCollection<ChecklistItemViewModel> ChecklistItems { get; } = [];
+
+    public string ChecklistSummary => $"{ChecklistItems.Count(i => i.IsDone)}/{ChecklistItems.Count} done";
+
+    // The block watches its own items so the "2/5 done" line stays true. This is
+    // separate from the editor's dirty tracking, which watches the same items for
+    // a different reason.
+    public BlockViewModel()
+    {
+        ChecklistItems.CollectionChanged += (_, e) =>
+        {
+            foreach (var item in e.OldItems?.OfType<ChecklistItemViewModel>() ?? [])
+                item.PropertyChanged -= OnItemChanged;
+
+            foreach (var item in e.NewItems?.OfType<ChecklistItemViewModel>() ?? [])
+                item.PropertyChanged += OnItemChanged;
+
+            OnPropertyChanged(nameof(ChecklistSummary));
+        };
+    }
+
+    private void OnItemChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ChecklistItemViewModel.IsDone))
+            OnPropertyChanged(nameof(ChecklistSummary));
+    }
+
     public string BlockLabel => BlockType switch
     {
         BlockType.Text => "Text",
         BlockType.File => "File",
         BlockType.Link => "Link",
+        BlockType.Checklist => "Checklist",
         _ => "Block"
     };
 }
@@ -111,7 +145,7 @@ public partial class NoteEditorViewModel : ObservableObject
         Blocks.CollectionChanged += OnBlocksCollectionChanged;
         SelectedTags.CollectionChanged += OnSelectedTagsCollectionChanged;
         foreach (var block in Blocks)
-            block.PropertyChanged += OnBlockPropertyChanged;
+            Track(block);
     }
 
     // Title and IsEncrypted are the only editable scalars on this view model; the rest
@@ -125,13 +159,44 @@ public partial class NoteEditorViewModel : ObservableObject
     private void OnBlocksCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         foreach (var block in e.OldItems?.OfType<BlockViewModel>() ?? [])
-            block.PropertyChanged -= OnBlockPropertyChanged;
+            Untrack(block);
 
         foreach (var block in e.NewItems?.OfType<BlockViewModel>() ?? [])
-            block.PropertyChanged += OnBlockPropertyChanged;
+            Track(block);
 
         MarkDirty();
     }
+
+    // A checklist edit is three different events — an item added or removed, an item
+    // ticked, an item retyped — and none of them touches a property of the block.
+    private void Track(BlockViewModel block)
+    {
+        block.PropertyChanged += OnBlockPropertyChanged;
+        block.ChecklistItems.CollectionChanged += OnChecklistItemsChanged;
+        foreach (var item in block.ChecklistItems)
+            item.PropertyChanged += OnChecklistItemPropertyChanged;
+    }
+
+    private void Untrack(BlockViewModel block)
+    {
+        block.PropertyChanged -= OnBlockPropertyChanged;
+        block.ChecklistItems.CollectionChanged -= OnChecklistItemsChanged;
+        foreach (var item in block.ChecklistItems)
+            item.PropertyChanged -= OnChecklistItemPropertyChanged;
+    }
+
+    private void OnChecklistItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        foreach (var item in e.OldItems?.OfType<ChecklistItemViewModel>() ?? [])
+            item.PropertyChanged -= OnChecklistItemPropertyChanged;
+
+        foreach (var item in e.NewItems?.OfType<ChecklistItemViewModel>() ?? [])
+            item.PropertyChanged += OnChecklistItemPropertyChanged;
+
+        MarkDirty();
+    }
+
+    private void OnChecklistItemPropertyChanged(object? sender, PropertyChangedEventArgs e) => MarkDirty();
 
     private void OnSelectedTagsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
         MarkDirty();
@@ -180,6 +245,13 @@ public partial class NoteEditorViewModel : ObservableObject
                     BlockType = BlockType.Link,
                     LinkUrlText = l.Url.Value.ToString(),
                     LinkDescription = l.Description
+                },
+                checklist: c =>
+                {
+                    var blockVm = new BlockViewModel { Id = block.Id, BlockType = BlockType.Checklist };
+                    foreach (var item in c.Items)
+                        blockVm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, IsDone = item.IsDone });
+                    return blockVm;
                 });
             Blocks.Add(vm);
         }
@@ -230,6 +302,37 @@ public partial class NoteEditorViewModel : ObservableObject
         Blocks.Add(block);
         SelectedBlock = block;
         BlockAdded?.Invoke(block);
+    }
+
+    // Starts with one empty row: a checklist with no item fails validation on save,
+    // and an empty card would give the user nothing to type into.
+    [RelayCommand]
+    private void AddChecklistBlock()
+    {
+        var block = new BlockViewModel { BlockType = BlockType.Checklist };
+        block.ChecklistItems.Add(new ChecklistItemViewModel());
+        Blocks.Add(block);
+        SelectedBlock = block;
+        BlockAdded?.Invoke(block);
+    }
+
+    [RelayCommand]
+    private void AddChecklistItem(BlockViewModel block) =>
+        block.ChecklistItems.Add(new ChecklistItemViewModel());
+
+    // The row menu passes the item, not the block: find its owner rather than make
+    // the view keep track of both.
+    [RelayCommand]
+    private void RemoveChecklistItem(ChecklistItemViewModel item) =>
+        Blocks.FirstOrDefault(b => b.ChecklistItems.Contains(item))?.ChecklistItems.Remove(item);
+
+    // Enter inside an item: the view calls this, then focuses what it returns.
+    public ChecklistItemViewModel InsertChecklistItemAfter(BlockViewModel block, ChecklistItemViewModel after)
+    {
+        var item = new ChecklistItemViewModel();
+        var index = block.ChecklistItems.IndexOf(after);
+        block.ChecklistItems.Insert(index < 0 ? block.ChecklistItems.Count : index + 1, item);
+        return item;
     }
 
     [RelayCommand]
@@ -443,6 +546,22 @@ public partial class NoteEditorViewModel : ObservableObject
                         return Result<IReadOnlyList<NoteBlock>, AppError>.Fail(urlError);
                     noteBlocks.Add(new NoteBlock.Link(url, vm.LinkDescription)
                         { Id = vm.Id, SortOrder = i });
+                    break;
+
+                case BlockType.Checklist:
+                    // Blank rows are the trace of typing, not content: they are dropped
+                    // rather than stored, but a checklist of nothing but blanks is a
+                    // mistake worth reporting.
+                    var items = vm.ChecklistItems
+                        .Where(item => !string.IsNullOrWhiteSpace(item.Text))
+                        .Select(item => new ChecklistItem(item.Text.Trim(), item.IsDone))
+                        .ToList();
+
+                    if (items.Count == 0)
+                        return Result<IReadOnlyList<NoteBlock>, AppError>.Fail(
+                            AppError.Validation($"Checklist block #{i + 1} has no items."));
+
+                    noteBlocks.Add(new NoteBlock.Checklist(items) { Id = vm.Id, SortOrder = i });
                     break;
             }
         }

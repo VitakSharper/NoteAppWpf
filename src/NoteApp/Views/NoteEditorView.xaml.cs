@@ -723,50 +723,52 @@ public partial class NoteEditorView : UserControl
         }
     }
 
-    private void OnExportToPdf(object sender, RoutedEventArgs e)
+    // Enter in an item adds one below it and moves the caret there, the way every
+    // checklist behaves; the row itself only exists after the next layout pass.
+    private void OnChecklistItemKeyDown(object sender, KeyEventArgs e)
     {
-        if (DataContext is not NoteEditorViewModel vm) return;
-
-        SyncAllRichTextBoxes();
-
-        var textContents = vm.Blocks
-            .Where(b => b.BlockType == BlockType.Text && !string.IsNullOrEmpty(b.RichTextContent))
-            .Select(b => b.RichTextContent)
-            .ToList();
-
-        if (textContents.Count == 0)
-        {
-            MessageBox.Show("No text blocks to export.", "Export to PDF",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+        if (e.Key != Key.Enter || sender is not TextBox box || box.Tag is not ChecklistItemViewModel item)
             return;
-        }
+        if (DataContext is not NoteEditorViewModel vm)
+            return;
 
-        var dialog = new SaveFileDialog
-        {
-            Filter = "PDF Files (*.pdf)|*.pdf",
-            FileName = ExportFileName(vm.Title, "pdf"),
-            Title = "Export to PDF"
-        };
+        var block = vm.Blocks.FirstOrDefault(b => b.ChecklistItems.Contains(item));
+        if (block is null)
+            return;
 
-        if (dialog.ShowDialog() != true) return;
+        var added = vm.InsertChecklistItemAfter(block, item);
+        e.Handled = true;
 
-        try
-        {
-            PdfExportService.Export(ExportTitle(vm.Title), textContents, dialog.FileName);
-
-            MessageBox.Show("PDF exported successfully!", "Export to PDF",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Failed to export PDF: {ex.Message}", "Export to PDF",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Loaded,
+            new Action(() => FindChecklistTextBox(BlocksScrollViewer, added)?.Focus()));
     }
 
-    // Unlike the PDF, Word gets every block in note order: links become hyperlinks
-    // and file blocks are named (their bytes stay in the database).
-    private void OnExportToWord(object sender, RoutedEventArgs e)
+    private static TextBox? FindChecklistTextBox(DependencyObject root, ChecklistItemViewModel item)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is TextBox box && ReferenceEquals(box.Tag, item))
+                return box;
+            if (FindChecklistTextBox(child, item) is { } hit)
+                return hit;
+        }
+
+        return null;
+    }
+
+    // --- Export ---
+
+    private void OnExportToPdf(object sender, RoutedEventArgs e) =>
+        Export("PDF", "pdf", "PDF Files (*.pdf)|*.pdf", PdfExportService.Export);
+
+    private void OnExportToWord(object sender, RoutedEventArgs e) =>
+        Export("Word", "docx", "Word documents (*.docx)|*.docx", WordExportService.Export);
+
+    // Both exporters take the same blocks, in note order, and differ only in what
+    // they can render: links are hyperlinks in Word and coloured text in the PDF.
+    private void Export(string format, string extension, string filter,
+        Action<string, IReadOnlyList<ExportBlock>, string> export)
     {
         if (DataContext is not NoteEditorViewModel vm) return;
 
@@ -776,35 +778,40 @@ public partial class NoteEditorView : UserControl
         {
             BlockType.Text => new TextExportBlock(b.RichTextContent),
             BlockType.Link => new LinkExportBlock(b.LinkUrlText, b.LinkDescription),
+            BlockType.Checklist => new ChecklistExportBlock(
+                b.ChecklistItems
+                    .Where(i => !string.IsNullOrWhiteSpace(i.Text))
+                    .Select(i => new DocChecklistItem(i.Text.Trim(), i.IsDone))
+                    .ToList()),
             _ => new FileExportBlock(b.FileName, b.FileSize)
         }).ToList();
 
         if (blocks.Count == 0)
         {
-            MessageBox.Show("Nothing to export.", "Export to Word",
+            MessageBox.Show("Nothing to export.", $"Export to {format}",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
         var dialog = new SaveFileDialog
         {
-            Filter = "Word documents (*.docx)|*.docx",
-            FileName = ExportFileName(vm.Title, "docx"),
-            Title = "Export to Word"
+            Filter = filter,
+            FileName = ExportFileName(vm.Title, extension),
+            Title = $"Export to {format}"
         };
 
         if (dialog.ShowDialog() != true) return;
 
         try
         {
-            WordExportService.Export(ExportTitle(vm.Title), blocks, dialog.FileName);
+            export(ExportTitle(vm.Title), blocks, dialog.FileName);
 
-            MessageBox.Show("Word document exported successfully!", "Export to Word",
+            MessageBox.Show($"{format} exported successfully!", $"Export to {format}",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to export Word document: {ex.Message}", "Export to Word",
+            MessageBox.Show($"Failed to export {format}: {ex.Message}", $"Export to {format}",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }

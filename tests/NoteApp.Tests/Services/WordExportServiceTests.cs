@@ -94,6 +94,28 @@ public class WordExportServiceTests
         Assert.Equal(1_224_026L, extent.Cy!.Value);
     }
 
+    // A ballot-box character rather than a Word content control: it reads the same in
+    // any editor and survives a copy-paste. A ticked item is struck through.
+    [Fact]
+    public void Renders_a_checklist_as_ballot_boxes_and_strikes_what_is_done()
+    {
+        using var stream = new MemoryStream();
+
+        WordExportService.Render("Note",
+            [new DocChecklist([new DocChecklistItem("buy milk", true), new DocChecklistItem("call the bank", false)])],
+            stream);
+
+        stream.Position = 0;
+        using var doc = WordprocessingDocument.Open(stream, isEditable: false);
+        var paragraphs = doc.MainDocumentPart!.Document!.Body!.Elements<Paragraph>().ToList();
+
+        Assert.Equal(3, paragraphs.Count); // title + one per item
+        Assert.Equal("☑ buy milk", paragraphs[1].InnerText);
+        Assert.Equal("☐ call the bank", paragraphs[2].InnerText);
+        Assert.NotNull(paragraphs[1].Descendants<Run>().Single().RunProperties?.Strike);
+        Assert.Null(paragraphs[2].Descendants<Run>().Single().RunProperties?.Strike);
+    }
+
     [Fact]
     public void List_markers_match_the_pdf_export()
     {

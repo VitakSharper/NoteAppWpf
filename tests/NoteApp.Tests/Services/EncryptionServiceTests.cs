@@ -14,7 +14,7 @@ public class EncryptionServiceTests
         var encrypted = EncryptionService.EncryptBlocks(blocks, "s3cret");
         var decrypted = EncryptionService.DecryptBlocks(encrypted, "s3cret");
 
-        Assert.Equal(3, decrypted.Count);
+        Assert.Equal(4, decrypted.Count);
         Assert.Equal(blocks.Select(b => b.Id), decrypted.Select(b => b.Id));
 
         var text = Assert.IsType<NoteBlock.Text>(decrypted[0]);
@@ -27,6 +27,28 @@ public class EncryptionServiceTests
 
         var link = Assert.IsType<NoteBlock.Link>(decrypted[2]);
         Assert.Equal("https://example.com/page", link.Url.ToString());
+
+        var checklist = Assert.IsType<NoteBlock.Checklist>(decrypted[3]);
+        Assert.Equal(["buy milk", "call the bank"], checklist.Items.Select(i => i.Text));
+        Assert.Equal(1, checklist.DoneCount);
+    }
+
+    // Notes encrypted before checklists existed hold no such block: the reader must
+    // still handle the three older types on their own.
+    [Fact]
+    public void RoundTrip_OfTheOlderBlockKindsAloneStillWorks()
+    {
+        IReadOnlyList<NoteBlock> blocks =
+        [
+            new NoteBlock.Text("<rich/>", "plain") { SortOrder = 0 },
+            new NoteBlock.Link(Url("https://example.com/page"), "example") { SortOrder = 1 }
+        ];
+
+        var decrypted = EncryptionService.DecryptBlocks(EncryptionService.EncryptBlocks(blocks, "pw"), "pw");
+
+        Assert.Equal(2, decrypted.Count);
+        Assert.IsType<NoteBlock.Text>(decrypted[0]);
+        Assert.IsType<NoteBlock.Link>(decrypted[1]);
     }
 
     [Fact]

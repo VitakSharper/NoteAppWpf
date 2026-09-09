@@ -40,5 +40,6 @@ public sealed class NoteBlockConfiguration : IEntityTypeConfiguration<NoteBlockE
         builder.Property(b => b.FileExtension).HasMaxLength(50);
         builder.Property(b => b.LinkUrl).HasMaxLength(2000);
         builder.Property(b => b.LinkDescription).HasMaxLength(1000);
+        builder.Property(b => b.ChecklistJson).HasColumnType("nvarchar(max)");
     }
 }

@@ -35,7 +35,7 @@ public class NoteTests
     }
 
     [Fact]
-    public void HasText_HasFiles_HasLinks_ReflectTheBlocks()
+    public void HasText_HasFiles_HasLinks_HasChecklists_ReflectTheBlocks()
     {
         var mixed = SampleNote(SampleBlocks());
         var textOnly = SampleNote(new NoteBlock.Text("<rich/>"));
@@ -43,9 +43,33 @@ public class NoteTests
         Assert.True(mixed.HasText);
         Assert.True(mixed.HasFiles);
         Assert.True(mixed.HasLinks);
+        Assert.True(mixed.HasChecklists);
         Assert.True(textOnly.HasText);
         Assert.False(textOnly.HasFiles);
         Assert.False(textOnly.HasLinks);
+        Assert.False(textOnly.HasChecklists);
+    }
+
+    // PlainText is what search and the list preview read; DoneCount drives the
+    // editor's "2/5 done" line.
+    [Fact]
+    public void Checklist_ExposesItsItemsAsPlainTextAndCountsWhatIsDone()
+    {
+        var checklist = new NoteBlock.Checklist(
+            [new ChecklistItem("buy milk", true), new ChecklistItem("call the bank", false)]);
+
+        Assert.Equal("buy milk\ncall the bank", checklist.PlainText);
+        Assert.Equal(1, checklist.DoneCount);
+        Assert.Equal(BlockType.Checklist, checklist.Type);
+    }
+
+    [Fact]
+    public void Checklist_WithNoItems_IsEmptyRatherThanBroken()
+    {
+        var checklist = new NoteBlock.Checklist([]);
+
+        Assert.Equal(string.Empty, checklist.PlainText);
+        Assert.Equal(0, checklist.DoneCount);
     }
 
     [Fact]

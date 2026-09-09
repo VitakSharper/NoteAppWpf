@@ -116,6 +116,91 @@ public class NoteEditorDirtyTests
         Assert.False(vm.IsDirty);
     }
 
+    // A checklist edit never touches a property of the block itself, so the tracking
+    // has to reach into the items and into their collection.
+    [Fact]
+    public void Ticking_a_checklist_item_marks_the_note_modified()
+    {
+        var vm = Editor(SampleNote(SampleBlocks()));
+        var checklist = vm.Blocks.Single(b => b.BlockType == BlockType.Checklist);
+
+        checklist.ChecklistItems[1].IsDone = true;
+
+        Assert.True(vm.IsDirty);
+    }
+
+    [Fact]
+    public void Retyping_a_checklist_item_marks_the_note_modified()
+    {
+        var vm = Editor(SampleNote(SampleBlocks()));
+        var checklist = vm.Blocks.Single(b => b.BlockType == BlockType.Checklist);
+
+        checklist.ChecklistItems[0].Text = "buy oat milk";
+
+        Assert.True(vm.IsDirty);
+    }
+
+    [Fact]
+    public void Adding_and_removing_checklist_items_marks_the_note_modified()
+    {
+        var vm = Editor(SampleNote(SampleBlocks()));
+        var checklist = vm.Blocks.Single(b => b.BlockType == BlockType.Checklist);
+
+        vm.AddChecklistItemCommand.Execute(checklist);
+        Assert.True(vm.IsDirty);
+        Assert.Equal(3, checklist.ChecklistItems.Count);
+
+        vm.RefreshAfterSave(SampleNote(SampleBlocks()));
+        vm.RemoveChecklistItemCommand.Execute(checklist.ChecklistItems[2]);
+
+        Assert.True(vm.IsDirty);
+        Assert.Equal(2, checklist.ChecklistItems.Count);
+    }
+
+    // Enter in an item: the new row lands right below the one being typed in, and
+    // typing in it counts as an edit like any other.
+    [Fact]
+    public void Enter_inserts_an_item_directly_below_the_current_one()
+    {
+        var vm = Editor(SampleNote(SampleBlocks()));
+        var checklist = vm.Blocks.Single(b => b.BlockType == BlockType.Checklist);
+
+        var inserted = vm.InsertChecklistItemAfter(checklist, checklist.ChecklistItems[0]);
+
+        Assert.Equal(1, checklist.ChecklistItems.IndexOf(inserted));
+        Assert.True(vm.IsDirty);
+
+        vm.RefreshAfterSave(SampleNote(SampleBlocks()));
+        inserted.Text = "typed into the new row";
+        Assert.True(vm.IsDirty);
+    }
+
+    [Fact]
+    public void A_new_checklist_block_starts_with_one_empty_row()
+    {
+        var vm = Editor();
+
+        vm.AddChecklistBlockCommand.Execute(null);
+
+        var block = Assert.Single(vm.Blocks);
+        Assert.Equal(BlockType.Checklist, block.BlockType);
+        Assert.Equal(string.Empty, Assert.Single(block.ChecklistItems).Text);
+        Assert.Equal("0/1 done", block.ChecklistSummary);
+    }
+
+    [Fact]
+    public void The_block_reports_how_many_items_are_done()
+    {
+        var vm = Editor(SampleNote(SampleBlocks()));
+        var checklist = vm.Blocks.Single(b => b.BlockType == BlockType.Checklist);
+
+        Assert.Equal("1/2 done", checklist.ChecklistSummary);
+
+        checklist.ChecklistItems[1].IsDone = true;
+
+        Assert.Equal("2/2 done", checklist.ChecklistSummary);
+    }
+
     [Fact]
     public void Selecting_a_block_is_not_an_edit()
     {

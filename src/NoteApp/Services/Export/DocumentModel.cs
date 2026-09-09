@@ -6,6 +6,7 @@ public abstract record ExportBlock;
 public sealed record TextExportBlock(string RichTextPayload) : ExportBlock;
 public sealed record LinkExportBlock(string Url, string Description) : ExportBlock;
 public sealed record FileExportBlock(string FileName, long SizeBytes) : ExportBlock;
+public sealed record ChecklistExportBlock(IReadOnlyList<DocChecklistItem> Items) : ExportBlock;
 
 // Everything the editor can produce, as plain data: extracted once from the WPF
 // FlowDocument (UI thread) and rendered by every exporter without touching WPF.
@@ -14,6 +15,9 @@ public sealed record DocParagraph(IReadOnlyList<DocInline> Inlines) : DocElement
 public sealed record DocList(DocListMarker Marker, IReadOnlyList<IReadOnlyList<DocInline>> Items) : DocElement;
 public sealed record DocLink(string Url, string Description) : DocElement;
 public sealed record DocAttachment(string FileName, long SizeBytes) : DocElement;
+public sealed record DocChecklist(IReadOnlyList<DocChecklistItem> Items) : DocElement;
+
+public sealed record DocChecklistItem(string Text, bool IsDone);
 
 public enum DocListMarker
 {

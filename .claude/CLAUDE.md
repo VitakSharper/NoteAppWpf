@@ -54,7 +54,8 @@ DI is configured in `App.xaml.cs`. Connection string loaded via .NET User Secret
 - **Option<T> monad** instead of nulls.
 - **Immutable domain records** with `with` expressions for updates (e.g., `note with { Title = newTitle }`).
 - **Value objects** with private constructors and factory methods returning `Result` (NoteTitle, TagName, LinkUrl, NoteId).
-- **Sealed discriminated unions** for note block types: `NoteBlock.Text | NoteBlock.File | NoteBlock.Link` — defined in `Domain/Models/NoteContent.cs` (filename doesn't match type name).
+- **Sealed discriminated unions** for note block types: `NoteBlock.Text | NoteBlock.File | NoteBlock.Link | NoteBlock.Checklist` — defined in `Domain/Models/NoteContent.cs` (filename doesn't match type name). `Match` takes one delegate per case with no default, so adding a case makes the compiler point at every place that has to handle it.
+- **Checklist items live in one JSON column** — `NoteBlock.Checklist(IReadOnlyList<ChecklistItem>)` ↔ `NoteBlocks.ChecklistJson`, serialized by `Services/ChecklistJson.cs` (short keys `t`/`d`, `d` omitted when false, unreadable content yields an empty checklist). The same string goes inside the encrypted blob (`BlockDto.ChecklistJson`), so there is one item format either way. Not a child table: a save already replaces every block of a note wholesale. The block also fills `PlainText` with its item texts, which is why search and the list preview need no special case — and why the preview projection in `SearchSummariesAsync` takes the first Text **or** Checklist block (same `Where` on both sub-queries).
 - **`PlainText` next to rich text** — `NoteBlock.Text(RichText, PlainText)`: `RichText` is a Base64 XamlPackage (not searchable), so the editor also writes the plain text (`NoteEditorView.SyncBlock`) and the `NoteBlocks.PlainText` column drives search and the list preview (`Services/RichTextPreview.cs`). Rows saved before the column exists have `PlainText = NULL` and fall back to decoding the rich payload.
 - **`NoteSummary` read model** (`Domain/Models/NoteSummary.cs`) for the note list: `INoteRepository.SearchSummariesAsync` projects `Data/Queries/NoteSummaryRow` (no block payloads, no `FileData`), `NoteService.SearchAsync` turns rows into summaries with a precomputed `Preview`. `NoteListViewModel` only holds summaries; `MainViewModel` loads the full `Note` by id when one is opened.
 - **Unsaved-changes guard** — `NoteEditorViewModel.IsDirty` is set at the source of each change (its own `Title`/`IsEncrypted`, `Blocks` and `SelectedTags` collection changes, any `BlockViewModel` property **except** `RichTextContent`/`PlainTextContent`, which `NoteEditorView.SyncBlock` writes), and cleared by `RefreshAfterSave`. Rich text is invisible to the view model until a sync, so the view calls `MarkDirty()` from `RichTextBox.TextChanged` — with `WithoutDirtyTracking(...)` bracketing every write the app makes itself (loading a block, search highlights), otherwise opening the search bar would mark the note edited. Do **not** replace this with a snapshot comparison: `TextRange.Save(XamlPackage)` gives no byte-identical guarantee for the same document. Every exit goes through `MainViewModel.ConfirmLeaveEditorAsync()` (open another note, New note, Cancel, `MainWindow.OnClosing`); it re-runs `SaveCommand` for "Yes" and keeps the editor open when the save fails validation (`IsDirty` stays true). Deleting the open note closes its editor without prompting (`NoteListViewModel.NoteDeleted`).
@@ -76,12 +77,13 @@ Notes contain ordered `NoteBlock` items (multi-block). Each block is Text (rich 
 ### Cross-Layer Change Coordination
 
 When modifying note structure or block types, update across all layers:
-1. `Domain/Models/Note.cs` + `Domain/Models/NoteContent.cs` (+ `NoteSummary.cs` if the list shows it)
+1. `Domain/Models/Note.cs` + `Domain/Models/NoteContent.cs` (`Match` + `BlockType` + a `Has*` flag) (+ `NoteSummary.cs` and `NoteSummaryRow.cs` if the list shows it, + `NoteTypeFilter.cs` for a filter chip)
 2. `Data/Entities/NoteBlockEntity.cs` + EF configuration
 3. `Services/Mapping/NoteMapper.cs`
 4. `Data/Repositories/NoteRepository.cs` (+ the `NoteSummaryRow` projection in `SearchSummariesAsync`)
 5. `Services/EncryptionService.cs` (if it affects serialization — the `BlockDto` JSON inside encrypted notes)
-6. `ViewModels/NoteEditorViewModel.cs` + `Views/NoteEditorView.xaml(.cs)`
+6. `ViewModels/NoteEditorViewModel.cs` + `Views/NoteEditorView.xaml(.cs)` + `Views/BlockTemplateSelector.cs` (one `DataTemplate` per kind), and the dirty tracking if the block holds a collection (`Track`/`Untrack`)
+6b. `Services/Export/DocumentModel.cs` (an `ExportBlock` + a `DocElement`), `RichTextDocument.Extract`, then both renderers (`WordExportService`, `PdfExportService`) — a block missing from one of them is silently dropped from that export
 7. Add EF migration if schema changed
 8. `tests/NoteApp.Tests` — mapper round-trip and encryption round-trip tests cover every block field
 

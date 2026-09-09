@@ -38,4 +38,5 @@ public sealed record Note(
     public bool HasText => Blocks.Any(b => b is NoteBlock.Text);
     public bool HasFiles => Blocks.Any(b => b is NoteBlock.File);
     public bool HasLinks => Blocks.Any(b => b is NoteBlock.Link);
+    public bool HasChecklists => Blocks.Any(b => b is NoteBlock.Checklist);
 }
