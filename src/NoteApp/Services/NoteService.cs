@@ -68,15 +68,25 @@ public sealed class NoteService(INoteRepository noteRepository)
         }
     }
 
+    // Soft: the note goes to the trash, where it can be restored or purged.
     public Task<Result<Unit, AppError>> DeleteNoteAsync(NoteId id) =>
         noteRepository.DeleteAsync(id);
+
+    public Task<Result<Unit, AppError>> RestoreNoteAsync(NoteId id) =>
+        noteRepository.RestoreAsync(id);
+
+    public Task<Result<Unit, AppError>> PurgeNoteAsync(NoteId id) =>
+        noteRepository.PurgeAsync(id);
+
+    public Task<Result<int, AppError>> EmptyTrashAsync() =>
+        noteRepository.PurgeAllDeletedAsync();
 
     // The list never needs full notes: rows come back without block payloads,
     // and the preview is derived once here rather than per row at render time.
     public async Task<Result<IReadOnlyList<NoteSummary>, AppError>> SearchAsync(
-        string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType)
+        string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false)
     {
-        if (!(await noteRepository.SearchSummariesAsync(searchText, tagIds, blockType)).TryGet(out var rows, out var error))
+        if (!(await noteRepository.SearchSummariesAsync(searchText, tagIds, blockType, deletedOnly)).TryGet(out var rows, out var error))
             return Result<IReadOnlyList<NoteSummary>, AppError>.Fail(error);
 
         var summaries = new List<NoteSummary>(rows.Count);

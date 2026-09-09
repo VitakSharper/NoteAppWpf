@@ -129,14 +129,58 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
         }
     }
 
+    // Soft delete: the row stays, DeletedAt is set, and the global query filter
+    // hides it everywhere else. Not FindAsync — query filters do not apply to Find.
     public async Task<Result<Unit, AppError>> DeleteAsync(NoteId id)
     {
         try
         {
             await using var context = await contextFactory.CreateDbContextAsync();
-            var entity = await context.Notes.FindAsync(id.Value);
+            var entity = await context.Notes.FirstOrDefaultAsync(n => n.Id == id.Value);
             if (entity is null)
                 return Result<Unit, AppError>.Fail(AppError.NotFound($"Note with ID {id} not found."));
+
+            entity.DeletedAt = DateTime.UtcNow;
+            await context.SaveChangesAsync();
+            return Result<Unit, AppError>.Ok(Unit.Value);
+        }
+        catch (Exception ex)
+        {
+            return Result<Unit, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
+    public async Task<Result<Unit, AppError>> RestoreAsync(NoteId id)
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var entity = await context.Notes.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(n => n.Id == id.Value && n.DeletedAt != null);
+            if (entity is null)
+                return Result<Unit, AppError>.Fail(AppError.NotFound($"Note with ID {id} is not in the trash."));
+
+            entity.DeletedAt = null;
+            await context.SaveChangesAsync();
+            return Result<Unit, AppError>.Ok(Unit.Value);
+        }
+        catch (Exception ex)
+        {
+            return Result<Unit, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
+    // Permanent. Only reachable for trashed rows, so a live note can never be
+    // purged by accident: it has to be deleted (trashed) first.
+    public async Task<Result<Unit, AppError>> PurgeAsync(NoteId id)
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var entity = await context.Notes.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(n => n.Id == id.Value && n.DeletedAt != null);
+            if (entity is null)
+                return Result<Unit, AppError>.Fail(AppError.NotFound($"Note with ID {id} is not in the trash."));
 
             context.Notes.Remove(entity);
             await context.SaveChangesAsync();
@@ -148,15 +192,37 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
         }
     }
 
-    public async Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(
-        string? searchText,
-        IReadOnlyList<Guid>? tagIds,
-        BlockType? blockType)
+    // Blocks and tag links follow through the ON DELETE CASCADE the migrations
+    // created — the same cascade DeleteAsync relied on when it removed the row.
+    public async Task<Result<int, AppError>> PurgeAllDeletedAsync()
     {
         try
         {
             await using var context = await contextFactory.CreateDbContextAsync();
-            var query = context.Notes.AsNoTracking();
+            var count = await context.Notes.IgnoreQueryFilters()
+                .Where(n => n.DeletedAt != null)
+                .ExecuteDeleteAsync();
+            return Result<int, AppError>.Ok(count);
+        }
+        catch (Exception ex)
+        {
+            return Result<int, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
+    public async Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(
+        string? searchText,
+        IReadOnlyList<Guid>? tagIds,
+        BlockType? blockType,
+        bool deletedOnly = false)
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            // The trash is the one place that wants the filtered-out rows, and only them.
+            var query = deletedOnly
+                ? context.Notes.IgnoreQueryFilters().AsNoTracking().Where(n => n.DeletedAt != null)
+                : context.Notes.AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(searchText))
             {
@@ -188,6 +254,7 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
                     IsEncrypted = n.IsEncrypted,
                     CreatedAt = n.CreatedAt,
                     UpdatedAt = n.UpdatedAt,
+                    DeletedAt = n.DeletedAt,
                     HasText = n.Blocks.Any(b => b.BlockType == BlockType.Text),
                     HasFiles = n.Blocks.Any(b => b.BlockType == BlockType.File),
                     HasLinks = n.Blocks.Any(b => b.BlockType == BlockType.Link),

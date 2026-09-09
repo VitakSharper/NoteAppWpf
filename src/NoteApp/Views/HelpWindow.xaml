@@ -111,6 +111,12 @@
                 <TextBlock Style="{StaticResource Body}"
                            Text="Tags are created inline from the editor, and renamed or deleted from the Tags page in the rail." />
 
+                <TextBlock Style="{StaticResource Section}" Text="Trash" />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="Deleting a note moves it to the trash, and the UNDO button in the message that follows puts it straight back. Open the trash with the Trash toggle next to Tags: notes there can be restored or deleted forever, and Empty trash clears all of it." />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="Only the permanent gestures ask for confirmation, and Settings lets you switch that confirmation off." />
+
                 <TextBlock Style="{StaticResource Section}" Text="Encrypted notes" />
                 <TextBlock Style="{StaticResource Body}"
                            Text="Switch encryption on in the editor and choose a password: the blocks of the note are stored encrypted (AES-GCM, key derived with PBKDF2). In the list the note shows a lock and no preview, and its content is not searchable." />

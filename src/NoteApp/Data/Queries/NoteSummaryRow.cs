@@ -12,6 +12,7 @@ public sealed class NoteSummaryRow
     public bool IsEncrypted { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
+    public DateTime? DeletedAt { get; init; }
     public bool HasText { get; init; }
     public bool HasFiles { get; init; }
     public bool HasLinks { get; init; }

@@ -65,9 +65,10 @@
 
                     <StackPanel Margin="0,0,0,16">
                         <CheckBox IsChecked="{Binding ConfirmNoteDeletion}"
-                                  Content="Confirm before deleting notes"
+                                  Content="Ask before deleting a note permanently"
                                   FontSize="14" />
-                        <TextBlock Text="Show a confirmation dialog before removing a note."
+                        <TextBlock Text="Deleting a note moves it to the trash, where it can be restored. This confirmation guards &quot;Delete forever&quot; and &quot;Empty trash&quot;."
+                                   TextWrapping="Wrap"
                                    Margin="28,4,0,0"
                                    Foreground="{DynamicResource MaterialDesignBodyLight}" />
                     </StackPanel>

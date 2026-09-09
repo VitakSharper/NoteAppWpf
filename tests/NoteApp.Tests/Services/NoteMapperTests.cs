@@ -128,4 +128,20 @@ public class NoteMapperTests
 
         Assert.True(NoteMapper.ToSummary(row, "").IsFailure);
     }
+
+    // The trash view is the only place that gets rows with DeletedAt set; it must
+    // survive the mapping so the list can tell a trashed row from a live one.
+    [Fact]
+    public void ToSummary_CarriesDeletedAt()
+    {
+        var deletedAt = new DateTime(2026, 9, 9, 10, 0, 0, DateTimeKind.Utc);
+        var live = new NoteSummaryRow { Id = Guid.NewGuid(), Title = "Live" };
+        var trashed = new NoteSummaryRow { Id = Guid.NewGuid(), Title = "Trashed", DeletedAt = deletedAt };
+
+        Assert.False(NoteMapper.ToSummary(live, "").Unwrap().IsDeleted);
+
+        var summary = NoteMapper.ToSummary(trashed, "").Unwrap();
+        Assert.True(summary.IsDeleted);
+        Assert.Equal(deletedAt, summary.DeletedAt);
+    }
 }

@@ -32,7 +32,8 @@ public static class NoteMapper
                 row.HasFiles,
                 row.HasLinks,
                 row.CreatedAt,
-                row.UpdatedAt));
+                row.UpdatedAt,
+                row.DeletedAt));
 
     public static NoteEntity ToEntity(Note note) => new()
     {

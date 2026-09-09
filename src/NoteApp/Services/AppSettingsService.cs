@@ -17,13 +17,17 @@ public sealed class AppSettingsService
     public string SettingsFilePath { get; }
     public AppSettings Current { get; private set; }
 
-    public AppSettingsService()
+    public AppSettingsService() : this(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "NoteApp",
+        "settings.json"))
     {
-        SettingsFilePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "NoteApp",
-            "settings.json");
+    }
 
+    // Tests point this at a temporary file; the app uses the parameterless overload.
+    public AppSettingsService(string settingsFilePath)
+    {
+        SettingsFilePath = settingsFilePath;
         Current = Load();
     }
 

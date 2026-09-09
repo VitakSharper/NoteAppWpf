@@ -49,6 +49,10 @@ public partial class NoteListViewModel : ObservableObject
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private NoteSummary? _selectedNote;
     [ObservableProperty] private SortOption _selectedSort = SortOption.UpdatedDesc;
+    // Trash view: the same list, search and filters, over the soft-deleted notes only.
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(EmptyTrashCommand))]
+    private bool _isTrashView;
 
     public IReadOnlyList<NoteTypeFilter> TypeFilters => NoteTypeFilter.AllFilters;
     public IReadOnlyList<SortOption> SortOptions => SortOption.All;
@@ -62,6 +66,8 @@ public partial class NoteListViewModel : ObservableObject
     public event Action<NoteSummary>? EditNoteRequested;
     public event Action? CreateNoteRequested;
     public event Action<string>? ShowMessage;
+    // A snackbar with an action button: the message, and what UNDO does.
+    public event Action<string, Action>? ShowUndoableMessage;
     // The shell closes the editor when the note it holds has just been deleted.
     public event Action<NoteSummary>? NoteDeleted;
 
@@ -75,10 +81,18 @@ public partial class NoteListViewModel : ObservableObject
         _settingsService = settingsService;
     }
 
+    // Trash rows never open: saving a trashed note from the editor would quietly
+    // resurrect it. They are restored or purged from the row menu instead.
     partial void OnSelectedNoteChanged(NoteSummary? value)
     {
-        if (value is not null)
+        if (value is { IsDeleted: false })
             EditNoteRequested?.Invoke(value);
+    }
+
+    partial void OnIsTrashViewChanged(bool value)
+    {
+        SelectedNote = null;
+        LoadNotesCommand.Execute(null);
     }
 
     partial void OnSelectedSortChanged(SortOption value)
@@ -115,13 +129,15 @@ public partial class NoteListViewModel : ObservableObject
             var result = await _noteService.SearchAsync(
                 string.IsNullOrWhiteSpace(SearchText) ? null : SearchText,
                 tagIds,
-                SelectedTypeFilter.Value);
+                SelectedTypeFilter.Value,
+                deletedOnly: IsTrashView);
 
             result.Match(
                 success: notes => Notes = new ObservableCollection<NoteSummary>(notes),
                 failure: error => ShowMessage?.Invoke(error.Message));
 
             ApplySort();
+            EmptyTrashCommand.NotifyCanExecuteChanged();
 
             var tagsResult = await _tagRepository.GetAllAsync();
             tagsResult.Match(
@@ -191,31 +207,78 @@ public partial class NoteListViewModel : ObservableObject
     [RelayCommand]
     private void EditNote(NoteSummary note) => EditNoteRequested?.Invoke(note);
 
+    // Soft delete: no confirmation, the snackbar's UNDO is the safety net.
     [RelayCommand]
     private async Task DeleteNote(NoteSummary note)
     {
-        if (_settingsService.Current.ConfirmNoteDeletion)
+        if (!(await _noteService.DeleteNoteAsync(note.Id)).TryGet(out _, out var error))
         {
-            var confirmation = MessageBox.Show(
-                $"Delete note '{note.Title.Value}'?",
-                "Delete Note",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (confirmation != MessageBoxResult.Yes)
-                return;
+            ShowMessage?.Invoke(error.Message);
+            return;
         }
 
-        var result = await _noteService.DeleteNoteAsync(note.Id);
-        result.Match(
-            success: _ =>
-            {
-                Notes.Remove(note);
-                NoteDeleted?.Invoke(note);
-                ShowMessage?.Invoke($"Note '{note.Title}' deleted.");
-            },
-            failure: error => ShowMessage?.Invoke(error.Message));
+        Notes.Remove(note);
+        NoteDeleted?.Invoke(note);
+        ShowUndoableMessage?.Invoke($"Note '{note.Title}' moved to trash.", () => RestoreNoteCommand.Execute(note));
     }
+
+    // UNDO and the trash row menu. Reloads rather than re-inserting the row: the
+    // current sort and filters decide where — and whether — the note shows up.
+    [RelayCommand]
+    private async Task RestoreNote(NoteSummary note)
+    {
+        if (!(await _noteService.RestoreNoteAsync(note.Id)).TryGet(out _, out var error))
+        {
+            ShowMessage?.Invoke(error.Message);
+            return;
+        }
+
+        await LoadNotes();
+        ShowMessage?.Invoke($"Note '{note.Title}' restored.");
+    }
+
+    [RelayCommand]
+    private async Task PurgeNote(NoteSummary note)
+    {
+        if (!ConfirmPermanentDeletion($"Delete note '{note.Title.Value}' forever? This cannot be undone."))
+            return;
+
+        if (!(await _noteService.PurgeNoteAsync(note.Id)).TryGet(out _, out var error))
+        {
+            ShowMessage?.Invoke(error.Message);
+            return;
+        }
+
+        Notes.Remove(note);
+        EmptyTrashCommand.NotifyCanExecuteChanged();
+        ShowMessage?.Invoke($"Note '{note.Title}' deleted forever.");
+    }
+
+    private bool CanEmptyTrash => IsTrashView && Notes.Count > 0;
+
+    // Purges every trashed note, not only the rows the current search/filters show.
+    [RelayCommand(CanExecute = nameof(CanEmptyTrash))]
+    private async Task EmptyTrash()
+    {
+        if (!ConfirmPermanentDeletion("Delete every note in the trash forever — not only the ones currently shown? This cannot be undone."))
+            return;
+
+        if (!(await _noteService.EmptyTrashAsync()).TryGet(out var count, out var error))
+        {
+            ShowMessage?.Invoke(error.Message);
+            return;
+        }
+
+        Notes.Clear();
+        EmptyTrashCommand.NotifyCanExecuteChanged();
+        ShowMessage?.Invoke($"Trash emptied: {count} note(s) deleted forever.");
+    }
+
+    // The ConfirmNoteDeletion setting guards the permanent gestures only: moving
+    // a note to the trash is undoable and asks nothing.
+    private bool ConfirmPermanentDeletion(string question) =>
+        !_settingsService.Current.ConfirmNoteDeletion
+        || MessageBox.Show(question, "Delete forever", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
 
     [RelayCommand]
     private void CreateNote() => CreateNoteRequested?.Invoke();

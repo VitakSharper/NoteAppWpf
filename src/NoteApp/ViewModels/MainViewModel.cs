@@ -50,6 +50,7 @@ public partial class MainViewModel : ObservableObject
         noteListViewModel.EditNoteRequested += OnEditNoteRequested;
         noteListViewModel.CreateNoteRequested += OnCreateNoteRequested;
         noteListViewModel.ShowMessage += OnShowMessage;
+        noteListViewModel.ShowUndoableMessage += OnShowUndoableMessage;
         noteListViewModel.NoteDeleted += OnNoteDeleted;
 
         tagManagerViewModel.ShowMessage += OnShowMessage;
@@ -278,4 +279,9 @@ public partial class MainViewModel : ObservableObject
     }
 
     private void OnShowMessage(string message) => MessageQueue.Enqueue(message);
+
+    // Longer than the 3 s default: this one carries the only way back from a delete.
+    private void OnShowUndoableMessage(string message, Action undo) =>
+        MessageQueue.Enqueue(message, "UNDO", _ => undo(), (object?)null,
+            promote: false, neverConsiderToBeDuplicate: true, durationOverride: TimeSpan.FromSeconds(6));
 }

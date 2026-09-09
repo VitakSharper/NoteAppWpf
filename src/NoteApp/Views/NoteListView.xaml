@@ -7,6 +7,7 @@
 
     <UserControl.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
+        <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
 
         <SolidColorBrush x:Key="TagBadgeBackground" Color="#E6E8FF" />
         <SolidColorBrush x:Key="TagBadgeForeground" Color="#3A3F8F" />
@@ -47,11 +48,12 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />   <!-- search -->
+            <RowDefinition Height="Auto" />   <!-- type chips -->
+            <RowDefinition Height="Auto" />   <!-- tags toggle · trash · sort -->
+            <RowDefinition Height="Auto" />   <!-- tag filter panel -->
+            <RowDefinition Height="Auto" />   <!-- trash banner -->
+            <RowDefinition Height="*" />      <!-- list -->
         </Grid.RowDefinitions>
 
         <!-- Search: rounded outlined field with the magnifier built in. Enter searches;
@@ -106,6 +108,26 @@
                     </DataTemplate>
                 </ComboBox.ItemTemplate>
             </ComboBox>
+
+            <!-- Trash view toggle: same list, over the soft-deleted notes -->
+            <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding IsTrashView}"
+                          Height="32" Padding="8,4" Cursor="Hand" Margin="4,0,0,0"
+                          ToolTip="Show the trash">
+                <ToggleButton.Style>
+                    <Style TargetType="ToggleButton" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                        <Style.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource MaterialDesignSelection}" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ToggleButton.Style>
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="TrashCanOutline" Width="18" Height="18"
+                                             VerticalAlignment="Center" Margin="0,0,4,0" />
+                    <TextBlock Text="Trash" FontSize="12" VerticalAlignment="Center" />
+                </StackPanel>
+            </ToggleButton>
 
             <ToggleButton x:Name="TagFilterToggle"
                           HorizontalAlignment="Left"
@@ -178,13 +200,31 @@
             </ItemsControl>
         </Border>
 
+        <!-- Trash banner: what this view is, and the one gesture that is permanent -->
+        <Border Grid.Row="4" Margin="16,0,16,8" Padding="12,8"
+                CornerRadius="{StaticResource ControlCornerRadius}"
+                Background="{DynamicResource MaterialDesignSelection}"
+                Visibility="{Binding IsTrashView, Converter={StaticResource BoolToVis}}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Empty trash" Margin="8,0,0,0"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Command="{Binding EmptyTrashCommand}"
+                        Height="28" Padding="10,0" FontSize="12"
+                        ToolTip="Delete every note in the trash forever" />
+                <materialDesign:PackIcon Kind="TrashCanOutline" Width="18" Height="18"
+                                         VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock VerticalAlignment="Center" FontSize="12" TextWrapping="Wrap"
+                           Text="Trash — notes here can be restored or deleted forever." />
+            </DockPanel>
+        </Border>
+
         <!-- Loading -->
-        <ProgressBar Grid.Row="4" IsIndeterminate="True"
+        <ProgressBar Grid.Row="5" IsIndeterminate="True"
                      Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
                      VerticalAlignment="Top" />
 
         <!-- Comfortable single-column note list -->
-        <ListBox Grid.Row="4" ItemsSource="{Binding Notes}" Margin="8,0,8,8"
+        <ListBox Grid.Row="5" ItemsSource="{Binding Notes}" Margin="8,0,8,8"
                  SelectedItem="{Binding SelectedNote}"
                  HorizontalContentAlignment="Stretch"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -203,16 +243,32 @@
                             Padding="14,10" Margin="4,2"
                             Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
                         <Border.ContextMenu>
+                            <!-- Tag = the list view model, DataContext = the row. Live rows get
+                                 Open / Delete (to trash); trashed rows get Restore / Delete forever. -->
                             <ContextMenu>
                                 <MenuItem Header="Open"
+                                          Visibility="{Binding PlacementTarget.Tag.IsTrashView, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource InverseBoolToVis}}"
                                           Command="{Binding PlacementTarget.Tag.OpenNoteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                           CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                                     <MenuItem.Icon><materialDesign:PackIcon Kind="OpenInApp" /></MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="Delete"
+                                          Visibility="{Binding PlacementTarget.Tag.IsTrashView, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource InverseBoolToVis}}"
                                           Command="{Binding PlacementTarget.Tag.DeleteNoteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                           CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                                     <MenuItem.Icon><materialDesign:PackIcon Kind="DeleteOutline" /></MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Restore"
+                                          Visibility="{Binding PlacementTarget.Tag.IsTrashView, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                          Command="{Binding PlacementTarget.Tag.RestoreNoteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                    <MenuItem.Icon><materialDesign:PackIcon Kind="Restore" /></MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Delete forever"
+                                          Visibility="{Binding PlacementTarget.Tag.IsTrashView, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                          Command="{Binding PlacementTarget.Tag.PurgeNoteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                    <MenuItem.Icon><materialDesign:PackIcon Kind="DeleteForever" /></MenuItem.Icon>
                                 </MenuItem>
                             </ContextMenu>
                         </Border.ContextMenu>
@@ -242,7 +298,12 @@
 
                                 <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"
                                            Text="{Binding UpdatedAt, StringFormat='{}{0:MMM dd}'}"
-                                           FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                                           FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                           Visibility="{Binding IsDeleted, Converter={StaticResource InverseBoolToVis}}" />
+                                <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"
+                                           Text="{Binding DeletedAt, StringFormat='Deleted {0:MMM dd}'}"
+                                           FontSize="11" Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                                           Visibility="{Binding IsDeleted, Converter={StaticResource BoolToVis}}" />
 
                                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="6,0,0,0">
                                     <materialDesign:PackIcon Kind="NoteText" Width="13" Height="13" Margin="3,0,0,0"
@@ -312,7 +373,7 @@
         <!-- Empty state: shown once the load finished and came back empty.
              Visibility lives in the style only — a local binding would win over
              the trigger (and the old one was tied to IsLoading, not to Count). -->
-        <StackPanel Grid.Row="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Grid.Row="5" HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel.Style>
                 <Style TargetType="StackPanel">
                     <Setter Property="Visibility" Value="Collapsed" />
@@ -327,12 +388,35 @@
                     </Style.Triggers>
                 </Style>
             </StackPanel.Style>
-            <materialDesign:PackIcon Kind="NoteOff" Width="64" Height="64" HorizontalAlignment="Center"
-                                     Foreground="{DynamicResource MaterialDesignBodyLight}" />
-            <TextBlock Text="No notes found" FontSize="16" HorizontalAlignment="Center" Margin="0,8"
-                       Foreground="{DynamicResource MaterialDesignBodyLight}" />
+            <materialDesign:PackIcon Width="64" Height="64" HorizontalAlignment="Center"
+                                     Foreground="{DynamicResource MaterialDesignBodyLight}">
+                <materialDesign:PackIcon.Style>
+                    <Style TargetType="materialDesign:PackIcon">
+                        <Setter Property="Kind" Value="NoteOff" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsTrashView}" Value="True">
+                                <Setter Property="Kind" Value="TrashCanOutline" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </materialDesign:PackIcon.Style>
+            </materialDesign:PackIcon>
+            <TextBlock FontSize="16" HorizontalAlignment="Center" Margin="0,8"
+                       Foreground="{DynamicResource MaterialDesignBodyLight}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Text" Value="No notes found" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsTrashView}" Value="True">
+                                <Setter Property="Text" Value="Trash is empty" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
             <Button Content="Create your first note" Style="{StaticResource MaterialDesignRaisedButton}"
-                    Command="{Binding CreateNoteCommand}" Margin="0,8" />
+                    Command="{Binding CreateNoteCommand}" Margin="0,8"
+                    Visibility="{Binding IsTrashView, Converter={StaticResource InverseBoolToVis}}" />
         </StackPanel>
     </Grid>
 </UserControl>
