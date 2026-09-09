@@ -31,10 +31,16 @@ public partial class App : Application
 
         // BaseDirectory, not the current directory: the latter depends on how the
         // exe was launched (shortcut, terminal, double-click) and appsettings.json
-        // sits next to the binary.
+        // sits next to the binary. In the published build that binary is a
+        // self-extracting bundle (IncludeAllContentForSelfExtract, see NoteApp.csproj),
+        // so BaseDirectory is the extraction folder in %TEMP% and the copy an operator
+        // drops beside the exe has to be read from ProcessPath as well - last one wins.
+        var exeDirectory = Path.GetDirectoryName(Environment.ProcessPath);
+
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: true)
+            .AddJsonFile(Path.Combine(exeDirectory ?? AppContext.BaseDirectory, "appsettings.json"), optional: true)
             .AddUserSecrets<App>(optional: true)
             .Build();
 

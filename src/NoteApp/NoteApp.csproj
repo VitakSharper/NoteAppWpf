@@ -8,6 +8,12 @@
     <UseWPF>true</UseWPF>
     <UserSecretsId>8573b412-7954-40ff-8f8d-03c5018d4cd3</UserSecretsId>
     <ApplicationIcon>Resources\app.ico</ApplicationIcon>
+    <!-- DacFx (BACPAC export) calls FileVersionInfo.GetVersionInfo(Assembly.Location),
+         and Location is "" inside a single-file bundle, so "Backup Now" fails with
+         ArgumentException "The path is empty. (Parameter 'path')" for every destination.
+         Self-extracting the whole payload gives those assemblies a real path on disk.
+         Non-single-file builds ignore it, so it is safe to set unconditionally. -->
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>

@@ -71,9 +71,22 @@ public sealed class BackupService(string connectionString, string databaseName)
         catch (Exception ex)
         {
             TryCleanupFolder(folderPath);
-            return Result<string, AppError>.Fail(
-                AppError.Io($"Backup failed: {ex.Message}"));
+            return Result<string, AppError>.Fail(AppError.Io(Describe(ex)));
         }
+    }
+
+    // The caller shows this in a one-line snackbar, so name the exception type and
+    // unwrap to the innermost cause: a bare "The path is empty. (Parameter 'path')"
+    // says nothing about which layer threw it.
+    private static string Describe(Exception ex)
+    {
+        var root = ex;
+        while (root.InnerException is not null)
+            root = root.InnerException;
+
+        return ReferenceEquals(root, ex)
+            ? $"{ex.GetType().Name}: {ex.Message}"
+            : $"{ex.GetType().Name}: {ex.Message} -> {root.GetType().Name}: {root.Message}";
     }
 
     private static void TryCleanupFolder(string path)
