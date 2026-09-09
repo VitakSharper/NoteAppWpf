@@ -91,6 +91,10 @@ When modifying note structure or block types, update across all layers:
 
 `BackupService` exports a SQL Server BACPAC via DacFx, then packages it into a password-protected AES-256 zip (SharpZipLib). Triggered from `SettingsViewModel.BackupAsync()`. Output: `NoteApp_<timestamp>.zip` in the configured backup folder (default `AppSettings.DefaultBackupFolderPath`). Intermediate `.bacpac` is deleted after zipping. Returns `Result<string, AppError>`.
 
+### Automatic lock of encrypted notes
+
+`Services/IdleLock.cs` holds the rule and takes the clock as a parameter (so it is unit-tested without waiting): armed while the editor holds a **stored** encrypted note, `Timeout` of zero means "Never". `MainViewModel.RearmEncryptedNoteLock()` re-reads `AppSettings.LockEncryptedNotesAfterMinutes` and arms/disarms on every change of what the editor holds (open, save, close, delete) and when Settings closes; a 15 s `DispatcherTimer` polls `HasExpired` instead of restarting a timer per keystroke. `MainWindow` forwards `PreviewKeyDown`/`PreviewMouseDown`/`PreviewMouseWheel` with `handledEventsToo: true` to `NotifyActivity()`, so input a control consumes still counts. On expiry a dirty note is **saved first** (its password is still in memory, so it stays encrypted) and only then closed; if the save fails validation the editor stays open with its error and the countdown is reset rather than retried every tick.
+
 Settings live in `%LocalAppData%\NoteApp\settings.json` (`AppSettingsService`). The backup password is stored DPAPI-protected for the current Windows user (`BackupPasswordProtected`); a legacy clear-text `BackupPassword` field is still read and upgraded on the next save.
 
 ### Stale Documentation Warning

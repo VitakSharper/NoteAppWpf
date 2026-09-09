@@ -20,7 +20,17 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         Icon = CreateAppIcon();
+
+        // Preview events, handledEventsToo: a keystroke the RichTextBox consumes and a
+        // click a button consumes both still count as the user being here. This is what
+        // postpones the idle lock on an open encrypted note.
+        AddHandler(PreviewKeyDownEvent, new KeyEventHandler(OnUserActivity), handledEventsToo: true);
+        AddHandler(PreviewMouseDownEvent, new MouseButtonEventHandler(OnUserActivity), handledEventsToo: true);
+        AddHandler(PreviewMouseWheelEvent, new MouseWheelEventHandler(OnUserActivity), handledEventsToo: true);
     }
+
+    private void OnUserActivity(object sender, RoutedEventArgs e) =>
+        (DataContext as MainViewModel)?.NotifyActivity();
 
     // Ctrl+F: search the text block the focus is in; from anywhere else, search the notes.
     private void OnFocusSearch(object sender, ExecutedRoutedEventArgs e)

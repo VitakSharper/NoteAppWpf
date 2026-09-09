@@ -124,6 +124,8 @@
                            Text="Switch encryption on in the editor and choose a password: the blocks of the note are stored encrypted (AES-GCM, key derived with PBKDF2). In the list the note shows a lock and no preview, and its content is not searchable." />
                 <TextBlock Style="{StaticResource Body}" FontWeight="SemiBold"
                            Text="The password is asked every time the note is opened and is stored nowhere. A forgotten password means the content cannot be recovered." />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="An open encrypted note also closes itself after a while without a keystroke or a click — five minutes by default, changeable in Settings (Never turns it off). Unsaved changes are saved first, so nothing is lost, and the password is forgotten: reopening the note asks for it again. It keeps a decrypted note off an unattended screen; it is not protection against someone inspecting the computer's memory." />
 
                 <TextBlock Style="{StaticResource Section}" Text="Backup" />
                 <TextBlock Style="{StaticResource Body}"

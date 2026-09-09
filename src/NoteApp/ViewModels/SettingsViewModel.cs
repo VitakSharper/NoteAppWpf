@@ -9,6 +9,24 @@ using NoteApp.Services;
 
 namespace NoteApp.ViewModels;
 
+// The lock delay is picked from a list, so the label lives with the value.
+public sealed record LockTimeoutOption(int Minutes)
+{
+    public override string ToString() => Minutes switch
+    {
+        0 => "Never",
+        1 => "1 minute",
+        _ => $"{Minutes} minutes"
+    };
+
+    public static readonly IReadOnlyList<LockTimeoutOption> All =
+        [new(0), new(1), new(2), new(5), new(10), new(15), new(30)];
+
+    public static LockTimeoutOption For(int minutes) =>
+        All.FirstOrDefault(o => o.Minutes == minutes)
+        ?? All.Single(o => o.Minutes == AppSettings.Default.LockEncryptedNotesAfterMinutes);
+}
+
 public partial class SettingsViewModel : ObservableObject
 {
     private readonly AppSettingsService _settingsService;
@@ -21,8 +39,10 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _backupPassword = "";
     [ObservableProperty] private string _backupFolderPath = AppSettings.DefaultBackupFolderPath;
     [ObservableProperty] private bool _isBackingUp;
+    [ObservableProperty] private LockTimeoutOption _lockTimeout = LockTimeoutOption.For(AppSettings.Default.LockEncryptedNotesAfterMinutes);
 
     public IReadOnlyList<StartupPage> StartupPages { get; } = Enum.GetValues<StartupPage>();
+    public IReadOnlyList<LockTimeoutOption> LockTimeouts { get; } = LockTimeoutOption.All;
     public string SettingsFilePath => _settingsService.SettingsFilePath;
 
     public event Action<string>? ShowMessage;
@@ -51,7 +71,8 @@ public partial class SettingsViewModel : ObservableObject
             StartupPage,
             IsDarkMode,
             BackupPassword,
-            BackupFolderPath));
+            BackupFolderPath,
+            LockTimeout.Minutes));
     }
 
     [RelayCommand]
@@ -128,6 +149,7 @@ public partial class SettingsViewModel : ObservableObject
         IsDarkMode = settings.IsDarkMode;
         BackupPassword = settings.BackupPassword;
         BackupFolderPath = settings.BackupFolderPath;
+        LockTimeout = LockTimeoutOption.For(settings.LockEncryptedNotesAfterMinutes);
     }
 
     public static void ApplyTheme(bool isDark)

@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MaterialDesignThemes.Wpf;
@@ -56,6 +57,11 @@ public partial class MainViewModel : ObservableObject
         tagManagerViewModel.ShowMessage += OnShowMessage;
         settingsViewModel.ShowMessage += OnShowMessage;
         settingsViewModel.CloseRequested += () => IsSettingsOpen = false;
+
+        // Checked four times a minute rather than restarted on every keystroke; it only
+        // runs while an encrypted note is actually open.
+        _lockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+        _lockTimer.Tick += OnLockTimerTick;
 
         // Startup: choose middle pane; Settings.LaunchPage opens the dialog over Notes
         MiddlePaneContent = _settingsService.Current.LaunchPage == StartupPage.Tags
@@ -204,8 +210,10 @@ public partial class MainViewModel : ObservableObject
         else
             await OpenEditorAsync(note, password);
 
-        // A just-created note now has a stored identity: its trash button wakes up.
+        // A just-created note now has a stored identity: its trash button wakes up,
+        // and if it was saved encrypted the idle lock starts watching it.
         DeleteOpenNoteCommand.NotifyCanExecuteChanged();
+        RearmEncryptedNoteLock();
     }
 
     private async Task OpenEditorAsync(Note? note, string? password)
@@ -217,6 +225,7 @@ public partial class MainViewModel : ObservableObject
         editor.SaveCompleted += OnNoteSaved;
         editor.CancelRequested += OnEditorCancelled;
         CurrentEditor = editor;
+        RearmEncryptedNoteLock();
     }
 
     private async void OnEditorCancelled() => await CloseEditorAsync();
@@ -230,6 +239,7 @@ public partial class MainViewModel : ObservableObject
 
         CurrentEditor = null;
         NoteListViewModel.SelectedNote = null;
+        RearmEncryptedNoteLock();
     }
 
     // The note is gone: drop its editor without asking anything, there is
@@ -237,7 +247,17 @@ public partial class MainViewModel : ObservableObject
     private void OnNoteDeleted(NoteSummary deleted)
     {
         if (CurrentEditor is NoteEditorViewModel editor && editor.EditedNoteId == deleted.Id)
+        {
             CurrentEditor = null;
+            RearmEncryptedNoteLock();
+        }
+    }
+
+    // Closing Settings is when a changed lock delay reaches the open note.
+    partial void OnIsSettingsOpenChanged(bool value)
+    {
+        if (!value)
+            RearmEncryptedNoteLock();
     }
 
     // --- Unsaved changes guard ---
@@ -299,6 +319,70 @@ public partial class MainViewModel : ObservableObject
         {
             _suppressEditRequest = false;
         }
+    }
+
+    // --- Automatic lock of the open encrypted note ---
+
+    private readonly IdleLock _encryptedNoteLock = new();
+    private readonly DispatcherTimer _lockTimer;
+
+    // MainWindow forwards every keystroke, click and wheel turn here.
+    public void NotifyActivity() => _encryptedNoteLock.NotifyActivity(DateTime.UtcNow);
+
+    // Called whenever what the editor holds changes, and after Settings closes: the
+    // delay is re-read from the settings each time, so a change applies at once.
+    private void RearmEncryptedNoteLock()
+    {
+        _encryptedNoteLock.Timeout = TimeSpan.FromMinutes(_settingsService.Current.LockEncryptedNotesAfterMinutes);
+
+        // Only a stored encrypted note has decrypted content on screen to protect. A
+        // brand-new note whose encryption box was just ticked is still being written.
+        if (_encryptedNoteLock.IsEnabled && CurrentEditor is NoteEditorViewModel { EditedNote.IsEncrypted: true })
+        {
+            _encryptedNoteLock.Arm(DateTime.UtcNow);
+            _lockTimer.Start();
+        }
+        else
+        {
+            _encryptedNoteLock.Disarm();
+            _lockTimer.Stop();
+        }
+    }
+
+    private async void OnLockTimerTick(object? sender, EventArgs e)
+    {
+        if (!_encryptedNoteLock.HasExpired(DateTime.UtcNow))
+            return;
+
+        if (CurrentEditor is not NoteEditorViewModel { EditedNote.IsEncrypted: true } editor)
+        {
+            RearmEncryptedNoteLock();
+            return;
+        }
+
+        var minutes = _encryptedNoteLock.Timeout.TotalMinutes;
+        var title = editor.Title;
+
+        // The password is still in memory, so a modified note is saved — still
+        // encrypted — instead of being either discarded or left decrypted on screen.
+        if (editor.IsDirty)
+        {
+            await editor.SaveCommand.ExecuteAsync(null);
+
+            if (editor.IsDirty)
+            {
+                // Validation failed (no block, invalid link). Keep the editor and its
+                // error message, and stop re-trying every fifteen seconds.
+                _encryptedNoteLock.NotifyActivity(DateTime.UtcNow);
+                MessageQueue.Enqueue($"'{title}' could not be locked: {editor.ErrorMessage}");
+                return;
+            }
+        }
+
+        CurrentEditor = null;
+        NoteListViewModel.SelectedNote = null;
+        RearmEncryptedNoteLock();
+        MessageQueue.Enqueue($"'{title}' locked after {minutes:0} minute(s) of inactivity.");
     }
 
     private void OnShowMessage(string message) => MessageQueue.Enqueue(message);

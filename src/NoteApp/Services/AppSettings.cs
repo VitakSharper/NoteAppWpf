@@ -13,7 +13,9 @@ public sealed record AppSettings(
     StartupPage LaunchPage,
     bool IsDarkMode,
     string BackupPassword,
-    string BackupFolderPath)
+    string BackupFolderPath,
+    // Minutes of inactivity before an open encrypted note is closed again. 0 = never.
+    int LockEncryptedNotesAfterMinutes)
 {
     public static string DefaultBackupFolderPath { get; } = System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -26,5 +28,6 @@ public sealed record AppSettings(
         LaunchPage: StartupPage.Notes,
         IsDarkMode: false,
         BackupPassword: "",
-        BackupFolderPath: DefaultBackupFolderPath);
+        BackupFolderPath: DefaultBackupFolderPath,
+        LockEncryptedNotesAfterMinutes: 5);
 }
