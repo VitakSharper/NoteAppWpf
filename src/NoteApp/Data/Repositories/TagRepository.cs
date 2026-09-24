@@ -60,6 +60,7 @@ public sealed class TagRepository(IDbContextFactory<NoteDbContext> contextFactor
                 return Result<Tag, AppError>.Fail(AppError.Validation($"Tag '{tag.Name}' already exists."));
 
             entity.Name = tag.Name.Value;
+            entity.Color = tag.Color.ToString();
             await context.SaveChangesAsync();
             return Result<Tag, AppError>.Ok(tag);
         }

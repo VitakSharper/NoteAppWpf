@@ -8,10 +8,9 @@
     <UserControl.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
         <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
+        <converters:TagColorBrushConverter x:Key="TagBrush" />
 
-        <SolidColorBrush x:Key="TagBadgeBackground" Color="#E6E8FF" />
-        <SolidColorBrush x:Key="TagBadgeForeground" Color="#3A3F8F" />
-        <SolidColorBrush x:Key="TagBadgeBorder" Color="#C5CAF5" />
+        <!-- Unselected chips take their tag's colour (Theme/TagPalette); selected ones are solid violet. -->
         <SolidColorBrush x:Key="TagBadgeSelectedBackground" Color="#6C79FF" />
         <SolidColorBrush x:Key="TagBadgeSelectedForeground" Color="#FFFFFF" />
         <SolidColorBrush x:Key="TagBadgeSelectedBorder" Color="#6C79FF" />
@@ -170,14 +169,14 @@
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border x:Name="TagBorder"
-                                            Background="{StaticResource TagBadgeBackground}"
-                                            BorderBrush="{StaticResource TagBadgeBorder}"
+                                            Background="{Binding Tag.Color, Converter={StaticResource TagBrush}, ConverterParameter=Background}"
+                                            BorderBrush="{Binding Tag.Color, Converter={StaticResource TagBrush}, ConverterParameter=Border}"
                                             BorderThickness="1" CornerRadius="12"
                                             Padding="12,4" SnapsToDevicePixels="True">
                                         <TextBlock x:Name="TagText"
                                                    Text="{Binding Name}"
                                                    FontSize="12" FontWeight="SemiBold"
-                                                   Foreground="{StaticResource TagBadgeForeground}"
+                                                   Foreground="{Binding Tag.Color, Converter={StaticResource TagBrush}, ConverterParameter=Foreground}"
                                                    VerticalAlignment="Center" />
                                     </Border>
                                     <ControlTemplate.Triggers>
@@ -388,13 +387,13 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="{StaticResource TagBadgeBackground}"
-                                                BorderBrush="{StaticResource TagBadgeBorder}"
+                                        <Border Background="{Binding Color, Converter={StaticResource TagBrush}, ConverterParameter=Background}"
+                                                BorderBrush="{Binding Color, Converter={StaticResource TagBrush}, ConverterParameter=Border}"
                                                 BorderThickness="1" CornerRadius="9"
                                                 Padding="8,2" Margin="0,0,4,0">
                                             <TextBlock Text="{Binding Name.Value}" FontSize="10"
                                                        FontWeight="SemiBold"
-                                                       Foreground="{StaticResource TagBadgeForeground}" />
+                                                       Foreground="{Binding Color, Converter={StaticResource TagBrush}, ConverterParameter=Foreground}" />
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

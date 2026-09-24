@@ -12,6 +12,7 @@ public sealed class TagConfiguration : IEntityTypeConfiguration<TagEntity>
         builder.HasKey(t => t.Id);
         builder.Property(t => t.Id).ValueGeneratedNever();
         builder.Property(t => t.Name).HasMaxLength(100).IsRequired();
+        builder.Property(t => t.Color).HasMaxLength(20);
         builder.HasIndex(t => t.Name).IsUnique();
     }
 }

@@ -18,6 +18,9 @@ public partial class TagManagerViewModel : ObservableObject
     [ObservableProperty] private string _newTagName = string.Empty;
     [ObservableProperty] private Tag? _editingTag;
     [ObservableProperty] private string _editTagName = string.Empty;
+    [ObservableProperty] private TagColor _editTagColor;
+
+    public IReadOnlyList<NoteApp.Theme.TagSwatch> Palette => NoteApp.Theme.TagPalette.All;
     [ObservableProperty] private bool _isEditing;
     [ObservableProperty] private bool _isLoading;
 
@@ -76,8 +79,12 @@ public partial class TagManagerViewModel : ObservableObject
     {
         EditingTag = tag;
         EditTagName = tag.Name.Value;
+        EditTagColor = tag.Color;
         IsEditing = true;
     }
+
+    [RelayCommand]
+    private void PickColor(TagColor color) => EditTagColor = color;
 
     [RelayCommand]
     private void CancelEdit()
@@ -96,7 +103,8 @@ public partial class TagManagerViewModel : ObservableObject
         await nameResult.Match<Task>(
             success: async name =>
             {
-                var updated = EditingTag with { Name = name };
+                var renamed = name != EditingTag.Name;
+                var updated = EditingTag with { Name = name, Color = EditTagColor };
                 var result = await _tagRepository.UpdateAsync(updated);
                 result.Match(
                     success: _ =>
@@ -104,7 +112,7 @@ public partial class TagManagerViewModel : ObservableObject
                         var index = Tags.IndexOf(EditingTag);
                         if (index >= 0) Tags[index] = updated;
                         CancelEdit();
-                        ShowMessage?.Invoke($"Tag renamed to '{name}'.");
+                        ShowMessage?.Invoke(renamed ? $"Tag renamed to '{name}'." : $"Tag '{name}' updated.");
                     },
                     failure: error => ShowMessage?.Invoke(error.Message));
             },

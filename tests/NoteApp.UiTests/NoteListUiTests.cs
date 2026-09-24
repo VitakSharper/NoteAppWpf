@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows.Controls;
+using NoteApp.Data.Entities;
 using NoteApp.Data.Queries;
 using NoteApp.Data.Repositories;
 using NoteApp.Domain.Functional;
@@ -36,6 +37,26 @@ public class NoteListUiTests
         }
     });
 
+    [Fact]
+    public void Tag_chips_take_their_tags_colour() => Wpf.Run(() =>
+    {
+        var vm = List(("tagged", DateTime.UtcNow, false));
+        var view = new NoteListView { DataContext = vm };
+        var window = Wpf.Show(view, 400, 800);
+        try
+        {
+            Wpf.Pump();
+            var chip = Wpf.Descendants<Border>(view).First(b => b.Child is TextBlock { Text: "blue one" });
+            Assert.Same(NoteApp.Theme.TagPalette.For(TagColor.Blue).Background, chip.Background);
+            var plain = Wpf.Descendants<Border>(view).First(b => b.Child is TextBlock { Text: "plain one" });
+            Assert.Same(NoteApp.Theme.TagPalette.For(TagColor.Violet).Background, plain.Background);
+        }
+        finally
+        {
+            window.Close();
+        }
+    });
+
     private static List<string> Headings(NoteListView view) =>
         Wpf.Descendants<GroupItem>(view)
             .Select(g => ((System.Windows.Data.CollectionViewGroup)g.DataContext).Name as string ?? "")
@@ -57,6 +78,7 @@ public class NoteListUiTests
                 CreatedAt = DateTime.SpecifyKind(n.UpdatedUtc, DateTimeKind.Unspecified),
                 UpdatedAt = DateTime.SpecifyKind(n.UpdatedUtc, DateTimeKind.Unspecified),
                 IsPinned = n.Pinned,
+                Tags = [new TagEntity { Id = Guid.NewGuid(), Name = "blue one", Color = "Blue" }, new TagEntity { Id = Guid.NewGuid(), Name = "plain one" }],
                 HasText = true,
                 FirstTextPlain = "text"
             }).ToList()));

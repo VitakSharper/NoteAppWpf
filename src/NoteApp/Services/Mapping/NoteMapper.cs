@@ -137,10 +137,16 @@ public static class NoteMapper
 public static class TagMapper
 {
     public static Tag ToDomain(TagEntity entity) =>
-        new(entity.Id, TagName.From(entity.Name).Match(
-            success: name => name,
-            failure: _ => TagName.From("unknown").Match(n => n, _ => throw new InvalidOperationException())));
+        new(entity.Id,
+            TagName.From(entity.Name).Match(
+                success: name => name,
+                failure: _ => TagName.From("unknown").Match(n => n, _ => throw new InvalidOperationException())),
+            ColorOf(entity.Color));
 
     public static TagEntity ToEntity(Tag tag) =>
-        new() { Id = tag.Id, Name = tag.Name.Value };
+        new() { Id = tag.Id, Name = tag.Name.Value, Color = tag.Color.ToString() };
+
+    // Null (a tag older than colours) and anything unrecognised read as the old violet.
+    public static TagColor ColorOf(string? stored) =>
+        Enum.TryParse<TagColor>(stored, ignoreCase: true, out var color) && Enum.IsDefined(color) ? color : TagColor.Violet;
 }
