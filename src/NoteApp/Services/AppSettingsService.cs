@@ -69,7 +69,8 @@ public sealed class AppSettingsService
         // rather than "never".
         int? LockEncryptedNotesAfterMinutes,
         AutoBackupInterval? AutoBackup = null,
-        int? KeepBackups = null)
+        int? KeepBackups = null,
+        double? EditorZoom = null)
     {
         public static PersistedSettings From(AppSettings settings) => new(
             settings.ConfirmNoteDeletion,
@@ -81,7 +82,8 @@ public sealed class AppSettingsService
             BackupPassword: null,
             settings.LockEncryptedNotesAfterMinutes,
             settings.AutoBackup,
-            settings.KeepBackups);
+            settings.KeepBackups,
+            settings.EditorZoom);
 
         public AppSettings ToSettings() => new(
             ConfirmNoteDeletion,
@@ -92,7 +94,8 @@ public sealed class AppSettingsService
             string.IsNullOrWhiteSpace(BackupFolderPath) ? AppSettings.DefaultBackupFolderPath : BackupFolderPath,
             LockEncryptedNotesAfterMinutes ?? AppSettings.Default.LockEncryptedNotesAfterMinutes,
             AutoBackup ?? AppSettings.Default.AutoBackup,
-            KeepBackups ?? AppSettings.Default.KeepBackups);
+            KeepBackups ?? AppSettings.Default.KeepBackups,
+            Math.Clamp(EditorZoom ?? AppSettings.Default.EditorZoom, AppSettings.MinEditorZoom, AppSettings.MaxEditorZoom));
 
         private static string? Protect(string value) =>
             string.IsNullOrEmpty(value)

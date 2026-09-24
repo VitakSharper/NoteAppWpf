@@ -55,7 +55,7 @@ public sealed class TagColorBrushConverter : System.Windows.Data.IValueConverter
     public object Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
         var swatch = NoteApp.Theme.TagPalette.For(value is NoteApp.Domain.ValueObjects.TagColor color ? color : default);
-        return parameter as string switch
+        return (parameter as string) switch
         {
             "Foreground" => swatch.Foreground,
             "Border" => swatch.Border,

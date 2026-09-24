@@ -47,7 +47,10 @@ public class NoteListUiTests
         {
             Wpf.Pump();
             var chip = Wpf.Descendants<Border>(view).First(b => b.Child is TextBlock { Text: "blue one" });
-            Assert.Same(NoteApp.Theme.TagPalette.For(TagColor.Blue).Background, chip.Background);
+            var blue = NoteApp.Theme.TagPalette.For(TagColor.Blue);
+            Assert.Same(blue.Background, chip.Background);
+            Assert.Same(blue.Border, chip.BorderBrush);
+            Assert.Same(blue.Foreground, ((TextBlock)chip.Child).Foreground);
             var plain = Wpf.Descendants<Border>(view).First(b => b.Child is TextBlock { Text: "plain one" });
             Assert.Same(NoteApp.Theme.TagPalette.For(TagColor.Violet).Background, plain.Background);
         }

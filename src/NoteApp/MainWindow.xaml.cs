@@ -14,6 +14,10 @@ public partial class MainWindow : Window
 {
     public static readonly RoutedCommand FocusSearchCommand = new(nameof(FocusSearchCommand), typeof(MainWindow));
 
+    // CommandParameter values for ZoomEditorCommand: an int, which XAML literals are not.
+    public static readonly int ZoomIn = 1;
+    public static readonly int ZoomOut = -1;
+
     private bool _closeConfirmed;
 
     public MainWindow()

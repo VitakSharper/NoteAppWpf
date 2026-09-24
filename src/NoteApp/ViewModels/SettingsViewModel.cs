@@ -91,18 +91,22 @@ public partial class SettingsViewModel : ObservableObject
             PersistSettings();
     }
 
+    // From the current settings, not a new record: the ones this form does not show (the
+    // editor zoom, set with Ctrl+wheel) must survive a "Save settings".
     private void PersistSettings()
     {
-        _settingsService.Save(new AppSettings(
-            ConfirmNoteDeletion,
-            ConfirmTagDeletion,
-            StartupPage,
-            IsDarkMode,
-            BackupPassword,
-            BackupFolderPath,
-            LockTimeout.Minutes,
-            AutoBackup,
-            KeepBackups.Count));
+        _settingsService.Save(_settingsService.Current with
+        {
+            ConfirmNoteDeletion = ConfirmNoteDeletion,
+            ConfirmTagDeletion = ConfirmTagDeletion,
+            LaunchPage = StartupPage,
+            IsDarkMode = IsDarkMode,
+            BackupPassword = BackupPassword,
+            BackupFolderPath = BackupFolderPath,
+            LockEncryptedNotesAfterMinutes = LockTimeout.Minutes,
+            AutoBackup = AutoBackup,
+            KeepBackups = KeepBackups.Count
+        });
     }
 
     [RelayCommand]

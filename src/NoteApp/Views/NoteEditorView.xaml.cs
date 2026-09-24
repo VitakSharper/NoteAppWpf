@@ -305,6 +305,17 @@ public partial class NoteEditorView : UserControl
         _searchCurrentIndex.Remove(block.Id);
     }
 
+    // Ctrl+wheel zooms the blocks, anywhere in the editor. Tunnelling from the root, so it
+    // runs before the RichTextBox forwards the wheel to the pane's scroll.
+    private void OnEditorPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.Control || Window.GetWindow(this)?.DataContext is not MainViewModel shell)
+            return;
+
+        e.Handled = true;
+        shell.ZoomEditorCommand.Execute(Math.Sign(e.Delta));
+    }
+
     // Pixels scrolled per wheel notch — WPF's default of three 16px lines.
     private const double WheelPixelsPerNotch = 48;
 

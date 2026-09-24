@@ -28,6 +28,8 @@ public partial class MainViewModel : ObservableObject
     private ObservableObject? _currentEditor;
     // Rail and note list hidden, the editor gets the whole window (MainWindow collapses the columns).
     [ObservableProperty] private bool _isFocusMode;
+    // Scale of the editor's blocks; kept in the settings.
+    [ObservableProperty] private double _editorZoom = 1.0;
     // Settings modal (hosted in RootDialog). The keyboard shortcuts stay inert while
     // it is open: Ctrl+N would otherwise create a note underneath the overlay.
     [ObservableProperty]
@@ -84,6 +86,8 @@ public partial class MainViewModel : ObservableObject
 
         // Once the window is up: the question needs an owner to appear over.
         _ = Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(OfferDraftsLeftBehind));
+
+        EditorZoom = _settingsService.Current.EditorZoom;
 
         // Startup: choose middle pane; Settings.LaunchPage opens the dialog over Notes
         MiddlePaneContent = _settingsService.Current.LaunchPage == StartupPage.Tags
@@ -181,6 +185,27 @@ public partial class MainViewModel : ObservableObject
         }
 
         await CloseEditorAsync();
+    }
+
+    // Ctrl+wheel, Ctrl+plus / Ctrl+minus: 10 % a step, between 50 % and 250 %. Ctrl+0: 100 %.
+    public const double ZoomStep = 0.1;
+
+    [RelayCommand]
+    private void ZoomEditor(int steps) =>
+        SetEditorZoom(Math.Round(EditorZoom + steps * ZoomStep, 1));
+
+    [RelayCommand]
+    private void ResetEditorZoom() => SetEditorZoom(1.0);
+
+    private void SetEditorZoom(double zoom)
+    {
+        zoom = Math.Clamp(zoom, AppSettings.MinEditorZoom, AppSettings.MaxEditorZoom);
+        if (zoom == EditorZoom)
+            return;
+
+        EditorZoom = zoom;
+        _settingsService.Save(_settingsService.Current with { EditorZoom = zoom });
+        MessageQueue.Enqueue($"Zoom {zoom:P0}");
     }
 
     // F11 and the editor header button. Only with a note open: focus on nothing is an empty window.

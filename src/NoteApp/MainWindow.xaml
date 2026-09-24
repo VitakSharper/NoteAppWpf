@@ -24,6 +24,12 @@
         <KeyBinding Gesture="Ctrl+F" Command="{x:Static local:MainWindow.FocusSearchCommand}" />
         <KeyBinding Key="F1" Command="{Binding ShowHelpCommand}" />
         <KeyBinding Key="F11" Command="{Binding ToggleFocusModeCommand}" />
+        <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding ZoomEditorCommand}" CommandParameter="{x:Static local:MainWindow.ZoomIn}" />
+        <KeyBinding Gesture="Ctrl+Add" Command="{Binding ZoomEditorCommand}" CommandParameter="{x:Static local:MainWindow.ZoomIn}" />
+        <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding ZoomEditorCommand}" CommandParameter="{x:Static local:MainWindow.ZoomOut}" />
+        <KeyBinding Gesture="Ctrl+Subtract" Command="{Binding ZoomEditorCommand}" CommandParameter="{x:Static local:MainWindow.ZoomOut}" />
+        <KeyBinding Gesture="Ctrl+D0" Command="{Binding ResetEditorZoomCommand}" />
+        <KeyBinding Gesture="Ctrl+NumPad0" Command="{Binding ResetEditorZoomCommand}" />
     </Window.InputBindings>
     <Window.CommandBindings>
         <!-- Focus is a view concern, hence code-behind rather than a view-model command. -->

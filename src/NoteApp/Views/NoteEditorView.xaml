@@ -8,7 +8,8 @@
              Loaded="OnLoaded"
              AllowDrop="True"
              PreviewDragOver="OnEditorPreviewDragOver"
-             PreviewDrop="OnEditorPreviewDrop">
+             PreviewDrop="OnEditorPreviewDrop"
+             PreviewMouseWheel="OnEditorPreviewMouseWheel">
 
     <UserControl.Resources>
         <converters:FileSizeConverter x:Key="FileSize" />
@@ -426,7 +427,12 @@
 
         <!-- Blocks List -->
         <ScrollViewer Grid.Row="3" x:Name="BlocksScrollViewer" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
-            <ItemsControl ItemsSource="{Binding Blocks}">
+            <!-- Zoomed as a whole (Ctrl+wheel, kept in MainViewModel.EditorZoom): text, images and controls alike. -->
+            <ItemsControl x:Name="BlocksList" ItemsSource="{Binding Blocks}">
+                <ItemsControl.LayoutTransform>
+                    <ScaleTransform ScaleX="{Binding DataContext.EditorZoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=1}"
+                                    ScaleY="{Binding DataContext.EditorZoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=1}" />
+                </ItemsControl.LayoutTransform>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:BlockViewModel}">
                         <!-- Outlined card; the outline turns accent while the block has keyboard focus -->

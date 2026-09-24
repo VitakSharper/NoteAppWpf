@@ -18,8 +18,13 @@ public sealed record AppSettings(
     int LockEncryptedNotesAfterMinutes,
     AutoBackupInterval AutoBackup = AutoBackupInterval.Off,
     // Backups kept when an automatic one runs; 0 = keep them all.
-    int KeepBackups = 10)
+    int KeepBackups = 10,
+    // Scale of the editor's blocks (Ctrl+wheel), 1 = 100 %.
+    double EditorZoom = 1.0)
 {
+    public const double MinEditorZoom = 0.5;
+    public const double MaxEditorZoom = 2.5;
+
     // Computed, not stored: AppPaths.DataFolder is only known once the configuration is read.
     public static string DefaultBackupFolderPath => AppPaths.DefaultBackupFolder;
 
@@ -32,5 +37,6 @@ public sealed record AppSettings(
         BackupFolderPath: DefaultBackupFolderPath,
         LockEncryptedNotesAfterMinutes: 5,
         AutoBackup: AutoBackupInterval.Off,
-        KeepBackups: 10);
+        KeepBackups: 10,
+        EditorZoom: 1.0);
 }
