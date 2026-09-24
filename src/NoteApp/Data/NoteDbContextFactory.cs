@@ -8,8 +8,11 @@ public sealed class NoteDbContextFactory : IDesignTimeDbContextFactory<NoteDbCon
 {
     public NoteDbContext CreateDbContext(string[] args)
     {
+        // Same override as the app (App.EnvironmentPrefix): with NOTEAPP_ConnectionStrings__NoteDb
+        // set, `dotnet ef database update` migrates the scratch database, not the real one.
         var configuration = new ConfigurationBuilder()
             .AddUserSecrets<NoteDbContextFactory>()
+            .AddEnvironmentVariables(App.EnvironmentPrefix)
             .Build();
 
         var connectionString = configuration.GetConnectionString("NoteDb")

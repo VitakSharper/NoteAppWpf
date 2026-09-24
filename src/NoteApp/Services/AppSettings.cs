@@ -17,12 +17,10 @@ public sealed record AppSettings(
     // Minutes of inactivity before an open encrypted note is closed again. 0 = never.
     int LockEncryptedNotesAfterMinutes)
 {
-    public static string DefaultBackupFolderPath { get; } = System.IO.Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "NoteApp",
-        "Backups");
+    // Computed, not stored: AppPaths.DataFolder is only known once the configuration is read.
+    public static string DefaultBackupFolderPath => AppPaths.DefaultBackupFolder;
 
-    public static AppSettings Default { get; } = new(
+    public static AppSettings Default => new(
         ConfirmNoteDeletion: true,
         ConfirmTagDeletion: true,
         LaunchPage: StartupPage.Notes,

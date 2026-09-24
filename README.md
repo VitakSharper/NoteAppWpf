@@ -82,6 +82,19 @@ dotnet test NoteApp.slnx
 
 The tests cover the pure layers (functional core, value objects, mapping, encryption, preview) and need neither a database nor a UI thread.
 
+### 6. Run a test instance (optional)
+
+Environment variables prefixed `NOTEAPP_` and command-line arguments override the user secrets, so a second instance can run against a scratch database without touching your notes:
+
+```powershell
+$env:NOTEAPP_ConnectionStrings__NoteDb = "Server=YOUR_SERVER;Database=noteDb_test;...;TrustServerCertificate=True"
+$env:NOTEAPP_DataFolder = "C:\Temp\NoteAppTest"   # its own settings.json, crash.log, drafts and backups
+dotnet ef database update --project src/NoteApp  # the design-time factory reads the same variable
+dotnet run --project src/NoteApp                 # or: NoteApp.exe --ConnectionStrings:NoteDb="..." --DataFolder="..."
+```
+
+The window title then reads `NoteApp — noteDb_test (test instance)`.
+
 ## Project Structure
 
 ```

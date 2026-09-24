@@ -3,6 +3,8 @@ using System.Windows;
 using System.Windows.Threading;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.CommandLine;
+using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.DependencyInjection;
 using NoteApp.Data;
 using NoteApp.Data.Repositories;
@@ -13,10 +15,7 @@ namespace NoteApp;
 
 public partial class App : Application
 {
-    private static readonly string CrashLogPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "NoteApp",
-        "crash.log");
+    private static string CrashLogPath => AppPaths.CrashLog;
 
     private ServiceProvider? _serviceProvider;
 
@@ -37,12 +36,20 @@ public partial class App : Application
         // drops beside the exe has to be read from ProcessPath as well - last one wins.
         var exeDirectory = Path.GetDirectoryName(Environment.ProcessPath);
 
+        // Environment and command line come last so they can override the user secrets:
+        // NOTEAPP_ConnectionStrings__NoteDb / --ConnectionStrings:NoteDb= point a test
+        // instance at a scratch database, NOTEAPP_DataFolder / --DataFolder= give it its
+        // own settings, crash log, drafts and backups (see AppPaths).
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: true)
             .AddJsonFile(Path.Combine(exeDirectory ?? AppContext.BaseDirectory, "appsettings.json"), optional: true)
             .AddUserSecrets<App>(optional: true)
+            .AddEnvironmentVariables(EnvironmentPrefix)
+            .AddCommandLine(e.Args)
             .Build();
+
+        AppPaths.UseDataFolder(configuration["DataFolder"]);
 
         var services = new ServiceCollection();
 
@@ -78,8 +85,22 @@ public partial class App : Application
         {
             DataContext = _serviceProvider.GetRequiredService<MainViewModel>()
         };
+
+        // A test instance says so in its title bar: two windows that look the same but
+        // write to different databases are an accident waiting to happen.
+        if (IsOverridden(configuration, "ConnectionStrings:NoteDb"))
+            mainWindow.Title = $"NoteApp — {sqlBuilder.InitialCatalog} (test instance)";
+
         mainWindow.Show();
     }
+
+    public const string EnvironmentPrefix = "NOTEAPP_";
+
+    // True when the winning value comes from the environment or the command line
+    // rather than from the files and user secrets a normal launch reads.
+    private static bool IsOverridden(IConfigurationRoot configuration, string key) =>
+        configuration.Providers.Reverse().FirstOrDefault(p => p.TryGet(key, out _))
+            is EnvironmentVariablesConfigurationProvider or CommandLineConfigurationProvider;
 
     protected override void OnExit(ExitEventArgs e)
     {

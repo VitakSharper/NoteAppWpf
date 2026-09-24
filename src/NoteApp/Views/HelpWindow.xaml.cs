@@ -1,7 +1,7 @@
-using System.IO;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Input;
+using NoteApp.Services;
 
 namespace NoteApp.Views;
 
@@ -19,8 +19,7 @@ public partial class HelpWindow : Window
         VersionText.Text = version is null ? string.Empty : $"Version {version.Major}.{version.Minor}.{version.Build}";
 
         // Same folder App.xaml.cs and AppSettingsService write to.
-        DataFolderText.Text = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NoteApp");
+        DataFolderText.Text = AppPaths.DataFolder;
 
         ShortcutsList.ItemsSource = new HelpShortcut[]
         {

@@ -17,10 +17,7 @@ public sealed class AppSettingsService
     public string SettingsFilePath { get; }
     public AppSettings Current { get; private set; }
 
-    public AppSettingsService() : this(Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "NoteApp",
-        "settings.json"))
+    public AppSettingsService() : this(AppPaths.SettingsFile)
     {
     }
 

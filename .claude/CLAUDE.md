@@ -46,7 +46,7 @@ Domain (pure, zero dependencies)
         -> Views (WPF XAML + MaterialDesignInXAML)
 ```
 
-DI is configured in `App.xaml.cs`. Connection string loaded via .NET User Secrets (key: `ConnectionStrings:NoteDb`). `NoteDbContext` is registered with `AddDbContextFactory`; repositories take `IDbContextFactory<NoteDbContext>` and open one short-lived context per operation (everything is resolved from the root provider, so a scoped context would live as long as the app). Unhandled dispatcher exceptions are appended to `%LocalAppData%\NoteApp\crash.log` and shown in a message box instead of killing the app.
+DI is configured in `App.xaml.cs`. Connection string loaded via .NET User Secrets (key: `ConnectionStrings:NoteDb`), overridable by `NOTEAPP_`-prefixed environment variables and command-line arguments (`NOTEAPP_ConnectionStrings__NoteDb`, `NOTEAPP_DataFolder`); the design-time `NoteDbContextFactory` reads the same variables, so `dotnet ef database update` follows them. An overridden connection string puts "(test instance)" in the window title. `Services/AppPaths` owns every path of the app's own files (settings, crash log, drafts, default backups) — never rebuild `%LocalAppData%\NoteApp` by hand, or a test instance writes into the real one's folder. `NoteDbContext` is registered with `AddDbContextFactory`; repositories take `IDbContextFactory<NoteDbContext>` and open one short-lived context per operation (everything is resolved from the root provider, so a scoped context would live as long as the app). Unhandled dispatcher exceptions are appended to `%LocalAppData%\NoteApp\crash.log` and shown in a message box instead of killing the app.
 
 ### Key Patterns
 
