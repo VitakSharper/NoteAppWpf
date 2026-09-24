@@ -29,6 +29,7 @@ public partial class HelpWindow : Window
             new("Esc", "Close the editor (asks first if the note has unsaved changes). Closes Settings when it is open."),
             new("Ctrl + F", "Find in the text block you are typing in; from anywhere else, jump to the note search."),
             new("Ctrl + B / I / U", "Bold, italic, underline in a text block."),
+            new("Ctrl + Click", "Open the web address under the pointer, in a text block, a checklist item or a link block. A plain click edits it."),
             new("Enter", "In the note search: run the search. In a text block find bar: next match (Shift + Enter: previous)."),
             new("F1", "This help.")
         };

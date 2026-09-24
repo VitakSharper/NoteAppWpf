@@ -7,6 +7,7 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **Multi-block notes** — Each note can contain multiple content blocks: rich text, files, links and checklists — all in one note
 - **Checklists** — Tickable items inside a note: Enter adds the next one, done items are struck through, the block counts progress, and item texts are searchable
 - **Rich text editing** — Bold, italic, underline, bullet lists via a toolbar
+- **Clickable links** — Web addresses (`http://`, `https://`, `www.`) in text blocks become links as soon as a space or a new line follows them, and `Ctrl+Click` opens them in the browser — in checklist items and link blocks too, which also get an open button
 - **File attachments** — Browse and attach files stored directly in the database
 - **Block ordering** — Drag-free move up/down to reorder content blocks within a note
 - **Tagging system** — Create, rename, delete tags and assign them to notes
@@ -14,7 +15,7 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **Full CRUD** — Create, read, update, delete notes and tags
 - **Trash with undo** — Deleting a note moves it to the trash and the snackbar offers UNDO; the Trash view restores or deletes forever, and only the permanent gestures ask for confirmation
 - **Unsaved-changes guard** — Leaving a modified note (opening another one, New note, Cancel, closing the window) offers to save, discard, or stay in the editor
-- **Keyboard shortcuts** — `Ctrl+N` new note, `Ctrl+S` save, `Esc` close the editor (or the Settings dialog), `Ctrl+F` search the text block under the cursor or, from anywhere else, the note list; `Ctrl+B/I/U` are native to the rich text box
+- **Keyboard shortcuts** — `Ctrl+N` new note, `Ctrl+S` save, `Esc` close the editor (or the Settings dialog), `Ctrl+F` search the text block under the cursor or, from anywhere else, the note list; `Ctrl+B/I/U` are native to the rich text box; `Ctrl+Click` opens a link
 - **In-app help** — `F1` or the `?` in the rail opens a non-modal help window: getting started, the shortcut table, blocks, search and tags, encryption, backup, and where settings and logs live
 - **Encrypted notes** — Optional per-note password; blocks are stored AES-GCM encrypted (PBKDF2 key derivation)
 - **Automatic lock** — An open encrypted note closes itself after a configurable idle period (default 5 minutes, `Never` to disable), saving unsaved changes first and forgetting the password

@@ -8,7 +8,9 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Win32;
+using NoteApp.Domain.Functional;
 using NoteApp.Domain.Models;
+using NoteApp.Domain.ValueObjects;
 using NoteApp.Services;
 using NoteApp.Services.Export;
 using NoteApp.ViewModels;
@@ -184,6 +186,9 @@ public partial class NoteEditorView : UserControl
     {
         var hadHighlights = ClearHighlights(block.Id);
 
+        // An address typed last, with no space after it yet, is linked before it is stored.
+        RichTextLinks.Linkify(rtb.Document);
+
         block.RichTextContent = SerializeDocument(rtb.Document);
         block.PlainTextContent = new TextRange(rtb.Document.ContentStart, rtb.Document.ContentEnd).Text;
 
@@ -207,8 +212,14 @@ public partial class NoteEditorView : UserControl
 
     private void OnRichTextChanged(object sender, TextChangedEventArgs e)
     {
-        if (_suppressDirty == 0 && DataContext is NoteEditorViewModel vm)
-            vm.MarkDirty();
+        if (_suppressDirty != 0 || DataContext is not NoteEditorViewModel vm)
+            return;
+
+        vm.MarkDirty();
+
+        // Not on undo or redo: undoing an automatic link must not bring it straight back.
+        if (sender is RichTextBox rtb && e.UndoAction is not (UndoAction.Undo or UndoAction.Redo) && EndsAWord(rtb, e.Changes))
+            ScheduleLinkify(rtb);
     }
 
     private void OnRichTextBoxLoaded(object sender, RoutedEventArgs e)
@@ -220,8 +231,13 @@ public partial class NoteEditorView : UserControl
             CommandManager.RemovePreviewExecutedHandler(rtb, OnPreviewPasteExecuted);
             CommandManager.AddPreviewExecutedHandler(rtb, OnPreviewPasteExecuted);
 
+            // Linked on load too: notes written before links existed have their addresses as plain text.
             if (!string.IsNullOrEmpty(block.RichTextContent))
-                WithoutDirtyTracking(() => DeserializeIntoRichTextBox(rtb, block.RichTextContent));
+                WithoutDirtyTracking(() =>
+                {
+                    DeserializeIntoRichTextBox(rtb, block.RichTextContent);
+                    RichTextLinks.Linkify(rtb.Document);
+                });
         }
     }
 
@@ -265,12 +281,81 @@ public partial class NoteEditorView : UserControl
             SyncBlock(block, rtb);
     }
 
+    // --- Links ---
+
+    private readonly HashSet<RichTextBox> _linkifyPending = [];
+
+    // An address is complete once a space, a tab or a new line follows it: linking it on
+    // every keystroke would wrap the first letters of an address still being typed.
+    private static bool EndsAWord(RichTextBox rtb, ICollection<TextChange> changes) =>
+        changes.Any(change => change.AddedLength > 0
+            && rtb.Document.ContentStart.GetPositionAtOffset(change.Offset) is { } start
+            && start.GetPositionAtOffset(change.AddedLength) is { } end
+            && new TextRange(start, end).Text.Any(char.IsWhiteSpace));
+
+    // Deferred until the edit is over (a paste is announced before it lands). The link is not
+    // an edit of its own: the keystroke already marked the note, and a save can come in between.
+    private void ScheduleLinkify(RichTextBox rtb)
+    {
+        if (!_linkifyPending.Add(rtb))
+            return;
+
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        {
+            _linkifyPending.Remove(rtb);
+            WithoutDirtyTracking(() => RichTextLinks.Linkify(rtb.Document));
+        }));
+    }
+
+    // Ctrl+Click opens the link under the pointer, in a text block, a checklist item or a
+    // link block alike; a plain click still places the caret, so a link stays editable.
+    private void OnLinkPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.Control)
+            return;
+
+        if (LinkUnderPointer(sender, e) is Option<LinkUrl>.Some { Value: var url })
+        {
+            OpenLink(url);
+            e.Handled = true;
+        }
+    }
+
+    private static Option<LinkUrl> LinkUnderPointer(object sender, MouseEventArgs e) => sender switch
+    {
+        RichTextBox rtb when rtb.GetPositionFromPoint(e.GetPosition(rtb), snapToText: false) is { } position =>
+            RichTextLinks.LinkAt(position),
+        TextBox box when box.GetCharacterIndexFromPoint(e.GetPosition(box), snapToText: false) is >= 0 and var index =>
+            TextLinks.At(box.Text, index),
+        _ => Option<LinkUrl>.Empty()
+    };
+
+    private void OnOpenChecklistLink(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ChecklistItemViewModel item } && TextLinks.First(item.Text) is Option<LinkUrl>.Some { Value: var url })
+            OpenLink(url);
+    }
+
+    private void OnOpenLinkBlock(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: BlockViewModel block } && LinkUrl.From(block.LinkUrlText).TryGet(out var url, out _))
+            OpenLink(url);
+    }
+
+    private void OpenLink(LinkUrl url) =>
+        LinkLauncher.Open(url).Match(
+            success: _ => { },
+            failure: error => MessageBox.Show(error.Message, "Open link", MessageBoxButton.OK, MessageBoxImage.Warning));
+
     // --- Image paste & insert ---
 
     private void OnPreviewPasteExecuted(object sender, ExecutedRoutedEventArgs e)
     {
         if (e.Command != ApplicationCommands.Paste || sender is not RichTextBox rtb)
             return;
+
+        ScheduleLinkify(rtb);
+
         if (!Clipboard.ContainsImage())
             return;
 

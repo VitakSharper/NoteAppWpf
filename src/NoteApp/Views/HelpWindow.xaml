@@ -99,11 +99,11 @@
 
                 <TextBlock Style="{StaticResource Section}" Text="Notes and blocks" />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="Text blocks are rich text: bold, italic, underline and bullet lists from the toolbar, images pasted from the clipboard or inserted from a file. Each text block has its own find bar (the magnifier, or Ctrl+F while typing in it)." />
+                           Text="Text blocks are rich text: bold, italic, underline and bullet lists from the toolbar, images pasted from the clipboard or inserted from a file. Each text block has its own find bar (the magnifier, or Ctrl+F while typing in it). A web address (http://, https:// or www.) turns into a link once you type a space or a new line after it." />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="File blocks keep the file itself inside the database; Save file to disk writes it back out. Link blocks hold a checked URL and a description." />
+                           Text="File blocks keep the file itself inside the database; Save file to disk writes it back out. Link blocks hold a checked URL and a description; the button next to the URL opens it." />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="Checklist blocks hold tickable items: press Enter in an item to add the next one, tick one to strike it through, and the block counts what is done. Empty items are dropped when the note is saved, and the item texts are searchable like any other text." />
+                           Text="Checklist blocks hold tickable items: press Enter in an item to add the next one, tick one to strike it through, and the block counts what is done. Empty items are dropped when the note is saved, and the item texts are searchable like any other text. An item that holds a web address gets an open button, and an item that is nothing but an address reads as a link." />
                 <TextBlock Style="{StaticResource Body}"
                            Text="The PDF and Word buttons in the editor header export the whole open note: text with its formatting and images, checklists as ticked boxes, links (clickable in Word) and the attached files listed by name — their bytes stay in the database." />
 

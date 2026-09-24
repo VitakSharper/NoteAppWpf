@@ -16,8 +16,16 @@ namespace NoteApp.ViewModels;
 
 public partial class ChecklistItemViewModel : ObservableObject
 {
-    [ObservableProperty] private string _text = string.Empty;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLink), nameof(IsLink))]
+    private string _text = string.Empty;
+
     [ObservableProperty] private bool _isDone;
+
+    // The row shows an open button as soon as the item holds an address, and reads as
+    // a link when the address is all there is.
+    public bool HasLink => TextLinks.Find(Text).Count > 0;
+    public bool IsLink => TextLinks.IsLink(Text);
 }
 
 public partial class BlockViewModel : ObservableObject
@@ -25,7 +33,10 @@ public partial class BlockViewModel : ObservableObject
     [ObservableProperty] private BlockType _blockType;
     [ObservableProperty] private string _richTextContent = string.Empty;
     [ObservableProperty] private string _plainTextContent = string.Empty;
-    [ObservableProperty] private string _linkUrlText = string.Empty;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanOpenLink))]
+    private string _linkUrlText = string.Empty;
+
     [ObservableProperty] private string _linkDescription = string.Empty;
     [ObservableProperty] private string _fileName = string.Empty;
     [ObservableProperty] private long _fileSize;
@@ -37,6 +48,9 @@ public partial class BlockViewModel : ObservableObject
     public ObservableCollection<ChecklistItemViewModel> ChecklistItems { get; } = [];
 
     public string ChecklistSummary => $"{ChecklistItems.Count(i => i.IsDone)}/{ChecklistItems.Count} done";
+
+    // The same rule the save applies, so the open button never offers what cannot be stored.
+    public bool CanOpenLink => LinkUrl.From(LinkUrlText).IsSuccess;
 
     // The block watches its own items so the "2/5 done" line stays true. This is
     // separate from the editor's dirty tracking, which watches the same items for

@@ -99,7 +99,8 @@
                 </Border>
 
                 <!-- The box grows with its content; only the pane scrolls (one scrollbar).
-                     PreviewMouseWheel hands the wheel to the pane, see code-behind. -->
+                     PreviewMouseWheel hands the wheel to the pane, see code-behind.
+                     Addresses become Hyperlinks (RichTextLinks) that open with Ctrl+Click. -->
                 <RichTextBox Grid.Row="2"
                              AcceptsReturn="True" AcceptsTab="True"
                              VerticalScrollBarVisibility="Disabled"
@@ -110,7 +111,19 @@
                              Unloaded="OnRichTextBoxUnloaded"
                              LostFocus="OnRichTextLostFocus"
                              TextChanged="OnRichTextChanged"
-                             PreviewMouseWheel="OnRichTextBoxPreviewMouseWheel" />
+                             PreviewMouseLeftButtonDown="OnLinkPreviewMouseLeftButtonDown"
+                             PreviewMouseWheel="OnRichTextBoxPreviewMouseWheel">
+                    <RichTextBox.Resources>
+                        <!-- The document stays disabled (IsDocumentEnabled is false) so a plain click
+                             edits a link like any text: hence the tooltip on disabled content. -->
+                        <Style TargetType="Hyperlink">
+                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                            <Setter Property="TextDecorations" Value="Underline" />
+                            <Setter Property="ToolTip" Value="Ctrl+Click to open" />
+                            <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+                        </Style>
+                    </RichTextBox.Resources>
+                </RichTextBox>
             </Grid>
         </DataTemplate>
 
@@ -144,15 +157,25 @@
         <!-- Link Block Template -->
         <DataTemplate x:Key="LinkBlockTemplate" DataType="{x:Type vm:BlockViewModel}">
             <StackPanel>
-                <TextBox Text="{Binding LinkUrlText, UpdateSourceTrigger=PropertyChanged}"
-                         materialDesign:HintAssist.Hint="https://example.com"
-                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                         Margin="0,0,0,8" />
+                <DockPanel Margin="0,0,0,8">
+                    <Button DockPanel.Dock="Right" ToolTip="Open in the browser (or Ctrl+Click the address)"
+                            Style="{StaticResource MaterialDesignIconButton}"
+                            Width="36" Height="36" Margin="6,0,0,0"
+                            IsEnabled="{Binding CanOpenLink}"
+                            Tag="{Binding}" Click="OnOpenLinkBlock">
+                        <materialDesign:PackIcon Kind="OpenInNew" Width="20" Height="20" />
+                    </Button>
+                    <TextBox Text="{Binding LinkUrlText, UpdateSourceTrigger=PropertyChanged}"
+                             materialDesign:HintAssist.Hint="https://example.com"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             PreviewMouseLeftButtonDown="OnLinkPreviewMouseLeftButtonDown" />
+                </DockPanel>
                 <TextBox Text="{Binding LinkDescription, UpdateSourceTrigger=PropertyChanged}"
                          materialDesign:HintAssist.Hint="Description (optional)"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}"
                          TextWrapping="Wrap" AcceptsReturn="True"
-                         MinHeight="60" VerticalScrollBarVisibility="Auto" />
+                         MinHeight="60" VerticalScrollBarVisibility="Auto"
+                         PreviewMouseLeftButtonDown="OnLinkPreviewMouseLeftButtonDown" />
             </StackPanel>
         </DataTemplate>
 
@@ -174,16 +197,38 @@
                                         CommandParameter="{Binding}">
                                     <materialDesign:PackIcon Kind="Close" Width="14" Height="14" />
                                 </Button>
+                                <Button DockPanel.Dock="Right" ToolTip="Open link (or Ctrl+Click it)"
+                                        Width="26" Height="26" Margin="4,0,0,0"
+                                        Tag="{Binding}" Click="OnOpenChecklistLink">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignIconButton}">
+                                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasLink}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                    <materialDesign:PackIcon Kind="OpenInNew" Width="14" Height="14" />
+                                </Button>
                                 <!-- Tag carries the item so the code-behind can find and focus
                                      the row it just created (Enter adds one below). -->
                                 <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
                                          Tag="{Binding}"
                                          KeyDown="OnChecklistItemKeyDown"
+                                         PreviewMouseLeftButtonDown="OnLinkPreviewMouseLeftButtonDown"
                                          materialDesign:HintAssist.Hint="List item"
                                          BorderThickness="0" VerticalAlignment="Center" Padding="0,4">
                                     <TextBox.Style>
                                         <Style TargetType="TextBox" BasedOn="{StaticResource MaterialDesignTextBox}">
                                             <Style.Triggers>
+                                                <!-- Before IsDone: a ticked link reads as done first. -->
+                                                <DataTrigger Binding="{Binding IsLink}" Value="True">
+                                                    <Setter Property="TextDecorations" Value="Underline" />
+                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                </DataTrigger>
                                                 <DataTrigger Binding="{Binding IsDone}" Value="True">
                                                     <Setter Property="TextDecorations" Value="Strikethrough" />
                                                     <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
