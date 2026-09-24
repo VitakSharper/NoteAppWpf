@@ -22,6 +22,12 @@ dotnet user-secrets set "ConnectionStrings:NoteDb" "Server=YOUR_SERVER;Database=
 ```
 
 ```bash
+# Publish the single self-contained exe (~95 MB; NoteApp.csproj sets IncludeAllContentForSelfExtract — DacFx
+# needs real assembly paths — and EnableCompressionInSingleFile). Output: bin/Release/net10.0-windows/win-x64/publish/
+dotnet publish src/NoteApp/NoteApp.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+```
+
+```bash
 # Tests (from repo root) — NoteApp.Tests: xUnit on the pure layers (Domain, mapper, encryption, preview, view models); no DB, no UI thread.
 # NoteApp.UiTests: the real WPF views (NoteEditorView...) off-screen on one shared STA dispatcher (tests/NoteApp.UiTests/Wpf.cs),
 # view models on repositories that throw — still no DB. Wrap each test body in Wpf.Run(...), drive typing with OpenEditor.Type.

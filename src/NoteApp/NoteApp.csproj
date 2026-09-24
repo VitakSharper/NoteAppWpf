@@ -14,6 +14,10 @@
          Self-extracting the whole payload gives those assemblies a real path on disk.
          Non-single-file builds ignore it, so it is safe to set unconditionally. -->
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <!-- Single-file publish only: the exe shrinks from ~275 MB to ~95 MB, and since everything
+         is extracted to %TEMP% on first start anyway (above), later starts are unaffected.
+         Checked 2026-09-24: first start 4.2 s (was 11 s), then 1.2 s; the DacFx backup still works. -->
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>
