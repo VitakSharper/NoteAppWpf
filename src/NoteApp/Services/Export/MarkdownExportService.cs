@@ -40,6 +40,12 @@ public static class MarkdownExportService
         {
             switch (element)
             {
+                // The note title is the one "#": the note's own headings start one level below.
+                case DocParagraph { HeadingLevel: > 0 } heading:
+                    markdown.Append(new string('#', heading.HeadingLevel + 1)).Append(' ')
+                        .Append(Escape(string.Concat(heading.Inlines.OfType<DocText>().Select(t => t.Text)).Trim())).Append("\n\n");
+                    break;
+
                 case DocParagraph paragraph:
                     markdown.Append(Inlines(paragraph.Inlines, images, imageFolder)).Append("\n\n");
                     break;
@@ -122,7 +128,9 @@ public static class MarkdownExportService
         var leading = t.Text[..t.Text.IndexOf(core, StringComparison.Ordinal)];
         var trailing = t.Text[(leading.Length + core.Length)..];
 
-        var body = Escape(core);
+        var body = t.IsCode ? Code(core) : Escape(core);
+        if (t.IsStrike) body = $"~~{body}~~";
+        if (t.IsHighlight) body = $"<mark>{body}</mark>";
         if (t.IsBold) body = $"**{body}**";
         if (t.IsItalic) body = $"*{body}*";
         if (t.IsUnderline && t.Link is null) body = $"<u>{body}</u>";
@@ -132,6 +140,25 @@ public static class MarkdownExportService
                 : $"[{body}]({Destination(t.Link)})";
 
         return leading + body + trailing;
+    }
+
+    // A code span is never escaped: its fence just has to be longer than any run of
+    // backticks inside it (CommonMark 6.1), with a space when the text touches a backtick.
+    private static string Code(string text)
+    {
+        var longest = 0;
+        for (var i = 0; i < text.Length;)
+        {
+            var run = 0;
+            while (i + run < text.Length && text[i + run] == '`')
+                run++;
+            longest = Math.Max(longest, run);
+            i += Math.Max(run, 1);
+        }
+
+        var fence = new string('`', longest + 1);
+        var pad = text.StartsWith('`') || text.EndsWith('`') ? " " : "";
+        return fence + pad + text + pad + fence;
     }
 
     private static string TextWithLinks(string text) =>

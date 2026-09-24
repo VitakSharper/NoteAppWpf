@@ -44,6 +44,10 @@ public static class WordExportService
         {
             switch (element)
             {
+                case DocParagraph { HeadingLevel: > 0 } heading:
+                    body.Append(HeadingParagraph(heading));
+                    break;
+
                 case DocParagraph paragraph:
                     body.Append(BuildParagraph(paragraph.Inlines, main, ref images, indented: false));
                     break;
@@ -94,6 +98,26 @@ public static class WordExportService
                 new RunProperties(new Bold(), new Color { Val = "1F3A93" }, new FontSize { Val = "40" }), // half-points: 20 pt
                 PreservedText(title)));
 
+    // No styles part to hold Heading 1-3: the look is on the runs, and the outline level makes
+    // the headings show in Word's navigation pane all the same.
+    private static Paragraph HeadingParagraph(DocParagraph heading)
+    {
+        var size = heading.HeadingLevel switch { 1 => "32", 2 => "28", _ => "24" }; // half-points
+        var paragraph = new Paragraph(new ParagraphProperties(
+            new KeepNext(),
+            new SpacingBetweenLines { Before = "240", After = "120" },
+            new OutlineLevel { Val = heading.HeadingLevel - 1 }));
+
+        foreach (var text in heading.Inlines.OfType<DocText>())
+        {
+            var properties = new RunProperties(new Bold(), new FontSize { Val = size });
+            if (text.IsItalic) properties.Append(new Italic());
+            paragraph.Append(new Run(Sorted(properties), PreservedText(text.Text)));
+        }
+
+        return paragraph;
+    }
+
     private static Paragraph BuildParagraph(IReadOnlyList<DocInline> inlines, MainDocumentPart main, ref int images, bool indented)
     {
         var paragraph = new Paragraph();
@@ -132,7 +156,30 @@ public static class WordExportService
         var properties = LinkProperties();
         if (text.IsBold) properties.Append(new Bold());
         if (text.IsItalic) properties.Append(new Italic());
-        return Hyperlinked(new Run(properties, PreservedText(text.Text)), uri, main);
+        AppendExtras(properties, text);
+        return Hyperlinked(new Run(Sorted(properties), PreservedText(text.Text)), uri, main);
+    }
+
+    // Strikethrough, highlighter and inline code.
+    private static void AppendExtras(RunProperties properties, DocText text)
+    {
+        if (text.IsCode) properties.Append(new RunFonts { Ascii = "Consolas", HighAnsi = "Consolas", ComplexScript = "Consolas" });
+        if (text.IsStrike) properties.Append(new Strike());
+        if (text.IsHighlight) properties.Append(new Highlight { Val = HighlightColorValues.Yellow });
+    }
+
+    // w:rPr is a schema sequence, and Word calls a file damaged when its children come out of
+    // order (a link's colour and underline, then bold...): they are always written sorted.
+    private static readonly Type[] RunPropertyOrder =
+        [typeof(RunFonts), typeof(Bold), typeof(Italic), typeof(Strike), typeof(Color), typeof(FontSize), typeof(Highlight), typeof(Underline)];
+
+    private static RunProperties Sorted(RunProperties properties)
+    {
+        var children = properties.ChildElements.ToList();
+        properties.RemoveAllChildren();
+        foreach (var child in children.OrderBy(c => Array.IndexOf(RunPropertyOrder, c.GetType())))
+            properties.Append(child);
+        return properties;
     }
 
     private static Hyperlink Hyperlinked(Run run, Uri uri, MainDocumentPart main) =>
@@ -146,11 +193,12 @@ public static class WordExportService
         var properties = new RunProperties();
         if (text.IsBold) properties.Append(new Bold());
         if (text.IsItalic) properties.Append(new Italic());
+        AppendExtras(properties, text);
         if (text.IsUnderline) properties.Append(new Underline { Val = UnderlineValues.Single });
 
         var run = new Run();
         if (properties.HasChildren)
-            run.Append(properties);
+            run.Append(Sorted(properties));
         run.Append(PreservedText(text.Text));
         return run;
     }
@@ -194,7 +242,7 @@ public static class WordExportService
                 var properties = LinkProperties();
                 if (item.IsDone)
                     properties.Append(new Strike());
-                paragraph.Append(Hyperlinked(new Run(properties, PreservedText(text)), uri, main));
+                paragraph.Append(Hyperlinked(new Run(Sorted(properties), PreservedText(text)), uri, main));
             }
             else
             {

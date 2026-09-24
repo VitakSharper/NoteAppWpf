@@ -28,6 +28,8 @@ public partial class HelpWindow : Window
             new("Esc", "Close the editor (asks first if the note has unsaved changes). Closes Settings when it is open, and leaves focus mode first when it is on."),
             new("Ctrl + F", "Find in the text block you are typing in; from anywhere else, jump to the note search."),
             new("Ctrl + B / I / U", "Bold, italic, underline in a text block."),
+            new("Ctrl + Shift + X / H / C", "Strikethrough, highlighter, inline code in a text block (again to take it off)."),
+            new("# ,  - ,  1. ,  [] ", "Typed at the start of a line of a text block, then a space: a heading (## and ### for smaller ones), a bullet list, a numbered list, a checklist block."),
             new("Click / Alt + Click", "In a text block: a click opens a link, Alt + Click puts the cursor in it to edit its text."),
             new("Ctrl + Click", "Opens the web address under the pointer anywhere — also in a checklist item or a link block, where a plain click edits."),
             new("Enter", "In the note search: run the search. In a text block find bar: next match (Shift + Enter: previous)."),

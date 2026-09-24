@@ -99,7 +99,7 @@
 
                 <TextBlock Style="{StaticResource Section}" Text="Notes and blocks" />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="Text blocks are rich text: bold, italic, underline, bullet and numbered lists from the toolbar, images pasted from the clipboard or inserted from a file. Each text block has its own find bar (the magnifier, or Ctrl+F while typing in it). A web address (http://, https:// or www.) turns into a link once you type a space or a new line after it; click it to open it, or Alt+Click to put the cursor in it." />
+                           Text="Text blocks are rich text: bold, italic, underline, strikethrough, the highlighter, inline code, three sizes of heading, bullet and numbered lists from the toolbar, images pasted from the clipboard or inserted from a file. Markdown's line starters work too: type #, ## or ### and a space at the start of a line for a heading, - for bullets, 1. for numbering, or [] to turn the line into a checklist block (Ctrl+Z gives the typed characters back); Enter after a heading goes back to body text. Each text block has its own find bar (the magnifier, or Ctrl+F while typing in it). A web address (http://, https:// or www.) turns into a link once you type a space or a new line after it; click it to open it, or Alt+Click to put the cursor in it." />
                 <TextBlock Style="{StaticResource Body}"
                            Text="File blocks keep the file itself inside the database; Save file to disk writes it back out. Link blocks hold a checked URL and a description; the button next to the URL opens it." />
                 <TextBlock Style="{StaticResource Body}"

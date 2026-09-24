@@ -500,6 +500,26 @@ public partial class NoteEditorViewModel : ObservableObject
         return item;
     }
 
+    // "[] " typed at the start of a line of a text block (NoteEditorView): that line becomes
+    // the first item of a checklist right below the block, and what followed the line moves
+    // into a text block of its own below the checklist. A text block left empty goes away.
+    public ChecklistItemViewModel SplitIntoChecklist(BlockViewModel textBlock, string firstItem, string? tailRichText, bool dropTextBlock)
+    {
+        var index = Blocks.IndexOf(textBlock);
+        var item = new ChecklistItemViewModel { Text = firstItem };
+        var checklist = new BlockViewModel { BlockType = BlockType.Checklist };
+        checklist.ChecklistItems.Add(item);
+
+        Blocks.Insert(index + 1, checklist);
+        if (tailRichText is not null)
+            Blocks.Insert(index + 2, new BlockViewModel { BlockType = BlockType.Text, RichTextContent = tailRichText });
+        if (dropTextBlock)
+            Blocks.Remove(textBlock);
+
+        SelectedBlock = checklist;
+        return item;
+    }
+
     // Alt+Up / Alt+Down in an item: it swaps places with the next visible row that way, so
     // with "Hide done" on it hops over the hidden ticked items instead of seeming stuck.
     // false when it is already at that end of its list.

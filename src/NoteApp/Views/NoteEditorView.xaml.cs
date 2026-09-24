@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Markup;
@@ -25,6 +26,9 @@ public partial class NoteEditorView : UserControl
     private readonly Dictionary<Guid, TextBlock> _searchStatusBlocks = [];
     private readonly Dictionary<Guid, List<TextRange>> _searchMatches = [];
     private readonly Dictionary<Guid, int> _searchCurrentIndex = [];
+    // The highlighter marks under the matches: the find bar paints with the same Background
+    // property, so clearing its colours would wipe them — they are put back instead.
+    private readonly Dictionary<Guid, List<(TextRange Range, Brush Mark)>> _marksUnderMatches = [];
     private DispatcherTimer? _searchDebounceTimer;
     private Guid _pendingSearchBlockId;
     private string _pendingSearchText = string.Empty;
@@ -102,6 +106,7 @@ public partial class NoteEditorView : UserControl
         _searchStatusBlocks.Clear();
         _searchMatches.Clear();
         _searchCurrentIndex.Clear();
+        _marksUnderMatches.Clear();
         _searchDebounceTimer?.Stop();
     }
 
@@ -241,9 +246,12 @@ public partial class NoteEditorView : UserControl
 
         vm.MarkDirty();
 
-        // Not on undo or redo: undoing an automatic link must not bring it straight back.
+        // Not on undo or redo: undoing an automatic link (or heading) must not bring it straight back.
         if (sender is RichTextBox rtb && e.UndoAction is not (UndoAction.Undo or UndoAction.Redo) && EndsAWord(rtb, e.Changes))
+        {
             ScheduleLinkify(rtb);
+            ScheduleLineShortcut(rtb);
+        }
     }
 
     private void OnRichTextBoxLoaded(object sender, RoutedEventArgs e)
@@ -317,6 +325,7 @@ public partial class NoteEditorView : UserControl
         _searchStatusBlocks.Remove(block.Id);
         _searchMatches.Remove(block.Id);
         _searchCurrentIndex.Remove(block.Id);
+        _marksUnderMatches.Remove(block.Id);
     }
 
     // Ctrl+wheel zooms the blocks, anywhere in the editor. Tunnelling from the root, so it
@@ -659,6 +668,285 @@ public partial class NoteEditorView : UserControl
             current == TextDecorations.Underline ? null : TextDecorations.Underline);
     }
 
+    private void OnStrikethrough(object sender, RoutedEventArgs e)
+    {
+        if (FindRichTextBox(sender) is { } rtb)
+            ToggleStrikethrough(rtb);
+    }
+
+    private void OnHighlight(object sender, RoutedEventArgs e)
+    {
+        if (FindRichTextBox(sender) is { } rtb)
+            WithSearchPaused(rtb, () => ToggleHighlight(rtb));
+    }
+
+    // The find bar paints with the highlighter's property: its colours come off first, and go
+    // back on over the new marks, which it then remembers as the ones to restore.
+    private void WithSearchPaused(RichTextBox rtb, Action change)
+    {
+        if (rtb.Tag is not BlockViewModel block || !ClearHighlights(block.Id))
+        {
+            change();
+            return;
+        }
+
+        change();
+        if (_searchMatches.TryGetValue(block.Id, out var matches))
+            _marksUnderMatches[block.Id] = matches.SelectMany(MarksUnder).ToList();
+        ReapplyHighlights(block.Id);
+    }
+
+    private void OnInlineCode(object sender, RoutedEventArgs e)
+    {
+        if (FindRichTextBox(sender) is { } rtb)
+            ToggleInlineCode(rtb);
+    }
+
+    internal static void ToggleStrikethrough(RichTextBox rtb) =>
+        RichTextFormat.ToggleDecoration(rtb.Selection, TextDecorationLocation.Strikethrough);
+
+    // On when the selection starts in unmarked text, off when it starts in marked text: a
+    // highlighter mark can sit on a span as well as on its runs, so the runs' own value
+    // alone would not tell.
+    internal static void ToggleHighlight(RichTextBox rtb)
+    {
+        var selection = rtb.Selection;
+        var marked = selection.Start.GetInsertionPosition(LogicalDirection.Forward).Parent is TextElement element
+            && RichTextFormat.IsHighlighted(element);
+        if (!marked)
+        {
+            selection.ApplyPropertyValue(TextElement.BackgroundProperty, RichTextFormat.Highlighter);
+            return;
+        }
+
+        rtb.BeginChange();
+        try
+        {
+            selection.ApplyPropertyValue(TextElement.BackgroundProperty, null);
+            foreach (var span in SpansWithin(rtb.Document, selection))
+                span.ClearValue(TextElement.BackgroundProperty);
+        }
+        finally
+        {
+            rtb.EndChange();
+        }
+    }
+
+    // Spans whose text lies within the selection, whatever part of the tree they are in.
+    private static IEnumerable<Span> SpansWithin(FlowDocument document, TextRange range) =>
+        RichTextFormat.InlinesOf(document)
+            .OfType<Span>()
+            .Where(s => s.ContentStart.CompareTo(range.Start) >= 0 && s.ContentEnd.CompareTo(range.End) <= 0)
+            .ToList();
+
+    internal static void ToggleInlineCode(RichTextBox rtb)
+    {
+        var selection = rtb.Selection;
+        var isCode = selection.GetPropertyValue(TextElement.FontFamilyProperty) is FontFamily family
+            && family.Source.Equals(RichTextFormat.CodeFont.Source, StringComparison.OrdinalIgnoreCase);
+        selection.ApplyPropertyValue(TextElement.FontFamilyProperty, isCode ? rtb.Document.FontFamily : RichTextFormat.CodeFont);
+    }
+
+    private void OnHeadingMenu(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || FindRichTextBox(sender) is not { } rtb)
+            return;
+
+        var menu = new ContextMenu { PlacementTarget = button, Placement = PlacementMode.Bottom };
+        foreach (var (label, level) in new[] { ("Heading 1", 1), ("Heading 2", 2), ("Heading 3", 3), ("Normal text", 0) })
+        {
+            var item = new MenuItem { Header = label, InputGestureText = level == 0 ? "" : new string('#', level) + " + space" };
+            item.Click += (_, _) =>
+            {
+                ApplyHeading(rtb, level);
+                rtb.Focus();
+            };
+            menu.Items.Add(item);
+        }
+
+        menu.IsOpen = true;
+    }
+
+    // Every top-level paragraph the selection touches; list items keep their own look.
+    internal static void ApplyHeading(RichTextBox rtb, int level)
+    {
+        var start = rtb.Selection.Start.Paragraph;
+        var end = rtb.Selection.End.Paragraph;
+        if (start is null || end is null)
+            return;
+
+        rtb.BeginChange();
+        try
+        {
+            var inRange = false;
+            foreach (var paragraph in rtb.Document.Blocks.OfType<Paragraph>().ToList())
+            {
+                inRange |= ReferenceEquals(paragraph, start);
+                if (inRange)
+                    RichTextFormat.SetHeading(paragraph, level);
+                if (ReferenceEquals(paragraph, end))
+                    break;
+            }
+        }
+        finally
+        {
+            rtb.EndChange();
+        }
+    }
+
+    private void OnRichTextPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not RichTextBox rtb)
+            return;
+
+        if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
+        {
+            Action<RichTextBox>? toggle = e.Key switch
+            {
+                Key.X => ToggleStrikethrough,
+                Key.H => box => WithSearchPaused(box, () => ToggleHighlight(box)),
+                Key.C => ToggleInlineCode,
+                _ => null
+            };
+            if (toggle is not null)
+            {
+                toggle(rtb);
+                e.Handled = true;
+            }
+            return;
+        }
+
+        // Enter at the end of a heading: the new line is body text, as in any word processor
+        // (WPF would copy the heading's size and weight onto it).
+        if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None
+            && rtb.CaretPosition.Paragraph is { } heading && RichTextFormat.HeadingLevel(heading) > 0
+            && string.IsNullOrWhiteSpace(new TextRange(rtb.CaretPosition, heading.ContentEnd).Text))
+        {
+            _ = Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                if (rtb.CaretPosition.Paragraph is { } line && !ReferenceEquals(line, heading)
+                    && new TextRange(line.ContentStart, line.ContentEnd).Text.Length == 0)
+                    RichTextFormat.SetHeading(line, 0);
+            }));
+        }
+    }
+
+    // --- Markdown line starters (LineShortcuts): "# " … "### ", "- ", "1. ", "[] " ---
+
+    private readonly HashSet<RichTextBox> _lineShortcutPending = [];
+
+    // Same deferral as the linkify: the space has to have landed.
+    private void ScheduleLineShortcut(RichTextBox rtb)
+    {
+        if (!_lineShortcutPending.Add(rtb))
+            return;
+
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        {
+            _lineShortcutPending.Remove(rtb);
+            ApplyLineShortcut(rtb);
+        }));
+    }
+
+    // Only a top-level paragraph whose text up to the caret is exactly a starter: a starter
+    // typed inside a list, or after other text, stays text.
+    internal void ApplyLineShortcut(RichTextBox rtb)
+    {
+        var caret = rtb.CaretPosition;
+        if (!rtb.Selection.IsEmpty || caret.Paragraph is not { Parent: FlowDocument } paragraph)
+            return;
+
+        var shortcut = LineShortcuts.For(new TextRange(paragraph.ContentStart, caret).Text);
+        if (shortcut == LineShortcut.None)
+            return;
+
+        if (shortcut == LineShortcut.Checklist)
+        {
+            if (rtb.Tag is BlockViewModel block)
+                SplitIntoChecklist(rtb, block, paragraph, caret);
+            return;
+        }
+
+        // One undo step: Ctrl+Z gives the typed "# " back.
+        rtb.BeginChange();
+        try
+        {
+            new TextRange(paragraph.ContentStart, caret).Text = string.Empty;
+            switch (shortcut)
+            {
+                case LineShortcut.Bullets:
+                    EditingCommands.ToggleBullets.Execute(null, rtb);
+                    break;
+                case LineShortcut.Numbering:
+                    EditingCommands.ToggleNumbering.Execute(null, rtb);
+                    break;
+                default:
+                    RichTextFormat.SetHeading(paragraph, LineShortcuts.HeadingLevel(shortcut));
+                    break;
+            }
+        }
+        finally
+        {
+            rtb.EndChange();
+        }
+    }
+
+    // "[] " starts a checklist: the rest of the line becomes its first item, right below this
+    // block, and the lines after it move into a text block of their own below the checklist.
+    private void SplitIntoChecklist(RichTextBox rtb, BlockViewModel block, Paragraph paragraph, TextPointer caret)
+    {
+        if (DataContext is not NoteEditorViewModel vm)
+            return;
+
+        var document = rtb.Document;
+        var itemText = new TextRange(caret, paragraph.ContentEnd).Text.Trim();
+        var following = document.Blocks.SkipWhile(b => !ReferenceEquals(b, paragraph)).Skip(1).ToList();
+        var tail = following.Count > 0 && HasContent(new TextRange(following[0].ContentStart, document.ContentEnd))
+            ? SerializeRange(new TextRange(following[0].ElementStart, document.ContentEnd))
+            : null;
+
+        foreach (var gone in following.Prepend(paragraph))
+            document.Blocks.Remove(gone);
+        var nothingLeft = !HasContent(new TextRange(document.ContentStart, document.ContentEnd));
+        if (document.Blocks.Count == 0)
+            document.Blocks.Add(new Paragraph());
+
+        SyncBlock(block, rtb);
+        var item = vm.SplitIntoChecklist(block, itemText, tail, dropTextBlock: nothingLeft);
+
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            if (FindChecklistTextBox(BlocksScrollViewer, item) is not { } box)
+                return;
+
+            box.Focus();
+            box.CaretIndex = box.Text.Length;
+        }));
+    }
+
+    // Text that is not blank, or an image.
+    private static bool HasContent(TextRange range)
+    {
+        if (!string.IsNullOrWhiteSpace(range.Text))
+            return true;
+
+        for (var position = range.Start; position is not null && position.CompareTo(range.End) < 0;
+             position = position.GetNextContextPosition(LogicalDirection.Forward))
+        {
+            if (position.GetPointerContext(LogicalDirection.Forward) == TextPointerContext.EmbeddedElement)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static string SerializeRange(TextRange range)
+    {
+        using var ms = new MemoryStream();
+        range.Save(ms, DataFormats.XamlPackage);
+        return Convert.ToBase64String(ms.ToArray());
+    }
+
     private void OnBulletList(object sender, RoutedEventArgs e)
     {
         var rtb = FindRichTextBox(sender);
@@ -738,6 +1026,7 @@ public partial class NoteEditorView : UserControl
         ClearHighlights(blockId);
         _searchMatches.Remove(blockId);
         _searchCurrentIndex.Remove(blockId);
+        _marksUnderMatches.Remove(blockId);
 
         if (_searchBars.TryGetValue(blockId, out var bar))
             bar.Visibility = Visibility.Collapsed;
@@ -821,6 +1110,7 @@ public partial class NoteEditorView : UserControl
         ClearHighlights(blockId);
         _searchMatches.Remove(blockId);
         _searchCurrentIndex.Remove(blockId);
+        _marksUnderMatches.Remove(blockId);
 
         if (string.IsNullOrEmpty(searchText) || !_richTextBoxes.TryGetValue(blockId, out var rtb))
         {
@@ -830,6 +1120,7 @@ public partial class NoteEditorView : UserControl
 
         var matches = FindAllMatches(rtb.Document, searchText);
         _searchMatches[blockId] = matches;
+        _marksUnderMatches[blockId] = matches.SelectMany(MarksUnder).ToList();
 
         if (matches.Count > 0)
         {
@@ -929,9 +1220,41 @@ public partial class NoteEditorView : UserControl
         {
             foreach (var match in matches)
                 match.ApplyPropertyValue(TextElement.BackgroundProperty, null);
+            foreach (var (range, mark) in _marksUnderMatches.GetValueOrDefault(blockId) ?? [])
+                range.ApplyPropertyValue(TextElement.BackgroundProperty, mark);
         });
 
         return true;
+    }
+
+    // Each stretch of a match that sits in marked text (on its run, or a span around it), with
+    // the mark it had.
+    private static IEnumerable<(TextRange Range, Brush Mark)> MarksUnder(TextRange match)
+    {
+        var marks = new List<(TextRange, Brush)>();
+        for (var position = match.Start; position.CompareTo(match.End) < 0;)
+        {
+            var next = position.GetNextContextPosition(LogicalDirection.Forward);
+            if (next is null)
+                break;
+
+            if (position.GetPointerContext(LogicalDirection.Forward) == TextPointerContext.Text && MarkOf(position.Parent) is { } mark)
+                marks.Add((new TextRange(position, next.CompareTo(match.End) > 0 ? match.End : next), mark));
+            position = next;
+        }
+
+        return marks;
+    }
+
+    private static Brush? MarkOf(DependencyObject? node)
+    {
+        for (; node is Inline inline; node = inline.Parent)
+        {
+            if (inline.ReadLocalValue(TextElement.BackgroundProperty) is Brush brush)
+                return brush;
+        }
+
+        return null;
     }
 
     private void ReapplyHighlights(Guid blockId)

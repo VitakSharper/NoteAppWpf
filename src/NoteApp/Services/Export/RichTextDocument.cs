@@ -84,7 +84,7 @@ public static class RichTextDocument
             switch (block)
             {
                 case Paragraph paragraph:
-                    elements.Add(new DocParagraph(ExtractInlines(paragraph.Inlines)));
+                    elements.Add(new DocParagraph(ExtractInlines(paragraph.Inlines), RichTextFormat.HeadingLevel(paragraph)));
                     break;
 
                 case List list:
@@ -123,13 +123,17 @@ public static class RichTextDocument
         {
             switch (inline)
             {
+                // A heading is bold as a whole: its runs are not "bold text" on top of that.
                 case Run run when !string.IsNullOrEmpty(run.Text):
                     result.Add(new DocText(
                         run.Text,
-                        run.FontWeight == FontWeights.Bold,
+                        run.FontWeight == FontWeights.Bold && !(run.Parent is Paragraph p && RichTextFormat.HeadingLevel(p) > 0),
                         run.FontStyle == FontStyles.Italic,
-                        run.TextDecorations?.Contains(TextDecorations.Underline[0]) == true,
-                        link));
+                        RichTextFormat.HasDecoration(run, TextDecorationLocation.Underline),
+                        link,
+                        IsStrike: RichTextFormat.HasDecoration(run, TextDecorationLocation.Strikethrough),
+                        IsHighlight: RichTextFormat.IsHighlighted(run),
+                        IsCode: RichTextFormat.IsCode(run)));
                     break;
 
                 case Hyperlink hyperlink:

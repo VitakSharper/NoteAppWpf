@@ -1,5 +1,6 @@
 using System.IO;
 using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Validation;
 using DocumentFormat.OpenXml.Wordprocessing;
 using NoteApp.Services.Export;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
@@ -94,6 +95,64 @@ public class WordExportServiceTests
         var item = body.Elements<Paragraph>().Last();
         Assert.Equal("☑ read https://mid.example.com/a later", item.InnerText);
         Assert.All(item.Descendants<Run>(), r => Assert.NotNull(r.RunProperties?.Strike));
+    }
+
+    [Fact]
+    public void Headings_strikethrough_highlights_and_code_keep_their_look()
+    {
+        DocElement[] elements =
+        [
+            new DocParagraph([new DocText("Plan", false, false, false)], HeadingLevel: 2),
+            new DocParagraph([
+                new DocText("gone", false, false, false, IsStrike: true),
+                new DocText("key", false, false, false, IsHighlight: true),
+                new DocText("code", false, false, false, IsCode: true)])
+        ];
+        using var stream = new MemoryStream();
+
+        WordExportService.Render("Note", elements, stream);
+
+        stream.Position = 0;
+        using var doc = WordprocessingDocument.Open(stream, isEditable: false);
+        var body = doc.MainDocumentPart!.Document!.Body!;
+        var heading = body.Elements<Paragraph>().ElementAt(1);
+        Assert.Equal(1, heading.ParagraphProperties?.OutlineLevel?.Val?.Value);
+        Assert.NotNull(heading.Descendants<Bold>().SingleOrDefault());
+
+        Run RunOf(string text) => body.Descendants<Run>().Single(r => r.InnerText == text);
+        Assert.NotNull(RunOf("gone").RunProperties?.Strike);
+        Assert.Equal(HighlightColorValues.Yellow, RunOf("key").RunProperties?.Highlight?.Val?.Value);
+        Assert.Equal("Consolas", RunOf("code").RunProperties?.RunFonts?.Ascii?.Value);
+    }
+
+    // Word refuses a file whose run properties come out of the schema's order: everything
+    // the exporter writes — links, formatting, checklists, secrets — is checked against it.
+    [Fact]
+    public void Every_element_kind_produces_a_schema_valid_document()
+    {
+        DocElement[] elements =
+        [
+            new DocParagraph([new DocText("Plan", false, true, false)], HeadingLevel: 1),
+            new DocParagraph([
+                new DocText("all of it", true, true, true, Link: "https://docs.example.com/", IsStrike: true, IsHighlight: true, IsCode: true),
+                new DocText(" plain ", true, true, true, IsStrike: true, IsHighlight: true, IsCode: true),
+                new DocLineBreak(),
+                new DocImage(TinyPng)]),
+            new DocList(DocListMarker.Bullet, [[new DocText("item", false, false, false)]]),
+            new DocChecklist([new DocChecklistItem("read https://mid.example.com/a later", IsDone: true), new DocChecklistItem("todo", false)]),
+            new DocLink("https://example.com/page", "Example"),
+            new DocLink("not a url", ""),
+            new DocAttachment("report.pdf", 2048),
+            new DocSecret("Support", "vbanard", "https://support.example.com/")
+        ];
+        using var stream = new MemoryStream();
+
+        WordExportService.Render("Note", elements, stream);
+
+        stream.Position = 0;
+        using var doc = WordprocessingDocument.Open(stream, isEditable: false);
+        var errors = new OpenXmlValidator().Validate(doc).Select(e => $"{e.Path?.XPath}: {e.Description}").ToList();
+        Assert.True(errors.Count == 0, string.Join("\n", errors));
     }
 
     [Fact]

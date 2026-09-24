@@ -54,11 +54,23 @@
                         <Button Style="{StaticResource FormatToolButton}" ToolTip="Underline" Click="OnUnderline" Tag="{Binding}">
                             <materialDesign:PackIcon Kind="FormatUnderline" Width="20" Height="20" />
                         </Button>
+                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Strikethrough (Ctrl+Shift+X)" Click="OnStrikethrough" Tag="{Binding}">
+                            <materialDesign:PackIcon Kind="FormatStrikethroughVariant" Width="20" Height="20" />
+                        </Button>
+                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Highlight (Ctrl+Shift+H)" Click="OnHighlight" Tag="{Binding}">
+                            <materialDesign:PackIcon Kind="FormatColorHighlight" Width="20" Height="20" />
+                        </Button>
+                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Inline code (Ctrl+Shift+C)" Click="OnInlineCode" Tag="{Binding}">
+                            <materialDesign:PackIcon Kind="CodeTags" Width="20" Height="20" />
+                        </Button>
                         <Rectangle Style="{StaticResource FormatToolSeparator}" />
-                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Bullet List" Click="OnBulletList" Tag="{Binding}">
+                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Heading (or type #, ## or ### and a space at the start of a line)" Click="OnHeadingMenu" Tag="{Binding}">
+                            <materialDesign:PackIcon Kind="FormatHeaderPound" Width="20" Height="20" />
+                        </Button>
+                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Bullet List (or type - and a space at the start of a line)" Click="OnBulletList" Tag="{Binding}">
                             <materialDesign:PackIcon Kind="FormatListBulleted" Width="20" Height="20" />
                         </Button>
-                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Numbered List" Click="OnNumberedList" Tag="{Binding}">
+                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Numbered List (or type 1. and a space at the start of a line; [] and a space starts a checklist)" Click="OnNumberedList" Tag="{Binding}">
                             <materialDesign:PackIcon Kind="FormatListNumbered" Width="20" Height="20" />
                         </Button>
                         <Button Style="{StaticResource FormatToolButton}" ToolTip="Insert Image" Click="OnInsertImage" Tag="{Binding}">
@@ -121,6 +133,7 @@
                              Unloaded="OnRichTextBoxUnloaded"
                              LostFocus="OnRichTextLostFocus"
                              TextChanged="OnRichTextChanged"
+                             PreviewKeyDown="OnRichTextPreviewKeyDown"
                              PreviewMouseLeftButtonDown="OnLinkPreviewMouseLeftButtonDown"
                              PreviewMouseLeftButtonUp="OnRichTextPreviewMouseLeftButtonUp"
                              PreviewMouseMove="OnLinkHostMouseMove"

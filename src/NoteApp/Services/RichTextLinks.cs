@@ -99,6 +99,9 @@ public static class RichTextLinks
         siblings.Remove(link);
     }
 
+    // Every paragraph of the document: in lists, sections and table cells too.
+    public static IEnumerable<Paragraph> ParagraphsOf(FlowDocument document) => Paragraphs(document.Blocks);
+
     private static IEnumerable<Paragraph> Paragraphs(IEnumerable<Block> blocks) =>
         blocks.SelectMany(block => block switch
         {

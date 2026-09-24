@@ -70,6 +70,31 @@ public class MarkdownExportServiceTests
         Assert.Contains("x![](My%20note_files/image2.png)", document.Text);
     }
 
+    // The note title is the only "#", so the note's headings start one level below it.
+    [Fact]
+    public void Headings_strikethrough_highlights_and_code_have_their_markdown()
+    {
+        DocElement[] elements =
+        [
+            new DocParagraph([new DocText("Plan", false, false, false)], HeadingLevel: 1),
+            new DocParagraph([new DocText("Step *one*", false, false, false)], HeadingLevel: 3),
+            new DocParagraph([
+                new DocText("gone", false, false, false, IsStrike: true),
+                new DocText(" ", false, false, false),
+                new DocText("key", false, false, false, IsHighlight: true),
+                new DocText(" run ", false, false, false),
+                new DocText("dotnet test", false, false, false, IsCode: true),
+                new DocText(" or ", false, false, false),
+                new DocText("a`b", false, false, false, IsCode: true)])
+        ];
+
+        var document = MarkdownExportService.Render("N", elements, "f");
+
+        Assert.Equal(
+            "# N\n\n## Plan\n\n#### Step \\*one\\*\n\n~~gone~~ <mark>key</mark> run `dotnet test` or ``a`b``\n",
+            document.Text);
+    }
+
     // The fields on their own lines; the password only as a placeholder.
     [Fact]
     public void A_secret_is_written_without_its_password()

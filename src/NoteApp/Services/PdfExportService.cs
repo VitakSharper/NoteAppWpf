@@ -66,6 +66,11 @@ public static class PdfExportService
         {
             switch (element)
             {
+                case DocParagraph { HeadingLevel: > 0 } heading:
+                    column.Item().PaddingTop(6).Text(string.Concat(heading.Inlines.OfType<DocText>().Select(t => t.Text)))
+                        .Bold().FontSize(heading.HeadingLevel switch { 1 => 18, 2 => 16, _ => 14 });
+                    break;
+
                 case DocParagraph paragraph:
                     RenderParagraphInlines(column, paragraph.Inlines);
                     break;
@@ -190,6 +195,9 @@ public static class PdfExportService
                         if (t.IsBold) span.Bold();
                         if (t.IsItalic) span.Italic();
                         if (t.IsUnderline) span.Underline();
+                        if (t.IsStrike) span.Strikethrough();
+                        if (t.IsHighlight) span.BackgroundColor(Colors.Yellow.Lighten3);
+                        if (t.IsCode) span.FontFamily(Fonts.Consolas);
                         break;
 
                     case DocLineBreak:

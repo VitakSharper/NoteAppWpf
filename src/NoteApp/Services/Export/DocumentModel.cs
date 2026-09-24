@@ -13,7 +13,8 @@ public sealed record SecretExportBlock(string Label, string UserName, string Url
 // Everything the editor can produce, as plain data: extracted once from the WPF
 // FlowDocument (UI thread) and rendered by every exporter without touching WPF.
 public abstract record DocElement;
-public sealed record DocParagraph(IReadOnlyList<DocInline> Inlines) : DocElement;
+// HeadingLevel: 1 to 3 for a heading (RichTextFormat), 0 for body text.
+public sealed record DocParagraph(IReadOnlyList<DocInline> Inlines, int HeadingLevel = 0) : DocElement;
 public sealed record DocList(DocListMarker Marker, IReadOnlyList<IReadOnlyList<DocInline>> Items) : DocElement;
 public sealed record DocLink(string Url, string Description) : DocElement;
 public sealed record DocAttachment(string FileName, long SizeBytes) : DocElement
@@ -57,7 +58,9 @@ public enum DocListMarker
 
 public abstract record DocInline;
 // Link: where the text leads when it sits in a hyperlink (an absolute HTTP/HTTPS address).
-public sealed record DocText(string Text, bool IsBold, bool IsItalic, bool IsUnderline, string? Link = null) : DocInline;
+// IsHighlight: the editor's highlighter; IsCode: inline code (a monospace run).
+public sealed record DocText(string Text, bool IsBold, bool IsItalic, bool IsUnderline, string? Link = null,
+    bool IsStrike = false, bool IsHighlight = false, bool IsCode = false) : DocInline;
 public sealed record DocImage(byte[] Png) : DocInline;
 public sealed record DocLineBreak : DocInline;
 

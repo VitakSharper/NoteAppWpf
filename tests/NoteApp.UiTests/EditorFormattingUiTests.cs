@@ -39,9 +39,10 @@ public class EditorFormattingUiTests
         Assert.IsType<Paragraph>(box.Document.Blocks.FirstBlock);
     });
 
+    // By the start of its tooltip: the rest may tell the keyboard shortcut.
     internal static void Click(OpenEditor editor, string toolTip)
     {
-        var button = editor.Find<Button>().First(b => Equals(b.ToolTip, toolTip));
+        var button = editor.Find<Button>().First(b => b.ToolTip is string tip && tip.StartsWith(toolTip, StringComparison.Ordinal));
         button.RaiseEvent(new System.Windows.RoutedEventArgs(ButtonBase.ClickEvent, button));
         Wpf.Pump();
     }

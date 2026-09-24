@@ -17,6 +17,11 @@ public class PdfExportServiceTests
     {
         DocElement[] elements =
         [
+            new DocParagraph([new DocText("Plan", false, false, false)], HeadingLevel: 1),
+            new DocParagraph([
+                new DocText("gone ", false, false, false, IsStrike: true),
+                new DocText("key ", false, false, false, IsHighlight: true),
+                new DocText("dotnet test", false, false, false, IsCode: true)]),
             new DocParagraph([
                 new DocText("see ", false, false, false),
                 new DocText("the docs", true, false, true, Link: "https://docs.example.com/"),
