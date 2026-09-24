@@ -111,6 +111,6 @@ When modifying note structure or block types, update across all layers:
 
 Settings live in `%LocalAppData%\NoteApp\settings.json` (`AppSettingsService`). The backup password is stored DPAPI-protected for the current Windows user (`BackupPasswordProtected`); a legacy clear-text `BackupPassword` field is still read and upgraded on the next save.
 
-### Stale Documentation Warning
+### Documentation
 
-`plan.md` is partially stale — it describes the older single-content-note model. The current code uses multi-block notes and includes encryption support not reflected in the plan. Trust code and README over plan.md.
+README (features, setup) and this file (architecture, patterns) describe the current code; `HelpWindow` is the user-facing copy. The original `plan.md` (single content type per note, no blocks, no encryption) was deleted — it is in the git history if its reasoning is ever needed.

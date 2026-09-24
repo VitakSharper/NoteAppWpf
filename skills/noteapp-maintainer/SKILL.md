@@ -13,9 +13,9 @@ Work from the real code and keep the existing architectural boundaries intact. P
 
 1. Read `README.md` for the high-level feature set and setup flow.
 2. Read `references/codebase-map.md` for the actual file map, change impact areas, and command caveats.
-3. Prefer the code and the README over `plan.md`.
+3. Read `.claude/CLAUDE.md` for the architecture and the patterns each feature relies on.
 
-`plan.md` is partially stale: it still describes the older single-content-note model and does not capture the encryption changes that are present in the current code.
+The original `plan.md` (one content type per note) no longer exists; trust the code, the README and `.claude/CLAUDE.md`.
 
 ## Preserve These Invariants
 

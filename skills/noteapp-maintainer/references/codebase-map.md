@@ -12,13 +12,12 @@
 ## Trust These Sources First
 
 - Trust `README.md` for the current product summary and setup commands.
-- Trust the code over `plan.md`.
-- Treat `plan.md` as historical context only.
+- Trust `.claude/CLAUDE.md` for the architecture and the patterns behind each feature.
+- The original `plan.md` was removed (it described a single `NoteType` per note); it only lives in the git history.
 
-Current mismatches:
+Worth knowing:
 
-- `plan.md` still describes the older `NoteType` and `NoteContent` design.
-- The actual code uses `Note.Blocks` and `NoteBlock`.
+- The code uses `Note.Blocks` and `NoteBlock` (text, file, link, checklist).
 - `Domain/Models/NoteContent.cs` now defines `NoteBlock`; the file name no longer matches the type.
 - The current code includes encryption support through `EncryptionService`, `PasswordDialog`, and the `20260320155037_AddNoteEncryption` migration.
 
