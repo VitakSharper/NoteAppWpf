@@ -1697,6 +1697,23 @@ public partial class NoteEditorView : UserControl
         card.BorderThickness = new Thickness(1);
     }
 
+    // --- The ⋮ menu ---
+
+    private void OnMoreActions(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || DataContext is not NoteEditorViewModel vm)
+            return;
+
+        var shell = Window.GetWindow(this)?.DataContext as MainViewModel;
+        var menu = new ContextMenu { PlacementTarget = button, Placement = PlacementMode.Bottom };
+        menu.Items.Add(new MenuItem { Header = "Save as template", Command = vm.SaveAsTemplateCommand,
+            ToolTip = "Start new notes from this one (the rail's template button)" });
+        if (shell is not null)
+            menu.Items.Add(new MenuItem { Header = "Duplicate", Command = shell.DuplicateOpenNoteCommand,
+                ToolTip = "A copy of this note, opened right away (unsaved changes are saved first)" });
+        menu.IsOpen = true;
+    }
+
     // --- Export ---
 
     private void OnExportToPdf(object sender, RoutedEventArgs e) =>

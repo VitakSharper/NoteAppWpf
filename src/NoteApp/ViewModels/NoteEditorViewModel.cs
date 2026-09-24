@@ -389,11 +389,37 @@ public partial class NoteEditorViewModel : ObservableObject
         SelectedTags = new ObservableCollection<Tag>(note.Tags);
 
         foreach (var block in note.Blocks)
-        {
-            var vm = block.Match(
+            Blocks.Add(ToViewModel(block, block.Id));
+
+        if (Blocks.Count > 0)
+            SelectedBlock = Blocks[0];
+    }
+
+    // A new note starting as a copy of a template: its title, blocks and tags, the blocks under
+    // new ids. The note is then modified, as it would be after typing all that in.
+    public void FillFrom(Note template)
+    {
+        Title = template.Title.Value;
+
+        while (Blocks.Count > 0)
+            Blocks.RemoveAt(Blocks.Count - 1);
+        foreach (var block in template.Blocks)
+            Blocks.Add(ToViewModel(block, Guid.NewGuid()));
+
+        while (SelectedTags.Count > 0)
+            SelectedTags.RemoveAt(SelectedTags.Count - 1);
+        foreach (var tag in AvailableTags.Where(t => template.Tags.Any(x => x.Id == t.Id)))
+            SelectedTags.Add(tag);
+
+        SelectedBlock = Blocks.FirstOrDefault();
+        MarkDirty();
+    }
+
+    private static BlockViewModel ToViewModel(NoteBlock block, Guid id) =>
+            block.Match(
                 text: t => new BlockViewModel
                 {
-                    Id = block.Id,
+                    Id = id,
                     BlockType = BlockType.Text,
                     RichTextContent = t.RichText,
                     PlainTextContent = t.PlainText,
@@ -401,7 +427,7 @@ public partial class NoteEditorViewModel : ObservableObject
                 },
                 file: f => new BlockViewModel
                 {
-                    Id = block.Id,
+                    Id = id,
                     BlockType = BlockType.File,
                     FileName = f.FileName,
                     FileSize = f.SizeBytes,
@@ -410,33 +436,56 @@ public partial class NoteEditorViewModel : ObservableObject
                 },
                 link: l => new BlockViewModel
                 {
-                    Id = block.Id,
+                    Id = id,
                     BlockType = BlockType.Link,
                     LinkUrlText = l.Url.Value.ToString(),
                     LinkDescription = l.Description
                 },
                 checklist: c =>
                 {
-                    var blockVm = new BlockViewModel { Id = block.Id, BlockType = BlockType.Checklist };
+                    var blockVm = new BlockViewModel { Id = id, BlockType = BlockType.Checklist };
                     foreach (var item in c.Items)
                         blockVm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, IsDone = item.IsDone });
                     return blockVm;
                 },
                 secret: s => new BlockViewModel
                 {
-                    Id = block.Id,
+                    Id = id,
                     BlockType = BlockType.Secret,
                     SecretLabel = s.Label,
                     SecretUserName = s.UserName,
                     SecretPassword = s.Password,
                     SecretUrl = s.Url
                 },
-                code: c => new BlockViewModel { Id = block.Id, BlockType = BlockType.Code, CodeText = c.Content });
-            Blocks.Add(vm);
+                code: c => new BlockViewModel { Id = id, BlockType = BlockType.Code, CodeText = c.Content });
+
+    // --- Templates ---
+
+    public event Action<string>? ShowMessage;
+
+    // The ⋮ menu: what the editor holds now, saved or not, becomes a template of the same name
+    // (replacing one that has it). Never an encrypted note: a template is copied into new
+    // notes with no password asked.
+    [RelayCommand]
+    private async Task SaveAsTemplate()
+    {
+        ErrorMessage = string.Empty;
+        if (IsEncrypted)
+        {
+            ErrorMessage = "An encrypted note cannot be a template: templates are stored unencrypted.";
+            return;
         }
 
-        if (Blocks.Count > 0)
-            SelectedBlock = Blocks[0];
+        SyncAllBlocksRequested?.Invoke();
+        if (!BuildBlocks().TryGet(out var blocks, out var blocksError))
+        {
+            ErrorMessage = blocksError.Message;
+            return;
+        }
+
+        (await _noteService.SaveTemplateAsync(Title, blocks, SelectedTags.ToList())).Match(
+            success: _ => ShowMessage?.Invoke($"Template '{Title.Trim()}' saved: New from template starts a note from it."),
+            failure: error => ErrorMessage = error.Message);
     }
 
     [RelayCommand]

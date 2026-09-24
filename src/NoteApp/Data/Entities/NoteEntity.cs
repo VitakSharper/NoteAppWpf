@@ -16,6 +16,9 @@ public class NoteEntity
     // Kept at the top of the list whatever the sort. A list preference, not an edit:
     // changing it leaves UpdatedAt alone.
     public bool IsPinned { get; set; }
+    // A template: a note kept to start new ones from. Hidden from every ordinary query by the
+    // global filter in NoteDbContext, like the trash; only the template operations see them.
+    public bool IsTemplate { get; set; }
 
     public ICollection<NoteBlockEntity> Blocks { get; set; } = [];
     public ICollection<NoteTagEntity> NoteTags { get; set; } = [];

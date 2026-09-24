@@ -76,6 +76,36 @@ public sealed class NoteService(INoteRepository noteRepository)
         return Result<IReadOnlyList<NoteRef>, AppError>.Ok(NoteMapper.ToRefs(rows));
     }
 
+    public Task<Result<NoteId, AppError>> DuplicateAsync(NoteSummary note) =>
+        noteRepository.DuplicateAsync(note.Id, NoteCopies.TitleFor(note.Title.Value));
+
+    // --- Templates ---
+
+    public async Task<Result<IReadOnlyList<NoteRef>, AppError>> TemplatesAsync()
+    {
+        if (!(await noteRepository.TemplatesAsync()).TryGet(out var rows, out var error))
+            return Result<IReadOnlyList<NoteRef>, AppError>.Fail(error);
+
+        return Result<IReadOnlyList<NoteRef>, AppError>.Ok(NoteMapper.ToRefs(rows));
+    }
+
+    public Task<Result<Note, AppError>> GetTemplateAsync(NoteId id) => noteRepository.GetTemplateAsync(id);
+
+    public Task<Result<Unit, AppError>> DeleteTemplateAsync(NoteId id) => noteRepository.DeleteTemplateAsync(id);
+
+    // What a note holds right now, as a template of the same name. Never encrypted: a template
+    // is copied into new notes without anyone typing a password.
+    public Task<Result<Unit, AppError>> SaveTemplateAsync(string title, IReadOnlyList<NoteBlock> blocks, IReadOnlyList<Tag> tags)
+    {
+        if (!NoteTitle.From(title).TryGet(out var noteTitle, out var titleError))
+            return Task.FromResult(Result<Unit, AppError>.Fail(titleError));
+
+        if (!Note.Create(noteTitle, blocks.Select(b => b with { Id = Guid.NewGuid() }).ToList(), tags).TryGet(out var template, out var error))
+            return Task.FromResult(Result<Unit, AppError>.Fail(error));
+
+        return noteRepository.SaveTemplateAsync(template);
+    }
+
     // Soft: the note goes to the trash, where it can be restored or purged.
     public Task<Result<Unit, AppError>> DeleteNoteAsync(NoteId id) =>
         noteRepository.DeleteAsync(id);

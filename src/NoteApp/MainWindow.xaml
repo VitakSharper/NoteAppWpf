@@ -95,6 +95,12 @@
                             Command="{Binding CreateNoteCommand}" ToolTip="New note (Ctrl+N)">
                         <materialDesign:PackIcon Kind="Plus" Width="24" Height="24" />
                     </Button>
+                    <!-- The menu is built on click from the stored templates (MainWindow.OnTemplateMenu). -->
+                    <Button DockPanel.Dock="Top" Style="{StaticResource MaterialDesignIconButton}"
+                            Foreground="{StaticResource RailForegroundBrush}" Height="48"
+                            Click="OnTemplateMenu" ToolTip="New from template">
+                        <materialDesign:PackIcon Kind="FileDocumentPlusOutline" Width="24" Height="24" />
+                    </Button>
 
                     <!-- Settings pinned at the bottom -->
                     <Button DockPanel.Dock="Bottom" Style="{StaticResource MaterialDesignIconButton}"

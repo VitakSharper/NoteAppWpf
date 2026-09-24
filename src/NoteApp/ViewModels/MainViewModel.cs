@@ -24,7 +24,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private ObservableObject? _middlePaneContent;
     // Right pane: a NoteEditorViewModel, or null => empty-state placeholder
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SaveCurrentEditorCommand), nameof(DismissCommand), nameof(DeleteOpenNoteCommand), nameof(ToggleFocusModeCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SaveCurrentEditorCommand), nameof(DismissCommand), nameof(DeleteOpenNoteCommand), nameof(DuplicateOpenNoteCommand), nameof(ToggleFocusModeCommand))]
     private ObservableObject? _currentEditor;
     // Rail and note list hidden, the editor gets the whole window (MainWindow collapses the columns).
     [ObservableProperty] private bool _isFocusMode;
@@ -33,7 +33,7 @@ public partial class MainViewModel : ObservableObject
     // Settings modal (hosted in RootDialog). The keyboard shortcuts stay inert while
     // it is open: Ctrl+N would otherwise create a note underneath the overlay.
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(CreateNoteCommand), nameof(SaveCurrentEditorCommand), nameof(DismissCommand), nameof(DeleteOpenNoteCommand), nameof(ToggleFocusModeCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CreateNoteCommand), nameof(SaveCurrentEditorCommand), nameof(DismissCommand), nameof(DeleteOpenNoteCommand), nameof(DuplicateOpenNoteCommand), nameof(NewFromTemplateCommand), nameof(ToggleFocusModeCommand))]
     private bool _isSettingsOpen;
 
     public NoteListViewModel NoteListViewModel { get; }
@@ -65,6 +65,7 @@ public partial class MainViewModel : ObservableObject
         noteListViewModel.ShowMessage += OnShowMessage;
         noteListViewModel.ShowUndoableMessage += OnShowUndoableMessage;
         noteListViewModel.NoteDeleted += OnNoteDeleted;
+        noteListViewModel.NoteDuplicated += id => _ = OpenNoteByIdAsync(id);
 
         tagManagerViewModel.ShowMessage += OnShowMessage;
         settingsViewModel.ShowMessage += OnShowMessage;
@@ -161,11 +162,84 @@ public partial class MainViewModel : ObservableObject
         if (CurrentEditor is not NoteEditorViewModel { EditedNote: { } note })
             return;
 
-        var summary = NoteListViewModel.Notes.FirstOrDefault(n => n.Id == note.Id)
-            ?? new NoteSummary(note.Id, note.Title, string.Empty, note.Tags, note.IsEncrypted,
-                note.HasText, note.HasFiles, note.HasLinks, note.HasChecklists, note.CreatedAt, note.UpdatedAt);
+        await NoteListViewModel.DeleteNoteCommand.ExecuteAsync(SummaryOf(note));
+    }
 
-        await NoteListViewModel.DeleteNoteCommand.ExecuteAsync(summary);
+    // The editor's ⋮ menu. The copy is made from what is stored, so unsaved changes are saved
+    // first; a save that fails validation stops it there.
+    [RelayCommand(CanExecute = nameof(CanDeleteOpenNote))]
+    private async Task DuplicateOpenNote()
+    {
+        if (CurrentEditor is not NoteEditorViewModel editor)
+            return;
+
+        if (editor.IsDirty)
+        {
+            await editor.SaveCommand.ExecuteAsync(null);
+            if (editor.IsDirty)
+                return;
+        }
+
+        if (editor.EditedNote is not { } note)
+            return;
+
+        await NoteListViewModel.DuplicateNoteCommand.ExecuteAsync(SummaryOf(note));
+    }
+
+    // A note the current filters hide is not in the list, so its summary is built from the
+    // note itself: the list commands only need the id and the title.
+    private NoteSummary SummaryOf(Note note) =>
+        NoteListViewModel.Notes.FirstOrDefault(n => n.Id == note.Id)
+        ?? new NoteSummary(note.Id, note.Title, string.Empty, note.Tags, note.IsEncrypted,
+            note.HasText, note.HasFiles, note.HasLinks, note.HasChecklists, note.CreatedAt, note.UpdatedAt);
+
+    // --- Templates ---
+
+    public System.Collections.ObjectModel.ObservableCollection<NoteRef> Templates { get; } = [];
+
+    // Refreshed each time the rail's template menu opens.
+    public async Task LoadTemplatesAsync()
+    {
+        if (!(await _noteService.TemplatesAsync()).TryGet(out var templates, out var error))
+        {
+            MessageQueue.Enqueue(error.Message);
+            return;
+        }
+
+        Templates.Clear();
+        foreach (var template in templates)
+            Templates.Add(template);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanActOnShell))]
+    private async Task NewFromTemplate(NoteRef template)
+    {
+        if (!await ConfirmLeaveEditorAsync())
+            return;
+
+        if (!(await _noteService.GetTemplateAsync(template.Id)).TryGet(out var note, out var error))
+        {
+            MessageQueue.Enqueue(error.Message);
+            return;
+        }
+
+        await OpenEditorAsync(note: null, password: null);
+        if (CurrentEditor is NoteEditorViewModel editor)
+            editor.FillFrom(note);
+    }
+
+    [RelayCommand]
+    private async Task DeleteTemplate(NoteRef template)
+    {
+        var answer = MessageBox.Show(Application.Current.MainWindow!, $"Delete the template '{template.Title}'? Notes made from it stay as they are.",
+            "Delete template", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (answer != MessageBoxResult.Yes)
+            return;
+
+        (await _noteService.DeleteTemplateAsync(template.Id)).Match(
+            success: _ => MessageQueue.Enqueue($"Template '{template.Title}' deleted."),
+            failure: error => MessageQueue.Enqueue(error.Message));
+        await LoadTemplatesAsync();
     }
 
     // Escape closes whatever is on top: the Settings dialog, then focus mode, else the editor.
@@ -316,6 +390,7 @@ public partial class MainViewModel : ObservableObject
         // A just-created note now has a stored identity: its trash button wakes up,
         // and if it was saved encrypted the idle lock starts watching it.
         DeleteOpenNoteCommand.NotifyCanExecuteChanged();
+        DuplicateOpenNoteCommand.NotifyCanExecuteChanged();
         RearmEncryptedNoteLock();
     }
 
@@ -331,6 +406,7 @@ public partial class MainViewModel : ObservableObject
         editor.SaveCompleted += OnNoteSaved;
         editor.CancelRequested += OnEditorCancelled;
         editor.OpenNoteRequested += id => _ = OpenNoteByIdAsync(id);
+        editor.ShowMessage += OnShowMessage;
         CurrentEditor = editor;
         RearmEncryptedNoteLock();
 

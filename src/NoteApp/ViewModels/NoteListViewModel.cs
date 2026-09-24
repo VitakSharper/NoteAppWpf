@@ -71,6 +71,8 @@ public partial class NoteListViewModel : ObservableObject
     public event Action<string, Action>? ShowUndoableMessage;
     // The shell closes the editor when the note it holds has just been deleted.
     public event Action<NoteSummary>? NoteDeleted;
+    // The shell opens the copy.
+    public event Action<NoteId>? NoteDuplicated;
 
     public NoteListViewModel(
         NoteService noteService,
@@ -251,6 +253,21 @@ public partial class NoteListViewModel : ObservableObject
         if (index >= 0)
             Notes[index] = note with { IsPinned = !note.IsPinned };
         ApplySort();
+    }
+
+    // The row menu and the editor's ⋮ menu: a copy of the stored note, encrypted as it was.
+    [RelayCommand]
+    private async Task DuplicateNote(NoteSummary note)
+    {
+        if (!(await _noteService.DuplicateAsync(note)).TryGet(out var copy, out var error))
+        {
+            ShowMessage?.Invoke(error.Message);
+            return;
+        }
+
+        await LoadNotes();
+        ShowMessage?.Invoke($"Note '{note.Title}' duplicated.");
+        NoteDuplicated?.Invoke(copy);
     }
 
     // UNDO and the trash row menu. Reloads rather than re-inserting the row: the

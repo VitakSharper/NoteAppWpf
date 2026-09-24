@@ -16,6 +16,8 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **File attachments** — Browse and attach files stored directly in the database
 - **Block ordering** — Drag a block by its grip, or use the up/down arrows, to reorder the blocks of a note
 - **Drop files** — Drop files from Explorer onto an open note to attach them as file blocks
+- **Templates** — ⋮ › Save as template turns what a note holds into a template (same name = replaced); the rail's template button starts a new note from one, or deletes one. Templates never show in the list, search or links, and an encrypted note cannot be one
+- **Duplicate** — Right-click a note (or ⋮ in the editor) › Duplicate: a copy titled "… (copy)", encrypted if the original was, opened at once
 - **Pinned notes** — Right-click a note › Pin to top: it stays first in the list whatever the sort
 - **Tagging system** — Create, rename, colour and delete tags and assign them to notes; each tag's chip shows its colour in the list and the filters
 - **Date headings** — Under a date sort the list is grouped: Pinned, Today, Yesterday, Previous 7 / 30 days, then by month

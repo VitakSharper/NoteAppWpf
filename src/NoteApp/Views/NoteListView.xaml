@@ -278,6 +278,12 @@
                                     </MenuItem.Style>
                                     <MenuItem.Icon><materialDesign:PackIcon Kind="PinOutline" /></MenuItem.Icon>
                                 </MenuItem>
+                                <MenuItem Header="Duplicate"
+                                          Visibility="{Binding PlacementTarget.Tag.IsTrashView, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource InverseBoolToVis}}"
+                                          Command="{Binding PlacementTarget.Tag.DuplicateNoteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                    <MenuItem.Icon><materialDesign:PackIcon Kind="ContentDuplicate" /></MenuItem.Icon>
+                                </MenuItem>
                                 <MenuItem Header="Delete"
                                           Visibility="{Binding PlacementTarget.Tag.IsTrashView, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource InverseBoolToVis}}"
                                           Command="{Binding PlacementTarget.Tag.DeleteNoteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"

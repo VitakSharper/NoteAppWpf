@@ -148,6 +148,143 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
         }
     }
 
+    public async Task<Result<NoteId, AppError>> DuplicateAsync(NoteId id, string title)
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var source = await context.Notes.AsNoTracking()
+                .Include(n => n.Blocks)
+                .Include(n => n.NoteTags)
+                .FirstOrDefaultAsync(n => n.Id == id.Value);
+            if (source is null)
+                return Result<NoteId, AppError>.Fail(AppError.NotFound($"Note with ID {id} not found."));
+
+            var copy = CopyOf(source, title, isTemplate: false);
+            context.Notes.Add(copy);
+            await context.SaveChangesAsync();
+            return Result<NoteId, AppError>.Ok(new NoteId(copy.Id));
+        }
+        catch (Exception ex)
+        {
+            return Result<NoteId, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
+    public async Task<Result<IReadOnlyList<NoteRow>, AppError>> TemplatesAsync()
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var rows = await Templates(context).AsNoTracking()
+                .OrderBy(n => n.Title)
+                .Select(n => new NoteRow { Id = n.Id, Title = n.Title })
+                .ToListAsync();
+            return Result<IReadOnlyList<NoteRow>, AppError>.Ok(rows);
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<NoteRow>, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
+    public async Task<Result<Note, AppError>> GetTemplateAsync(NoteId id)
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var entity = await Templates(context).AsNoTracking()
+                .Include(n => n.Blocks.OrderBy(b => b.SortOrder))
+                .Include(n => n.NoteTags).ThenInclude(nt => nt.Tag)
+                .FirstOrDefaultAsync(n => n.Id == id.Value);
+
+            return entity is null
+                ? Result<Note, AppError>.Fail(AppError.NotFound($"Template with ID {id} not found."))
+                : NoteMapper.ToDomain(entity);
+        }
+        catch (Exception ex)
+        {
+            return Result<Note, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
+    // One transaction: the old template of that name only goes if the new one lands.
+    public async Task<Result<Unit, AppError>> SaveTemplateAsync(Note template)
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var entity = NoteMapper.ToEntity(template);
+            entity.IsTemplate = true;
+            entity.NoteTags = template.Tags.Select(t => new NoteTagEntity { NoteId = entity.Id, TagId = t.Id }).ToList();
+
+            context.Notes.RemoveRange(await Templates(context).Where(n => n.Title == entity.Title).ToListAsync());
+            context.Notes.Add(entity);
+            await context.SaveChangesAsync();
+            return Result<Unit, AppError>.Ok(Unit.Value);
+        }
+        catch (Exception ex)
+        {
+            return Result<Unit, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
+    public async Task<Result<Unit, AppError>> DeleteTemplateAsync(NoteId id)
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var count = await Templates(context).Where(n => n.Id == id.Value).ExecuteDeleteAsync();
+            return count == 0
+                ? Result<Unit, AppError>.Fail(AppError.NotFound($"Template with ID {id} not found."))
+                : Result<Unit, AppError>.Ok(Unit.Value);
+        }
+        catch (Exception ex)
+        {
+            return Result<Unit, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
+    // The global filter hides templates; these are the queries that want exactly them.
+    private static IQueryable<NoteEntity> Templates(NoteDbContext context) =>
+        context.Notes.IgnoreQueryFilters().Where(n => n.IsTemplate && n.DeletedAt == null);
+
+    // Everything but the identity: new ids for the note and its blocks, fresh dates.
+    private static NoteEntity CopyOf(NoteEntity source, string title, bool isTemplate)
+    {
+        var now = DateTime.UtcNow;
+        var id = Guid.NewGuid();
+        return new NoteEntity
+        {
+            Id = id,
+            Title = title,
+            IsEncrypted = source.IsEncrypted,
+            EncryptedContent = source.EncryptedContent,
+            CreatedAt = now,
+            UpdatedAt = now,
+            IsTemplate = isTemplate,
+            Blocks = source.Blocks.Select(b => new NoteBlockEntity
+            {
+                Id = Guid.NewGuid(),
+                NoteId = id,
+                BlockType = b.BlockType,
+                SortOrder = b.SortOrder,
+                TextContent = b.TextContent,
+                PlainText = b.PlainText,
+                LinkedNoteIds = b.LinkedNoteIds,
+                FileData = b.FileData,
+                FileName = b.FileName,
+                FileExtension = b.FileExtension,
+                FileSizeBytes = b.FileSizeBytes,
+                LinkUrl = b.LinkUrl,
+                LinkDescription = b.LinkDescription,
+                ChecklistJson = b.ChecklistJson,
+                SecretJson = b.SecretJson
+            }).ToList(),
+            NoteTags = source.NoteTags.Select(t => new NoteTagEntity { NoteId = id, TagId = t.TagId }).ToList()
+        };
+    }
+
     // Soft delete: the row stays, DeletedAt is set, and the global query filter
     // hides it everywhere else. Not FindAsync — query filters do not apply to Find.
     public async Task<Result<Unit, AppError>> DeleteAsync(NoteId id)

@@ -125,6 +125,11 @@ internal class UnusedNoteRepository : INoteRepository
     public virtual Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false) => throw new NotSupportedException();
     public virtual Task<Result<byte[]?, AppError>> GetEncryptedContentAsync(NoteId id) => throw new NotSupportedException();
     public virtual Task<Result<IReadOnlyList<NoteRow>, AppError>> LinkedFromAsync(NoteId id) => throw new NotSupportedException();
+    public virtual Task<Result<NoteId, AppError>> DuplicateAsync(NoteId id, string title) => throw new NotSupportedException();
+    public virtual Task<Result<IReadOnlyList<NoteRow>, AppError>> TemplatesAsync() => throw new NotSupportedException();
+    public virtual Task<Result<Note, AppError>> GetTemplateAsync(NoteId id) => throw new NotSupportedException();
+    public virtual Task<Result<Unit, AppError>> SaveTemplateAsync(Note template) => throw new NotSupportedException();
+    public virtual Task<Result<Unit, AppError>> DeleteTemplateAsync(NoteId id) => throw new NotSupportedException();
 }
 
 internal sealed class UnusedTagRepository : ITagRepository

@@ -22,7 +22,8 @@ public sealed class NoteDbContext : DbContext
 
         // Trashed notes are invisible everywhere by default — list, open, update,
         // encrypted payload — so no query path has to remember the rule. Only the
-        // trash operations in NoteRepository lift it with IgnoreQueryFilters().
-        modelBuilder.Entity<NoteEntity>().HasQueryFilter(n => n.DeletedAt == null);
+        // trash operations in NoteRepository lift it with IgnoreQueryFilters(). Templates
+        // are hidden the same way: they are not notes of the list, search or links.
+        modelBuilder.Entity<NoteEntity>().HasQueryFilter(n => n.DeletedAt == null && !n.IsTemplate);
     }
 }

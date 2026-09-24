@@ -26,4 +26,14 @@ public interface INoteRepository
     // The live notes whose text links to this one, by title. Encrypted notes store no blocks,
     // so their links do not count.
     Task<Result<IReadOnlyList<NoteRow>, AppError>> LinkedFromAsync(NoteId id);
+
+    // A copy under a new id, encrypted payload, blocks and tags included; not pinned.
+    Task<Result<NoteId, AppError>> DuplicateAsync(NoteId id, string title);
+
+    // Templates: notes kept to start new ones from, invisible to everything above.
+    Task<Result<IReadOnlyList<NoteRow>, AppError>> TemplatesAsync();
+    Task<Result<Note, AppError>> GetTemplateAsync(NoteId id);
+    // Replaces any template of the same title.
+    Task<Result<Unit, AppError>> SaveTemplateAsync(Note template);
+    Task<Result<Unit, AppError>> DeleteTemplateAsync(NoteId id);
 }

@@ -1,5 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -73,6 +75,33 @@ public partial class MainWindow : Window
             MiddleColumn.Width = _middleWidth;
             SplitterColumn.Width = GridLength.Auto;
         }
+    }
+
+    // The rail's template button: every template starts a note, and a submenu deletes one.
+    private async void OnTemplateMenu(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || DataContext is not MainViewModel vm)
+            return;
+
+        await vm.LoadTemplatesAsync();
+        var menu = new ContextMenu { PlacementTarget = button, Placement = PlacementMode.Right };
+        if (vm.Templates.Count == 0)
+        {
+            menu.Items.Add(new MenuItem { Header = "No templates yet — in a note, ⋮ › Save as template", IsEnabled = false });
+        }
+        else
+        {
+            foreach (var template in vm.Templates)
+                menu.Items.Add(new MenuItem { Header = template.Title.Value, Command = vm.NewFromTemplateCommand, CommandParameter = template });
+
+            menu.Items.Add(new Separator());
+            var delete = new MenuItem { Header = "Delete a template" };
+            foreach (var template in vm.Templates)
+                delete.Items.Add(new MenuItem { Header = template.Title.Value, Command = vm.DeleteTemplateCommand, CommandParameter = template });
+            menu.Items.Add(delete);
+        }
+
+        menu.IsOpen = true;
     }
 
     private void OnUserActivity(object sender, RoutedEventArgs e) =>
