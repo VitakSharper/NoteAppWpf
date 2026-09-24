@@ -136,3 +136,55 @@ public class UpdateOfferUiTests
         Assert.Equal(1, asked);
     });
 }
+
+// Views no other test shows: their XAML (styles, bindings) is only parsed when they are.
+public class PagesUiTests
+{
+    [Fact]
+    public void The_reminders_page_shows_its_rows_grouped() => Wpf.Run(() =>
+    {
+        var page = new RemindersViewModel(new NoteService(new Reminding()));
+        page.LoadCommand.ExecuteAsync(null).GetAwaiter().GetResult();
+        var view = new RemindersView { DataContext = page };
+        var window = Wpf.Show(view, 400, 600);
+        try
+        {
+            var texts = Wpf.Descendants<System.Windows.Controls.TextBlock>(view).Where(t => t.IsVisible).Select(t => t.Text).ToList();
+            Assert.Contains("Reminders", texts);
+            Assert.Contains("Later", texts);
+            Assert.Contains("Dentist", texts);
+        }
+        finally
+        {
+            window.Close();
+        }
+    });
+
+    [Fact]
+    public void The_settings_page_shows_every_setting() => Wpf.Run(() =>
+    {
+        var settings = new AppSettingsService(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "NoteApp.UiTests", $"{Guid.NewGuid()}.json"));
+        var vm = new SettingsViewModel(settings, new BackupService("Server=.;Database=none", "none"));
+        var view = new SettingsView { DataContext = vm };
+        var window = Wpf.Show(view, 600, 2400);
+        try
+        {
+            var boxes = Wpf.Descendants<System.Windows.Controls.CheckBox>(view).Select(c => c.Content as string).ToList();
+            Assert.Contains("Also when Windows locks or the computer goes to sleep", boxes);
+            Assert.Contains("Keep NoteApp running in the notification area when its window is closed", boxes);
+            Assert.Contains("Ctrl+Alt+N opens a quick note from any application", boxes);
+            Assert.Contains("Tell me when a new version of NoteApp is out", boxes);
+        }
+        finally
+        {
+            window.Close();
+        }
+    });
+
+    private sealed class Reminding : UnusedNoteRepository
+    {
+        public override Task<Result<IReadOnlyList<ReminderRow>, AppError>> RemindersAsync() =>
+            Task.FromResult(Result<IReadOnlyList<ReminderRow>, AppError>.Ok(
+                [new ReminderRow { NoteId = Guid.NewGuid(), Title = "Dentist", RemindAt = DateTime.UtcNow.AddDays(5) }]));
+    }
+}
