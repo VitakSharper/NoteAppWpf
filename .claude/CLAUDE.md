@@ -114,6 +114,10 @@ When modifying note structure or block types, update across all layers:
 7. Add EF migration if schema changed
 8. `tests/NoteApp.Tests` — mapper round-trip and encryption round-trip tests cover every block field
 
+### Version history
+
+`NoteRepository.UpdateAsync` adds a `NoteVersionEntity` (table `NoteVersions`, migration `AddNoteVersions`, FK to `Notes` with cascade) for the state it is about to replace, **in the same `SaveChanges`**, then `PruneVersionsAsync` keeps the newest `keepVersions()` (a `Func<int>` given by `App.xaml.cs` from `AppSettings.KeepVersions`, default 10; 0 = none added, none pruned). `SavedAt` is the replaced state's `UpdatedAt`. `Content` is `EncryptionService.BlocksToJson` of the mapped blocks (the plain JSON inside encrypted payloads) for a plain note, and the `EncryptedContent` bytes as they are for an encrypted one — a version is never more readable than its note. `NoteService.OpenVersionAsync(id, password)` turns one back into blocks (wrong password → "saved with another password"); `NoteEditorViewModel.RestoreVersion` replaces title and blocks (new block ids) and marks the note dirty — nothing is written until the save, which itself keeps the replaced state. `Views/VersionHistoryWindow` (⋮ › Version history…) lists, previews (`Services/VersionPreview`, no password) and restores. File bytes are copied into every version (documented growth). Checked on `noteDb_test`: pruning, "off", encrypted content unreadable in the table, purge cascade.
+
 ### Database Backup
 
 `BackupService` exports a SQL Server BACPAC via DacFx, then packages it into a password-protected AES-256 zip (SharpZipLib). Triggered from `SettingsViewModel.BackupAsync()`. Output: `NoteApp_<timestamp>.zip` in the configured backup folder (default `AppSettings.DefaultBackupFolderPath`). Intermediate `.bacpac` is deleted after zipping. Returns `Result<string, AppError>`.

@@ -39,6 +39,18 @@ public sealed record KeepBackupsOption(int Count)
         ?? All.Single(o => o.Count == AppSettings.Default.KeepBackups);
 }
 
+// How many earlier states of a note a save keeps.
+public sealed record KeepVersionsOption(int Count)
+{
+    public override string ToString() => Count == 0 ? "None (no history)" : $"The last {Count}";
+
+    public static readonly IReadOnlyList<KeepVersionsOption> All = [new(0), new(5), new(10), new(20), new(50)];
+
+    public static KeepVersionsOption For(int count) =>
+        All.FirstOrDefault(o => o.Count == count)
+        ?? All.Single(o => o.Count == AppSettings.Default.KeepVersions);
+}
+
 public partial class SettingsViewModel : ObservableObject
 {
     private readonly AppSettingsService _settingsService;
@@ -53,6 +65,9 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _isBackingUp;
     [ObservableProperty] private LockTimeoutOption _lockTimeout = LockTimeoutOption.For(AppSettings.Default.LockEncryptedNotesAfterMinutes);
     [ObservableProperty] private bool _lockWhenWindowsLocks = AppSettings.Default.LockEncryptedNotesWhenWindowsLocks;
+    [ObservableProperty] private KeepVersionsOption _keepVersions = KeepVersionsOption.For(AppSettings.Default.KeepVersions);
+
+    public IReadOnlyList<KeepVersionsOption> KeepVersionsOptions { get; } = KeepVersionsOption.All;
     [ObservableProperty] private AutoBackupInterval _autoBackup;
     [ObservableProperty] private KeepBackupsOption _keepBackups = KeepBackupsOption.For(AppSettings.Default.KeepBackups);
 
@@ -106,6 +121,7 @@ public partial class SettingsViewModel : ObservableObject
             BackupFolderPath = BackupFolderPath,
             LockEncryptedNotesAfterMinutes = LockTimeout.Minutes,
             LockEncryptedNotesWhenWindowsLocks = LockWhenWindowsLocks,
+            KeepVersions = KeepVersions.Count,
             AutoBackup = AutoBackup,
             KeepBackups = KeepBackups.Count
         });
@@ -194,6 +210,7 @@ public partial class SettingsViewModel : ObservableObject
         BackupFolderPath = settings.BackupFolderPath;
         LockTimeout = LockTimeoutOption.For(settings.LockEncryptedNotesAfterMinutes);
         LockWhenWindowsLocks = settings.LockEncryptedNotesWhenWindowsLocks;
+        KeepVersions = KeepVersionsOption.For(settings.KeepVersions);
         AutoBackup = settings.AutoBackup;
         KeepBackups = KeepBackupsOption.For(settings.KeepBackups);
     }

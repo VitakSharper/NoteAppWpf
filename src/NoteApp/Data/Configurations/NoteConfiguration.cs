@@ -26,6 +26,25 @@ public sealed class NoteConfiguration : IEntityTypeConfiguration<NoteEntity>
     }
 }
 
+public sealed class NoteVersionConfiguration : IEntityTypeConfiguration<NoteVersionEntity>
+{
+    public void Configure(EntityTypeBuilder<NoteVersionEntity> builder)
+    {
+        builder.ToTable("NoteVersions");
+        builder.HasKey(v => v.Id);
+        builder.Property(v => v.Id).ValueGeneratedNever();
+        builder.Property(v => v.Title).HasMaxLength(500).IsRequired();
+        builder.Property(v => v.Content).HasColumnType("varbinary(max)").IsRequired();
+        builder.HasIndex(v => new { v.NoteId, v.SavedAt });
+
+        // Purging a note takes its history with it.
+        builder.HasOne<NoteEntity>()
+            .WithMany()
+            .HasForeignKey(v => v.NoteId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 public sealed class NoteBlockConfiguration : IEntityTypeConfiguration<NoteBlockEntity>
 {
     public void Configure(EntityTypeBuilder<NoteBlockEntity> builder)

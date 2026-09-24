@@ -121,7 +121,7 @@ public static class NoteMapper
             });
 
     // First failure wins; blocks come out ordered by SortOrder.
-    private static Result<IReadOnlyList<NoteBlock>, AppError> MapBlocks(IEnumerable<NoteBlockEntity> entities)
+    public static Result<IReadOnlyList<NoteBlock>, AppError> MapBlocks(IEnumerable<NoteBlockEntity> entities)
     {
         var blocks = new List<NoteBlock>();
         foreach (var entity in entities.OrderBy(b => b.SortOrder))

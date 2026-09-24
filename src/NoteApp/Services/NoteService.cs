@@ -76,6 +76,48 @@ public sealed class NoteService(INoteRepository noteRepository)
         return Result<IReadOnlyList<NoteRef>, AppError>.Ok(NoteMapper.ToRefs(rows));
     }
 
+    // --- Versions ---
+
+    public async Task<Result<IReadOnlyList<NoteVersion>, AppError>> VersionsAsync(NoteId id)
+    {
+        if (!(await noteRepository.VersionsAsync(id)).TryGet(out var rows, out var error))
+            return Result<IReadOnlyList<NoteVersion>, AppError>.Fail(error);
+
+        return Result<IReadOnlyList<NoteVersion>, AppError>.Ok(rows.Select(ToVersion).ToList());
+    }
+
+    // An encrypted note's versions need its password — the one it had when the version was saved.
+    public async Task<Result<NoteVersionContent, AppError>> OpenVersionAsync(Guid versionId, string? password)
+    {
+        if (!(await noteRepository.GetVersionAsync(versionId)).TryGet(out var row, out var error))
+            return Result<NoteVersionContent, AppError>.Fail(error);
+
+        try
+        {
+            var content = row.Content ?? [];
+            IReadOnlyList<NoteBlock> blocks;
+            if (!row.IsEncrypted)
+                blocks = EncryptionService.BlocksFromJson(System.Text.Encoding.UTF8.GetString(content));
+            else if (password is null)
+                return Result<NoteVersionContent, AppError>.Fail(AppError.Validation("This version is encrypted and the note's password is not known."));
+            else
+                blocks = EncryptionService.DecryptBlocks(content, password);
+
+            return Result<NoteVersionContent, AppError>.Ok(new NoteVersionContent(ToVersion(row), row.Title, blocks));
+        }
+        catch (CryptographicException)
+        {
+            return Result<NoteVersionContent, AppError>.Fail(AppError.Validation("This version was saved with another password."));
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or InvalidOperationException or FormatException)
+        {
+            return Result<NoteVersionContent, AppError>.Fail(AppError.Validation($"This version cannot be read: {ex.Message}"));
+        }
+    }
+
+    private static NoteVersion ToVersion(NoteApp.Data.Queries.NoteVersionRow row) =>
+        new(row.Id, row.SavedAt, row.Title, row.IsEncrypted, row.SizeBytes);
+
     public Task<Result<NoteId, AppError>> DuplicateAsync(NoteSummary note) =>
         noteRepository.DuplicateAsync(note.Id, NoteCopies.TitleFor(note.Title.Value));
 

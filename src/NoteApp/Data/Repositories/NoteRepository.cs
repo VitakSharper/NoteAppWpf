@@ -1,9 +1,11 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using NoteApp.Data.Entities;
 using NoteApp.Data.Queries;
 using NoteApp.Domain.Functional;
 using NoteApp.Domain.Models;
 using NoteApp.Domain.ValueObjects;
+using NoteApp.Services;
 using NoteApp.Services.Mapping;
 
 namespace NoteApp.Data.Repositories;
@@ -11,8 +13,14 @@ namespace NoteApp.Data.Repositories;
 // One short-lived DbContext per operation. Everything in the app is resolved
 // from the root provider, so a scoped context would live as long as the app
 // and fail as soon as two async operations overlapped.
-public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFactory) : INoteRepository
+// keepVersions: how many earlier states of a note a save keeps (0 = none), read at each save
+// so a change in Settings applies at once.
+public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFactory, Func<int>? keepVersions = null) : INoteRepository
 {
+    public const int DefaultKeptVersions = 10;
+
+    private int KeptVersions => Math.Max(0, keepVersions?.Invoke() ?? DefaultKeptVersions);
+
     public async Task<Result<Note, AppError>> GetByIdAsync(NoteId id)
     {
         try
@@ -77,6 +85,11 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
                 if (existing is null)
                     return Result<Note, AppError>.Fail(AppError.NotFound($"Note with ID {note.Id} not found."));
 
+                // What is about to be replaced becomes a version, in the same transaction.
+                var keep = KeptVersions;
+                if (keep > 0 && VersionOf(existing) is { } version)
+                    context.NoteVersions.Add(version);
+
                 existing.Title = note.Title.Value;
                 existing.UpdatedAt = note.UpdatedAt;
 
@@ -102,6 +115,7 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
                     existing.NoteTags.Add(new NoteTagEntity { NoteId = note.Id.Value, TagId = tag.Id });
 
                 await context.SaveChangesAsync();
+                await PruneVersionsAsync(context, note.Id, KeptVersions);
             }
 
             return await GetByIdAsync(note.Id);
@@ -109,6 +123,88 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
         catch (Exception ex)
         {
             return Result<Note, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
+    // A plain note's blocks as JSON, an encrypted one's payload as it is. A stored note whose
+    // blocks do not map (a hand-edited row) is saved over without a version.
+    private static NoteVersionEntity? VersionOf(NoteEntity stored)
+    {
+        byte[] content;
+        if (stored.IsEncrypted)
+        {
+            content = stored.EncryptedContent ?? [];
+        }
+        else if (NoteMapper.MapBlocks(stored.Blocks).TryGet(out var blocks, out _))
+        {
+            content = Encoding.UTF8.GetBytes(EncryptionService.BlocksToJson(blocks));
+        }
+        else
+        {
+            return null;
+        }
+
+        return new NoteVersionEntity
+        {
+            Id = Guid.NewGuid(),
+            NoteId = stored.Id,
+            SavedAt = stored.UpdatedAt,
+            Title = stored.Title,
+            IsEncrypted = stored.IsEncrypted,
+            Content = content,
+            SizeBytes = content.LongLength
+        };
+    }
+
+    private static async Task PruneVersionsAsync(NoteDbContext context, NoteId id, int keep)
+    {
+        if (keep <= 0)
+            return;
+
+        var surplus = await context.NoteVersions
+            .Where(v => v.NoteId == id.Value)
+            .OrderByDescending(v => v.SavedAt)
+            .Skip(keep)
+            .Select(v => v.Id)
+            .ToListAsync();
+        if (surplus.Count > 0)
+            await context.NoteVersions.Where(v => surplus.Contains(v.Id)).ExecuteDeleteAsync();
+    }
+
+    public async Task<Result<IReadOnlyList<NoteVersionRow>, AppError>> VersionsAsync(NoteId id)
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var rows = await context.NoteVersions.AsNoTracking()
+                .Where(v => v.NoteId == id.Value)
+                .OrderByDescending(v => v.SavedAt)
+                .Select(v => new NoteVersionRow { Id = v.Id, SavedAt = v.SavedAt, Title = v.Title, IsEncrypted = v.IsEncrypted, SizeBytes = v.SizeBytes })
+                .ToListAsync();
+            return Result<IReadOnlyList<NoteVersionRow>, AppError>.Ok(rows);
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<NoteVersionRow>, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
+    public async Task<Result<NoteVersionRow, AppError>> GetVersionAsync(Guid versionId)
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var row = await context.NoteVersions.AsNoTracking()
+                .Where(v => v.Id == versionId)
+                .Select(v => new NoteVersionRow { Id = v.Id, SavedAt = v.SavedAt, Title = v.Title, IsEncrypted = v.IsEncrypted, SizeBytes = v.SizeBytes, Content = v.Content })
+                .FirstOrDefaultAsync();
+            return row is null
+                ? Result<NoteVersionRow, AppError>.Fail(AppError.NotFound("That version no longer exists."))
+                : Result<NoteVersionRow, AppError>.Ok(row);
+        }
+        catch (Exception ex)
+        {
+            return Result<NoteVersionRow, AppError>.Fail(AppError.Database(ex.Message));
         }
     }
 

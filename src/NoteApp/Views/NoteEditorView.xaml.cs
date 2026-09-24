@@ -1729,6 +1729,11 @@ public partial class NoteEditorView : UserControl
         if (shell is not null)
             menu.Items.Add(new MenuItem { Header = "Duplicate", Command = shell.DuplicateOpenNoteCommand,
                 ToolTip = "A copy of this note, opened right away (unsaved changes are saved first)" });
+
+        var history = new MenuItem { Header = "Version history…", IsEnabled = vm.HasHistory,
+            ToolTip = "The states earlier saves replaced; bring one back" };
+        history.Click += (_, _) => new VersionHistoryWindow(vm) { Owner = Window.GetWindow(this) }.ShowDialog();
+        menu.Items.Add(history);
         menu.IsOpen = true;
     }
 

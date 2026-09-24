@@ -65,7 +65,10 @@ public partial class App : Application
             options.UseSqlServer(connectionString));
 
         services.AddSingleton<AppSettingsService>();
-        services.AddSingleton<INoteRepository, NoteRepository>();
+        // How many versions a save keeps is read from the settings at each save.
+        services.AddSingleton<INoteRepository>(sp => new NoteRepository(
+            sp.GetRequiredService<IDbContextFactory<NoteDbContext>>(),
+            () => sp.GetRequiredService<AppSettingsService>().Current.KeepVersions));
         services.AddSingleton<ITagRepository, TagRepository>();
         services.AddSingleton<NoteService>();
 

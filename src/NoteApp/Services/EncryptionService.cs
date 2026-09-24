@@ -17,7 +17,7 @@ public static class EncryptionService
 
     public static byte[] EncryptBlocks(IReadOnlyList<NoteBlock> blocks, string password)
     {
-        var json = SerializeBlocks(blocks);
+        var json = BlocksToJson(blocks);
         var plainBytes = Encoding.UTF8.GetBytes(json);
         return Encrypt(plainBytes, password);
     }
@@ -26,7 +26,7 @@ public static class EncryptionService
     {
         var plainBytes = Decrypt(encryptedData, password);
         var json = Encoding.UTF8.GetString(plainBytes);
-        return DeserializeBlocks(json);
+        return BlocksFromJson(json);
     }
 
     private static byte[] Encrypt(byte[] plainData, string password)
@@ -79,7 +79,8 @@ public static class EncryptionService
         return Rfc2898DeriveBytes.Pbkdf2(password, salt, Iterations, HashAlgorithmName.SHA256, KeySize);
     }
 
-    private static string SerializeBlocks(IReadOnlyList<NoteBlock> blocks)
+    // The plain JSON inside the encrypted payload; also what a plain note's versions hold.
+    public static string BlocksToJson(IReadOnlyList<NoteBlock> blocks)
     {
         var dtos = blocks.Select(b => b.Match(
             text: t => new BlockDto
@@ -121,7 +122,7 @@ public static class EncryptionService
         return JsonSerializer.Serialize(dtos);
     }
 
-    private static IReadOnlyList<NoteBlock> DeserializeBlocks(string json)
+    public static IReadOnlyList<NoteBlock> BlocksFromJson(string json)
     {
         var dtos = JsonSerializer.Deserialize<List<BlockDto>>(json) ?? [];
         var blocks = new List<NoteBlock>();

@@ -10,6 +10,7 @@ public sealed class NoteDbContext : DbContext
     public DbSet<NoteBlockEntity> NoteBlocks => Set<NoteBlockEntity>();
     public DbSet<TagEntity> Tags => Set<TagEntity>();
     public DbSet<NoteTagEntity> NoteTags => Set<NoteTagEntity>();
+    public DbSet<NoteVersionEntity> NoteVersions => Set<NoteVersionEntity>();
 
     public NoteDbContext(DbContextOptions<NoteDbContext> options) : base(options) { }
 
@@ -19,6 +20,7 @@ public sealed class NoteDbContext : DbContext
         modelBuilder.ApplyConfiguration(new NoteBlockConfiguration());
         modelBuilder.ApplyConfiguration(new TagConfiguration());
         modelBuilder.ApplyConfiguration(new NoteTagConfiguration());
+        modelBuilder.ApplyConfiguration(new NoteVersionConfiguration());
 
         // Trashed notes are invisible everywhere by default — list, open, update,
         // encrypted payload — so no query path has to remember the rule. Only the

@@ -34,4 +34,8 @@ public interface INoteRepository
     // Replaces any template of the same title.
     Task<Result<Unit, AppError>> SaveTemplateAsync(Note template);
     Task<Result<Unit, AppError>> DeleteTemplateAsync(NoteId id);
+
+    // Every save keeps what it replaces (UpdateAsync); newest first, without their content.
+    Task<Result<IReadOnlyList<NoteVersionRow>, AppError>> VersionsAsync(NoteId id);
+    Task<Result<NoteVersionRow, AppError>> GetVersionAsync(Guid versionId);
 }

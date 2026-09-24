@@ -24,6 +24,7 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **Search & filter** — Search by title/content (every word must match; `"exact phrase"`, `tag:work`, `has:file` / `link` / `checklist` / `code` / `secret`, `is:pinned`, `is:encrypted`), filter by tags or note type; the matches are highlighted in the list, whose preview moves to show them
 - **Archive** — Right-click › Archive keeps a note out of the list without trashing it; the archive toggle next to the sort shows them (open and edit as usual, Unarchive brings one back, UNDO in the snackbar)
 - **Full CRUD** — Create, read, update, delete notes and tags
+- **Version history** — Every save keeps what it replaces (the last 10 by default, Settings › Versions kept); ⋮ › Version history shows each earlier state and puts one back in the editor, to save or not. An encrypted note's versions stay encrypted and open with its password
 - **Trash with undo** — Deleting a note moves it to the trash and the snackbar offers UNDO; the Trash view restores or deletes forever, and only the permanent gestures ask for confirmation
 - **Draft recovery** — While a note has unsaved changes a draft is kept every 20 s (never for encrypted notes, nor for notes holding a secret); after a crash NoteApp offers to restore it at the next start
 - **Status line** — Under the editor: the note's word count (text, checklists, code, link descriptions, updated as you type), when it was last saved, and an "Unsaved changes" marker
@@ -156,7 +157,8 @@ noteDb
 │                  TextContent (rich), PlainText (searchable), FileData, FileName,
 │                  FileExtension, FileSizeBytes, LinkUrl, LinkDescription
 ├── Tags         — Id, Name (unique)
-└── NoteTags     — NoteId (FK), TagId (FK) — many-to-many junction table
+├── NoteTags     — NoteId (FK), TagId (FK) — many-to-many junction table
+└── NoteVersions — Id, NoteId (FK, cascade), SavedAt, Title, IsEncrypted, Content (blocks JSON or encrypted payload), SizeBytes
 ```
 
 Each note can have multiple blocks, ordered by `SortOrder`. This allows mixing text, files, and links freely.

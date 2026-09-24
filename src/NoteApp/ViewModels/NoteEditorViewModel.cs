@@ -285,6 +285,7 @@ public partial class NoteEditorViewModel : ObservableObject
         _existingNote = savedNote;
         OnPropertyChanged(nameof(IsEditing));
         OnPropertyChanged(nameof(EditorTitle));
+        OnPropertyChanged(nameof(HasHistory));
         IsDirty = false;
         SavedLabel = NoteStatus.SavedLabel(savedNote.UpdatedAt, DateTime.Now);
     }
@@ -502,6 +503,43 @@ public partial class NoteEditorViewModel : ObservableObject
                     SecretUrl = s.Url
                 },
                 code: c => new BlockViewModel { Id = id, BlockType = BlockType.Code, CodeText = c.Content });
+
+    // --- Version history ---
+
+    public bool HasHistory => _existingNote is not null;
+
+    public async Task<IReadOnlyList<NoteVersion>> VersionsAsync()
+    {
+        if (_existingNote is not { } note)
+            return [];
+
+        return (await _noteService.VersionsAsync(note.Id)).Match(
+            success: versions => versions,
+            failure: error =>
+            {
+                ErrorMessage = error.Message;
+                return (IReadOnlyList<NoteVersion>)[];
+            });
+    }
+
+    // An encrypted note's versions open with the password the editor holds.
+    public Task<Result<NoteVersionContent, AppError>> OpenVersionAsync(Guid versionId) =>
+        _noteService.OpenVersionAsync(versionId, _password);
+
+    // The version replaces what the editor holds — title and blocks, the tags stay — and the
+    // note is modified: saving makes it the current state (and keeps this one as a version).
+    public void RestoreVersion(NoteVersionContent version)
+    {
+        Title = version.Title;
+        while (Blocks.Count > 0)
+            Blocks.RemoveAt(Blocks.Count - 1);
+        foreach (var block in version.Blocks)
+            Blocks.Add(ToViewModel(block, Guid.NewGuid()));
+
+        SelectedBlock = Blocks.FirstOrDefault();
+        MarkDirty();
+        ShowMessage?.Invoke($"The version of {VersionPreview.When(version.Version.SavedAt)} is in the editor — save to keep it.");
+    }
 
     // --- Templates ---
 
