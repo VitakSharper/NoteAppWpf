@@ -13,6 +13,7 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **Drop files** — Drop files from Explorer onto an open note to attach them as file blocks
 - **Pinned notes** — Right-click a note › Pin to top: it stays first in the list whatever the sort
 - **Tagging system** — Create, rename, delete tags and assign them to notes
+- **Date headings** — Under a date sort the list is grouped: Pinned, Today, Yesterday, Previous 7 / 30 days, then by month
 - **Search & filter** — Search by title/content, filter by tags or note type
 - **Full CRUD** — Create, read, update, delete notes and tags
 - **Trash with undo** — Deleting a note moves it to the trash and the snackbar offers UNDO; the Trash view restores or deletes forever, and only the permanent gestures ask for confirmation

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NoteApp.Data.Repositories;
@@ -180,6 +181,17 @@ public partial class NoteListViewModel : ObservableObject
             };
 
         Notes = new ObservableCollection<NoteSummary>(sorted);
+        ApplyGrouping();
+    }
+
+    // Date headings on the view of the collection the ListBox shows; the rows come sorted
+    // already, so the groups appear in order. Recomputed with every sort, "today" included.
+    private void ApplyGrouping()
+    {
+        var view = CollectionViewSource.GetDefaultView(Notes);
+        view.GroupDescriptions.Clear();
+        if (NoteGroups.IsGrouped(SelectedSort))
+            view.GroupDescriptions.Add(new PropertyGroupDescription(null, new NoteGroups.Converter(SelectedSort, DateTime.Now)));
     }
 
     [RelayCommand]
