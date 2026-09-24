@@ -51,6 +51,9 @@
                         <Button Style="{StaticResource FormatToolButton}" ToolTip="Bullet List" Click="OnBulletList" Tag="{Binding}">
                             <materialDesign:PackIcon Kind="FormatListBulleted" Width="20" Height="20" />
                         </Button>
+                        <Button Style="{StaticResource FormatToolButton}" ToolTip="Numbered List" Click="OnNumberedList" Tag="{Binding}">
+                            <materialDesign:PackIcon Kind="FormatListNumbered" Width="20" Height="20" />
+                        </Button>
                         <Button Style="{StaticResource FormatToolButton}" ToolTip="Insert Image" Click="OnInsertImage" Tag="{Binding}">
                             <materialDesign:PackIcon Kind="ImageOutline" Width="20" Height="20" />
                         </Button>

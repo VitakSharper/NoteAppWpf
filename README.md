@@ -6,7 +6,7 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 
 - **Multi-block notes** — Each note can contain multiple content blocks: rich text, files, links and checklists — all in one note
 - **Checklists** — Tickable items inside a note: Enter adds the next one, done items are struck through, the block counts progress, and item texts are searchable
-- **Rich text editing** — Bold, italic, underline, bullet lists via a toolbar
+- **Rich text editing** — Bold, italic, underline, bullet and numbered lists via a toolbar
 - **Clickable links** — Web addresses (`http://`, `https://`, `www.`) in text blocks become links as soon as a space or a new line follows them, and `Ctrl+Click` opens them in the browser — in checklist items and link blocks too, which also get an open button
 - **File attachments** — Browse and attach files stored directly in the database
 - **Block ordering** — Drag-free move up/down to reorder content blocks within a note

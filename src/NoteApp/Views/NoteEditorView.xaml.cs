@@ -469,6 +469,16 @@ public partial class NoteEditorView : UserControl
         EditingCommands.ToggleBullets.Execute(null, rtb);
     }
 
+    // Same toggle, "1." markers: both exporters already render Decimal lists.
+    private void OnNumberedList(object sender, RoutedEventArgs e)
+    {
+        var rtb = FindRichTextBox(sender);
+        if (rtb is null) return;
+
+        rtb.Focus();
+        EditingCommands.ToggleNumbering.Execute(null, rtb);
+    }
+
     // --- Search bar element registration ---
 
     private void OnSearchBarLoaded(object sender, RoutedEventArgs e)

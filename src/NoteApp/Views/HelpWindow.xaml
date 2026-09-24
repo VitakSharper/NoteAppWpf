@@ -99,7 +99,7 @@
 
                 <TextBlock Style="{StaticResource Section}" Text="Notes and blocks" />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="Text blocks are rich text: bold, italic, underline and bullet lists from the toolbar, images pasted from the clipboard or inserted from a file. Each text block has its own find bar (the magnifier, or Ctrl+F while typing in it). A web address (http://, https:// or www.) turns into a link once you type a space or a new line after it." />
+                           Text="Text blocks are rich text: bold, italic, underline, bullet and numbered lists from the toolbar, images pasted from the clipboard or inserted from a file. Each text block has its own find bar (the magnifier, or Ctrl+F while typing in it). A web address (http://, https:// or www.) turns into a link once you type a space or a new line after it." />
                 <TextBlock Style="{StaticResource Body}"
                            Text="File blocks keep the file itself inside the database; Save file to disk writes it back out. Link blocks hold a checked URL and a description; the button next to the URL opens it." />
                 <TextBlock Style="{StaticResource Body}"
