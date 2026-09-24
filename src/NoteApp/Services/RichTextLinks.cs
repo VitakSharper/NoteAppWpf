@@ -1,9 +1,7 @@
 using System.Windows.Documents;
 using NoteApp.Domain.Functional;
 using NoteApp.Domain.ValueObjects;
-using NoteApp.Services;
-
-namespace NoteApp.Views;
+namespace NoteApp.Services;
 
 // The FlowDocument half of clickable links in a text block; TextLinks finds them.
 // Addresses become Hyperlinks, stored with the note like any other formatting. The ones
@@ -42,8 +40,9 @@ public static class RichTextLinks
     }
 
     // Same rule as an address in the text (LinkUrl): a pasted hyperlink can point at
-    // file: or anything else the shell would run, and those never open.
-    private static Option<LinkUrl> Target(Hyperlink hyperlink) =>
+    // file: or anything else the shell would run, and those never open. The exporters
+    // use it too, so a link leads to the same place in Word as in the editor.
+    public static Option<LinkUrl> Target(Hyperlink hyperlink) =>
         hyperlink.NavigateUri is { } uri && LinkUrl.From(uri.OriginalString).TryGet(out var url, out _)
             ? new Option<LinkUrl>.Some(url)
             : TextLinks.First(new TextRange(hyperlink.ContentStart, hyperlink.ContentEnd).Text);

@@ -61,6 +61,53 @@ public class WordExportServiceTests
         Assert.Contains("https://example.com/page", text);
     }
 
+    // A link in a text block (the editor's Hyperlink) and an address in a checklist item
+    // both lead somewhere in Word.
+    [Fact]
+    public void Links_inside_text_and_checklist_items_become_hyperlinks()
+    {
+        DocElement[] elements =
+        [
+            new DocParagraph([
+                new DocText("see ", false, false, false),
+                new DocText("the docs", true, false, true, Link: "https://docs.example.com/"),
+                new DocText(" today", false, false, false)]),
+            new DocChecklist([new DocChecklistItem("read https://mid.example.com/a later", IsDone: true)])
+        ];
+        using var stream = new MemoryStream();
+
+        WordExportService.Render("Note", elements, stream);
+
+        stream.Position = 0;
+        using var doc = WordprocessingDocument.Open(stream, isEditable: false);
+        var main = doc.MainDocumentPart!;
+        var body = main.Document!.Body!;
+        Uri Target(Hyperlink h) => main.HyperlinkRelationships.Single(r => r.Id == h.Id).Uri;
+
+        var links = body.Descendants<Hyperlink>().ToList();
+        Assert.Equal(["the docs", "https://mid.example.com/a"], links.Select(l => l.InnerText));
+        Assert.Equal(new Uri("https://docs.example.com/"), Target(links[0]));
+        Assert.Equal(new Uri("https://mid.example.com/a"), Target(links[1]));
+        Assert.NotNull(links[0].Descendants<Bold>().SingleOrDefault());
+
+        // The item keeps its text around the link, and a done one is struck through all along.
+        var item = body.Elements<Paragraph>().Last();
+        Assert.Equal("☑ read https://mid.example.com/a later", item.InnerText);
+        Assert.All(item.Descendants<Run>(), r => Assert.NotNull(r.RunProperties?.Strike));
+    }
+
+    [Fact]
+    public void Checklist_items_are_cut_around_their_addresses()
+    {
+        var pieces = DocTextLinks.Split("a https://x.com/, b www.y.com");
+
+        Assert.Equal(
+            [("a ", null), ("https://x.com/", "https://x.com/"), (", b ", null), ("www.y.com", "https://www.y.com/")],
+            pieces);
+        Assert.Equal([("plain", (string?)null)], DocTextLinks.Split("plain"));
+        Assert.Empty(DocTextLinks.Split(""));
+    }
+
     [Fact]
     public void A_link_that_is_not_an_absolute_url_is_written_as_plain_text()
     {
@@ -112,8 +159,8 @@ public class WordExportServiceTests
         Assert.Equal(3, paragraphs.Count); // title + one per item
         Assert.Equal("☑ buy milk", paragraphs[1].InnerText);
         Assert.Equal("☐ call the bank", paragraphs[2].InnerText);
-        Assert.NotNull(paragraphs[1].Descendants<Run>().Single().RunProperties?.Strike);
-        Assert.Null(paragraphs[2].Descendants<Run>().Single().RunProperties?.Strike);
+        Assert.All(paragraphs[1].Descendants<Run>(), r => Assert.NotNull(r.RunProperties?.Strike));
+        Assert.All(paragraphs[2].Descendants<Run>(), r => Assert.Null(r.RunProperties?.Strike));
     }
 
     [Fact]

@@ -67,7 +67,7 @@ public static class WordExportService
 
                 case DocChecklist checklist:
                     foreach (var item in checklist.Items)
-                        body.Append(ChecklistParagraph(item));
+                        body.Append(ChecklistParagraph(item, main));
                     break;
             }
         }
@@ -99,7 +99,7 @@ public static class WordExportService
             switch (inline)
             {
                 case DocText text:
-                    paragraph.Append(TextRun(text));
+                    paragraph.Append(InlineText(text, main));
                     break;
 
                 case DocLineBreak:
@@ -115,6 +115,25 @@ public static class WordExportService
 
         return paragraph;
     }
+
+    // Text inside a hyperlink becomes a w:hyperlink on its own relationship, styled the
+    // way the link blocks are; an address Word could not follow stays plain text.
+    private static OpenXmlElement InlineText(DocText text, MainDocumentPart main)
+    {
+        if (text.Link is null || !Uri.TryCreate(text.Link, UriKind.Absolute, out var uri))
+            return TextRun(text);
+
+        var properties = LinkProperties();
+        if (text.IsBold) properties.Append(new Bold());
+        if (text.IsItalic) properties.Append(new Italic());
+        return Hyperlinked(new Run(properties, PreservedText(text.Text)), uri, main);
+    }
+
+    private static Hyperlink Hyperlinked(Run run, Uri uri, MainDocumentPart main) =>
+        new(run) { Id = main.AddHyperlinkRelationship(uri, isExternal: true).Id };
+
+    private static RunProperties LinkProperties() =>
+        new(new Color { Val = "0563C1" }, new Underline { Val = UnderlineValues.Single });
 
     private static Run TextRun(DocText text)
     {
@@ -142,14 +161,9 @@ public static class WordExportService
             return paragraph;
         }
 
-        var relationship = main.AddHyperlinkRelationship(uri, isExternal: true);
         var label = string.IsNullOrWhiteSpace(link.Description) ? link.Url : link.Description;
 
-        paragraph.Append(new Hyperlink(
-            new Run(
-                new RunProperties(new Color { Val = "0563C1" }, new Underline { Val = UnderlineValues.Single }),
-                PreservedText(label)))
-        { Id = relationship.Id });
+        paragraph.Append(Hyperlinked(new Run(LinkProperties(), PreservedText(label)), uri, main));
 
         // Keep the address readable on paper when the label is a description.
         if (label != link.Url)
@@ -160,22 +174,38 @@ public static class WordExportService
 
     // Real Word checkboxes are content controls (or a legacy form field): a ballot-box
     // character reads the same everywhere and survives a copy-paste into any editor.
-    // A ticked item is struck through, the way the editor shows it.
-    private static Paragraph ChecklistParagraph(DocChecklistItem item)
+    // A ticked item is struck through, the way the editor shows it, and an address in an
+    // item is a hyperlink, as it is in a text block.
+    private static Paragraph ChecklistParagraph(DocChecklistItem item, MainDocumentPart main)
     {
-        var properties = new RunProperties();
-        if (item.IsDone)
+        var paragraph = new Paragraph(new ParagraphProperties(new Indentation { Left = "360" }));
+        paragraph.Append(ChecklistRun($"{(item.IsDone ? "☑" : "☐")} ", item.IsDone));
+
+        foreach (var (text, link) in DocTextLinks.Split(item.Text))
         {
-            properties.Append(new Strike());
-            properties.Append(new Color { Val = "595959" });
+            if (link is not null && Uri.TryCreate(link, UriKind.Absolute, out var uri))
+            {
+                var properties = LinkProperties();
+                if (item.IsDone)
+                    properties.Append(new Strike());
+                paragraph.Append(Hyperlinked(new Run(properties, PreservedText(text)), uri, main));
+            }
+            else
+            {
+                paragraph.Append(ChecklistRun(text, item.IsDone));
+            }
         }
 
-        var run = new Run();
-        if (properties.HasChildren)
-            run.Append(properties);
-        run.Append(PreservedText($"{(item.IsDone ? "☑" : "☐")} {item.Text}"));
+        return paragraph;
+    }
 
-        return new Paragraph(new ParagraphProperties(new Indentation { Left = "360" }), run);
+    private static Run ChecklistRun(string text, bool isDone)
+    {
+        var run = new Run();
+        if (isDone)
+            run.Append(new RunProperties(new Strike(), new Color { Val = "595959" }));
+        run.Append(PreservedText(text));
+        return run;
     }
 
     private static Paragraph AttachmentParagraph(DocAttachment attachment) =>

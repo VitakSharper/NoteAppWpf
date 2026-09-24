@@ -28,9 +28,32 @@ public enum DocListMarker
 }
 
 public abstract record DocInline;
-public sealed record DocText(string Text, bool IsBold, bool IsItalic, bool IsUnderline) : DocInline;
+// Link: where the text leads when it sits in a hyperlink (an absolute HTTP/HTTPS address).
+public sealed record DocText(string Text, bool IsBold, bool IsItalic, bool IsUnderline, string? Link = null) : DocInline;
 public sealed record DocImage(byte[] Png) : DocInline;
 public sealed record DocLineBreak : DocInline;
+
+// Plain text cut around the web addresses it mentions (TextLinks), for the parts of a
+// note that are not rich text — checklist items: each piece carries its link, if any.
+public static class DocTextLinks
+{
+    public static IReadOnlyList<(string Text, string? Link)> Split(string text)
+    {
+        var pieces = new List<(string, string?)>();
+        var position = 0;
+        foreach (var link in TextLinks.Find(text))
+        {
+            if (link.Start > position)
+                pieces.Add((text[position..link.Start], null));
+            pieces.Add((text.Substring(link.Start, link.Length), link.Url.Value.AbsoluteUri));
+            position = link.Start + link.Length;
+        }
+
+        if (position < text.Length)
+            pieces.Add((text[position..], null));
+        return pieces;
+    }
+}
 
 public static class DocListMarkers
 {

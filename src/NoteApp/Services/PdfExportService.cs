@@ -1,3 +1,4 @@
+using System.IO;
 using NoteApp.Services.Export;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -13,7 +14,13 @@ public static class PdfExportService
     public static void Export(string noteTitle, IReadOnlyList<ExportBlock> blocks, string outputPath)
     {
         var elements = RichTextDocument.Extract(blocks);
+        using var stream = File.Create(outputPath);
+        Render(noteTitle, elements, stream);
+    }
 
+    // Plain data in, bytes out — what the tests exercise, like WordExportService.Render.
+    public static void Render(string noteTitle, IReadOnlyList<DocElement> elements, Stream output)
+    {
         Document.Create(container =>
         {
             container.Page(page =>
@@ -50,7 +57,7 @@ public static class PdfExportService
                         text.TotalPages();
                     });
             });
-        }).GeneratePdf(outputPath);
+        }).GeneratePdf(output);
     }
 
     private static void RenderElements(ColumnDescriptor column, IReadOnlyList<DocElement> elements)
@@ -89,11 +96,24 @@ public static class PdfExportService
     {
         foreach (var item in checklist.Items)
         {
-            var text = column.Item().PaddingLeft(12).Text($"{(item.IsDone ? "[x]" : "[ ]")} {item.Text}");
-            if (item.IsDone)
-                text.Strikethrough().FontColor(Colors.Grey.Darken1);
+            column.Item().PaddingLeft(12).Text(text =>
+            {
+                Done(text.Span(item.IsDone ? "[x] " : "[ ] "), item.IsDone);
+
+                foreach (var (piece, link) in DocTextLinks.Split(item.Text))
+                    Done(link is null ? text.Span(piece) : LinkSpan(text, piece, link), item.IsDone);
+            });
         }
     }
+
+    private static void Done(TextSpanDescriptor span, bool isDone)
+    {
+        if (isDone)
+            span.Strikethrough().FontColor(Colors.Grey.Darken1);
+    }
+
+    private static TextSpanDescriptor LinkSpan(TextDescriptor text, string label, string url) =>
+        text.Hyperlink(label, url).Underline().FontColor(Colors.Blue.Medium);
 
     private static void RenderLink(ColumnDescriptor column, DocLink link)
     {
@@ -153,7 +173,7 @@ public static class PdfExportService
                 switch (segment)
                 {
                     case DocText t:
-                        var span = text.Span(t.Text);
+                        var span = t.Link is null ? text.Span(t.Text) : LinkSpan(text, t.Text, t.Link);
                         if (t.IsBold) span.Bold();
                         if (t.IsItalic) span.Italic();
                         if (t.IsUnderline) span.Underline();

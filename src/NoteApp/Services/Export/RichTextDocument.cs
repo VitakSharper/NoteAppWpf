@@ -109,7 +109,9 @@ public static class RichTextDocument
         }
     }
 
-    private static List<DocInline> ExtractInlines(InlineCollection inlines)
+    // link: the target of the Hyperlink these inlines sit in, if any — resolved the way
+    // Ctrl+Click resolves it in the editor (RichTextLinks.Target).
+    private static List<DocInline> ExtractInlines(InlineCollection inlines, string? link = null)
     {
         var result = new List<DocInline>();
 
@@ -122,11 +124,17 @@ public static class RichTextDocument
                         run.Text,
                         run.FontWeight == FontWeights.Bold,
                         run.FontStyle == FontStyles.Italic,
-                        run.TextDecorations?.Contains(TextDecorations.Underline[0]) == true));
+                        run.TextDecorations?.Contains(TextDecorations.Underline[0]) == true,
+                        link));
+                    break;
+
+                case Hyperlink hyperlink:
+                    result.AddRange(ExtractInlines(hyperlink.Inlines,
+                        RichTextLinks.Target(hyperlink).Match(url => url.Value.AbsoluteUri, () => link)));
                     break;
 
                 case Span span:
-                    result.AddRange(ExtractInlines(span.Inlines));
+                    result.AddRange(ExtractInlines(span.Inlines, link));
                     break;
 
                 case InlineUIContainer { Child: WpfImage img } when img.Source is BitmapSource bmp:

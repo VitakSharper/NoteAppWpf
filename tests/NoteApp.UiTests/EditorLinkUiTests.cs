@@ -131,6 +131,28 @@ public class EditorLinkUiTests
         Assert.Contains("https://last.example.com", block.PlainTextContent);
     });
 
+    // The exporters see the same target a Ctrl+Click would open: the address for an
+    // automatic link, the NavigateUri for a pasted one — never a file: target.
+    [Fact]
+    public void Exported_text_carries_each_links_target() => Wpf.Run(() =>
+    {
+        using var editor = new OpenEditor(With(Text("see https://auto.example.com here")));
+        var box = editor.RichText();
+        var paragraph = (Paragraph)box.Document.Blocks.FirstBlock;
+        paragraph.Inlines.Add(new Hyperlink(new Run("pasted")) { NavigateUri = new Uri("https://pasted.example.com/") });
+        paragraph.Inlines.Add(new Hyperlink(new Run("evil")) { NavigateUri = new Uri("file:///C:/Windows/notepad.exe") });
+        SyncAll(editor.View);
+
+        var exported = NoteApp.Services.Export.RichTextDocument.Extract(editor.ViewModel.Blocks[0].RichTextContent);
+
+        var texts = Assert.IsType<NoteApp.Services.Export.DocParagraph>(Assert.Single(exported)).Inlines
+            .OfType<NoteApp.Services.Export.DocText>().ToList();
+        Assert.Equal("https://auto.example.com/", texts.Single(t => t.Text == "https://auto.example.com").Link);
+        Assert.Equal("https://pasted.example.com/", texts.Single(t => t.Text == "pasted").Link);
+        Assert.Null(texts.Single(t => t.Text == "evil").Link);
+        Assert.Null(texts.Single(t => t.Text == "see ").Link);
+    });
+
     [Fact]
     public void A_checklist_line_that_is_an_address_reads_as_a_link() => Wpf.Run(() =>
     {

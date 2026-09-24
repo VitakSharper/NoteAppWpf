@@ -105,7 +105,7 @@
                 <TextBlock Style="{StaticResource Body}"
                            Text="Checklist blocks hold tickable items: press Enter in an item to add the next one, tick one to strike it through, and the block counts what is done. Empty items are dropped when the note is saved, and the item texts are searchable like any other text. An item that holds a web address gets an open button, and an item that is nothing but an address reads as a link." />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="The PDF and Word buttons in the editor header export the whole open note: text with its formatting and images, checklists as ticked boxes, links (clickable in Word) and the attached files listed by name — their bytes stay in the database." />
+                           Text="The PDF and Word buttons in the editor header export the whole open note: text with its formatting and images, checklists as ticked boxes, links — clickable in both, including the addresses in text and checklist items — and the attached files listed by name — their bytes stay in the database." />
 
                 <TextBlock Style="{StaticResource Section}" Text="Search, tags and filters" />
                 <TextBlock Style="{StaticResource Body}"
