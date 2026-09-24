@@ -59,6 +59,7 @@ public partial class NoteEditorView : UserControl
         if (_subscribedViewModel is not null)
         {
             _subscribedViewModel.SyncAllBlocksRequested -= SyncAllRichTextBoxes;
+            _subscribedViewModel.SnapshotRequested -= SnapshotAllRichTextBoxes;
             _subscribedViewModel.PasswordRequested -= OnPasswordRequested;
         }
 
@@ -67,6 +68,7 @@ public partial class NoteEditorView : UserControl
         if (vm is not null)
         {
             vm.SyncAllBlocksRequested += SyncAllRichTextBoxes;
+            vm.SnapshotRequested += SnapshotAllRichTextBoxes;
             vm.PasswordRequested += OnPasswordRequested;
         }
     }
@@ -168,7 +170,12 @@ public partial class NoteEditorView : UserControl
             ClearForeground(child);
     }
 
-    private void SyncAllRichTextBoxes()
+    private void SyncAllRichTextBoxes() => SyncAll(linkify: true);
+
+    // For drafts: taken on a timer, possibly mid-word, so no address is linked by it.
+    private void SnapshotAllRichTextBoxes() => SyncAll(linkify: false);
+
+    private void SyncAll(bool linkify)
     {
         if (DataContext is not NoteEditorViewModel vm)
             return;
@@ -177,19 +184,20 @@ public partial class NoteEditorView : UserControl
         {
             var block = vm.Blocks.FirstOrDefault(b => b.Id == blockId);
             if (block is not null)
-                SyncBlock(block, rtb);
+                SyncBlock(block, rtb, linkify);
         }
     }
 
     // Pushes the document into the block: the rich payload for storage and the
     // plain text the list/search rely on. Search highlights are ordinary document
     // properties and would be saved with it, so they are stripped and restored.
-    private void SyncBlock(BlockViewModel block, RichTextBox rtb) => WithoutDirtyTracking(() =>
+    private void SyncBlock(BlockViewModel block, RichTextBox rtb, bool linkify = true) => WithoutDirtyTracking(() =>
     {
         var hadHighlights = ClearHighlights(block.Id);
 
         // An address typed last, with no space after it yet, is linked before it is stored.
-        RichTextLinks.Linkify(rtb.Document);
+        if (linkify)
+            RichTextLinks.Linkify(rtb.Document);
 
         block.RichTextContent = SerializeDocument(rtb.Document);
         block.PlainTextContent = new TextRange(rtb.Document.ContentStart, rtb.Document.ContentEnd).Text;

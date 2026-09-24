@@ -4,7 +4,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MaterialDesignThemes.Wpf;
 using NoteApp.Data.Repositories;
+using System.IO;
 using NoteApp.Domain.Models;
+using NoteApp.Domain.ValueObjects;
 using NoteApp.Services;
 using NoteApp.Views;
 
@@ -16,6 +18,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ITagRepository _tagRepository;
     private readonly AppSettingsService _settingsService;
     private readonly AutoBackupService _autoBackup;
+    private readonly DraftStore _drafts;
 
     // Middle pane: NoteList <-> TagManager
     [ObservableProperty] private ObservableObject? _middlePaneContent;
@@ -41,8 +44,10 @@ public partial class MainViewModel : ObservableObject
         NoteListViewModel noteListViewModel,
         TagManagerViewModel tagManagerViewModel,
         SettingsViewModel settingsViewModel,
-        AutoBackupService autoBackup)
+        AutoBackupService autoBackup,
+        DraftStore drafts)
     {
+        _drafts = drafts;
         _noteService = noteService;
         _settingsService = settingsService;
         _autoBackup = autoBackup;
@@ -70,6 +75,13 @@ public partial class MainViewModel : ObservableObject
         _backupTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
         _backupTimer.Tick += OnBackupTimerTick;
         _backupTimer.Start();
+
+        _draftTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
+        _draftTimer.Tick += (_, _) => KeepDraft();
+        _draftTimer.Start();
+
+        // Once the window is up: the question needs an owner to appear over.
+        _ = Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(OfferDraftsLeftBehind));
 
         // Startup: choose middle pane; Settings.LaunchPage opens the dialog over Notes
         MiddlePaneContent = _settingsService.Current.LaunchPage == StartupPage.Tags
@@ -210,6 +222,9 @@ public partial class MainViewModel : ObservableObject
 
     private async void OnNoteSaved(Note note, string? password)
     {
+        if (CurrentEditor is NoteEditorViewModel saved)
+            DropDraft(saved);
+
         MessageQueue.Enqueue($"Note '{note.Title}' saved successfully.");
         NoteListViewModel.LoadNotesCommand.Execute(null);
 
@@ -259,6 +274,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (CurrentEditor is NoteEditorViewModel editor && editor.EditedNoteId == deleted.Id)
         {
+            DropDraft(editor);
             CurrentEditor = null;
             RearmEncryptedNoteLock();
         }
@@ -300,6 +316,7 @@ public partial class MainViewModel : ObservableObject
         switch (EditorLeave.Choose(answer))
         {
             case LeaveChoice.Discard:
+                DropDraft(editor);
                 return true;
 
             case LeaveChoice.Stay:
@@ -394,6 +411,86 @@ public partial class MainViewModel : ObservableObject
         NoteListViewModel.SelectedNote = null;
         RearmEncryptedNoteLock();
         MessageQueue.Enqueue($"'{title}' locked after {minutes:0} minute(s) of inactivity.");
+    }
+
+    // --- Drafts of unsaved changes (DraftStore) ---
+
+    private readonly DispatcherTimer _draftTimer;
+
+    // Every 20 s while the open note has unsaved changes. An encrypted one is never written
+    // out, and the draft it may have had before encryption was ticked goes away.
+    private void KeepDraft()
+    {
+        if (CurrentEditor is not NoteEditorViewModel { IsDirty: true } editor)
+            return;
+
+        try
+        {
+            if (editor.CanKeepDraft)
+                _drafts.Save(editor.CaptureDraft());
+            else
+                _drafts.Delete(editor.DraftKey);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A draft is a safety net, not a feature to fail loudly on every 20 s.
+        }
+    }
+
+    // Saved or discarded: nothing left to recover. Both keys, because a new note changes
+    // key the moment it is first saved.
+    private void DropDraft(NoteEditorViewModel editor)
+    {
+        _drafts.Delete(editor.NewNoteDraftKey);
+        if (editor.EditedNoteId is { } id)
+            _drafts.Delete(id.Value);
+    }
+
+    private async void OfferDraftsLeftBehind()
+    {
+        foreach (var draft in _drafts.LoadAll())
+        {
+            var name = string.IsNullOrWhiteSpace(draft.Title) ? "an untitled note" : $"'{draft.Title}'";
+            var answer = MessageBox.Show(
+                Application.Current.MainWindow!,
+                $"NoteApp closed without saving the changes to {name} (kept at {draft.SavedAt:g}).\n\n" +
+                "Restore them now? No deletes them.",
+                "Unsaved changes found",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (answer != MessageBoxResult.Yes)
+            {
+                _drafts.Delete(draft.Key);
+                continue;
+            }
+
+            await RestoreDraftAsync(draft);
+            return; // one editor at a time: any other draft is offered at the next start
+        }
+    }
+
+    // Into the note it belonged to, or into a new note when that one has gone (purged, or
+    // encrypted since — its plain text is not written back over it).
+    private async Task RestoreDraftAsync(NoteDraft draft)
+    {
+        Note? note = null;
+        if (draft.NoteId is { } id && (await _noteService.GetNoteByIdAsync(new NoteId(id))).TryGet(out var stored, out _)
+            && !stored.IsEncrypted)
+            note = stored;
+
+        if (note is null && draft.NoteId is not null)
+        {
+            _drafts.Delete(draft.Key);
+            draft = draft with { Key = Guid.NewGuid(), NoteId = null };
+        }
+
+        await OpenEditorAsync(note, password: null);
+        if (CurrentEditor is NoteEditorViewModel editor)
+        {
+            editor.RestoreDraft(draft);
+            MessageQueue.Enqueue("Unsaved changes restored — save to keep them.");
+        }
     }
 
     // --- Automatic backup ---

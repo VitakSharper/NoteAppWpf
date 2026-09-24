@@ -70,6 +70,7 @@ public partial class App : Application
         var sqlBuilder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(connectionString);
         services.AddSingleton(new BackupService(connectionString, sqlBuilder.InitialCatalog));
         services.AddSingleton<AutoBackupService>();
+        services.AddSingleton<DraftStore>();
 
         services.AddTransient<NoteListViewModel>();
         services.AddSingleton<SettingsViewModel>();

@@ -16,6 +16,7 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **Search & filter** — Search by title/content, filter by tags or note type
 - **Full CRUD** — Create, read, update, delete notes and tags
 - **Trash with undo** — Deleting a note moves it to the trash and the snackbar offers UNDO; the Trash view restores or deletes forever, and only the permanent gestures ask for confirmation
+- **Draft recovery** — While a note has unsaved changes a draft is kept every 20 s (never for encrypted notes); after a crash NoteApp offers to restore it at the next start
 - **Unsaved-changes guard** — Leaving a modified note (opening another one, New note, Cancel, closing the window) offers to save, discard, or stay in the editor
 - **Keyboard shortcuts** — `Ctrl+N` new note, `Ctrl+S` save, `Esc` close the editor (or the Settings dialog), `Ctrl+F` search the text block under the cursor or, from anywhere else, the note list; `Ctrl+B/I/U` are native to the rich text box; `Ctrl+Click` opens a link
 - **In-app help** — `F1` or the `?` in the rail opens a non-modal help window: getting started, the shortcut table, blocks, search and tags, encryption, backup, and where settings and logs live

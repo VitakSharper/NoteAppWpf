@@ -125,6 +125,77 @@ public partial class NoteEditorViewModel : ObservableObject
     // first text block that contains it, so the match is on screen straight away.
     public string? SearchTerm { get; init; }
 
+    // --- Drafts (see DraftStore) ---
+
+    // A note never saved has no id yet: its draft goes under a key of its own, which a
+    // restored draft hands back so the same file keeps being updated.
+    private Guid _newNoteDraftKey = Guid.NewGuid();
+    public Guid NewNoteDraftKey => _newNoteDraftKey;
+    public Guid DraftKey => EditedNoteId?.Value ?? _newNoteDraftKey;
+
+    // Never for an encrypted note, stored or about to be: the draft is plain JSON on disk.
+    public bool CanKeepDraft => !IsEncrypted && _existingNote?.IsEncrypted != true;
+
+    // The view pushes the rich text into the blocks without turning addresses into links:
+    // a snapshot can land in the middle of an address being typed.
+    public event Action? SnapshotRequested;
+
+    public NoteDraft CaptureDraft()
+    {
+        SnapshotRequested?.Invoke();
+
+        var blocks = Blocks.Select(b => b.BlockType switch
+        {
+            BlockType.Text => new DraftBlock(BlockType.Text, RichText: b.RichTextContent, PlainText: b.PlainTextContent),
+            BlockType.Link => new DraftBlock(BlockType.Link, LinkUrl: b.LinkUrlText, LinkDescription: b.LinkDescription),
+            BlockType.File => new DraftBlock(BlockType.File, FileName: b.FileName, FileExtension: b.FileExtension, FileData: b.FileData),
+            _ => new DraftBlock(BlockType.Checklist,
+                Items: b.ChecklistItems.Select(i => new DraftChecklistItem(i.Text, i.IsDone)).ToList())
+        }).ToList();
+
+        return new NoteDraft(DraftKey, EditedNoteId?.Value, Title, blocks, SelectedTags.Select(t => t.Id).ToList(), DateTime.Now);
+    }
+
+    // Replaces what the editor holds with the draft; the note is then modified, as it was
+    // when the draft was written. Tags that no longer exist are dropped.
+    public void RestoreDraft(NoteDraft draft)
+    {
+        if (draft.NoteId is null)
+            _newNoteDraftKey = draft.Key;
+
+        Title = draft.Title;
+
+        while (Blocks.Count > 0)
+            Blocks.RemoveAt(Blocks.Count - 1);
+
+        foreach (var block in draft.Blocks)
+        {
+            var vm = new BlockViewModel
+            {
+                BlockType = block.Type,
+                RichTextContent = block.RichText ?? string.Empty,
+                PlainTextContent = block.PlainText ?? string.Empty,
+                LinkUrlText = block.LinkUrl ?? string.Empty,
+                LinkDescription = block.LinkDescription ?? string.Empty,
+                FileName = block.FileName ?? string.Empty,
+                FileExtension = block.FileExtension ?? string.Empty,
+                FileData = block.FileData ?? [],
+                FileSize = block.FileData?.LongLength ?? 0
+            };
+            foreach (var item in block.Items ?? [])
+                vm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, IsDone = item.IsDone });
+            Blocks.Add(vm);
+        }
+
+        while (SelectedTags.Count > 0)
+            SelectedTags.RemoveAt(SelectedTags.Count - 1);
+        foreach (var tag in AvailableTags.Where(t => draft.TagIds.Contains(t.Id)))
+            SelectedTags.Add(tag);
+
+        SelectedBlock = Blocks.FirstOrDefault();
+        MarkDirty();
+    }
+
     private bool _isDirty;
 
     // Set at the source of every change rather than by comparing a snapshot on the way

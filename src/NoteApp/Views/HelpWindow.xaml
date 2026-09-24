@@ -76,7 +76,7 @@
                 <TextBlock Style="{StaticResource Body}"
                            Text="A note is a title followed by ordered blocks: text, file, link or checklist. Add blocks with the buttons under the title, and reorder them by dragging the grip at the left of a block's header, or with its arrows. Files dropped from Explorer onto an open note become file blocks. A note needs at least one block." />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="Save with Ctrl+S or the Save button. If you leave a note with unsaved changes (by opening another one, pressing Escape or closing the app) NoteApp asks whether to save, discard or stay." />
+                           Text="Save with Ctrl+S or the Save button. If you leave a note with unsaved changes (by opening another one, pressing Escape or closing the app) NoteApp asks whether to save, discard or stay. While a note has unsaved changes NoteApp also keeps a draft of it every 20 seconds (never for an encrypted note); if it ever closes without saving, the next start offers to restore that draft." />
 
                 <TextBlock Style="{StaticResource Section}" Text="Keyboard shortcuts" />
                 <ItemsControl x:Name="ShortcutsList" Grid.IsSharedSizeScope="True">
