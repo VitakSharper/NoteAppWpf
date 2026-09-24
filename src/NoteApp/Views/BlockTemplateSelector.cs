@@ -12,6 +12,7 @@ public sealed class BlockTemplateSelector : DataTemplateSelector
     public DataTemplate? LinkBlockTemplate { get; set; }
     public DataTemplate? ChecklistBlockTemplate { get; set; }
     public DataTemplate? SecretBlockTemplate { get; set; }
+    public DataTemplate? CodeBlockTemplate { get; set; }
 
     public override DataTemplate? SelectTemplate(object item, DependencyObject container) =>
         item is BlockViewModel vm
@@ -22,6 +23,7 @@ public sealed class BlockTemplateSelector : DataTemplateSelector
                 BlockType.Link => LinkBlockTemplate,
                 BlockType.Checklist => ChecklistBlockTemplate,
                 BlockType.Secret => SecretBlockTemplate,
+                BlockType.Code => CodeBlockTemplate,
                 _ => base.SelectTemplate(item, container)
             }
             : base.SelectTemplate(item, container);

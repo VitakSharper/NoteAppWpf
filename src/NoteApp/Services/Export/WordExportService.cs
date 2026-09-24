@@ -74,6 +74,11 @@ public static class WordExportService
                         body.Append(ChecklistParagraph(item, main));
                     break;
 
+                case DocCode code:
+                    foreach (var line in code.Lines)
+                        body.Append(CodeLineParagraph(line));
+                    break;
+
                 case DocSecret secret:
                     body.Append(new Paragraph(new Run(new RunProperties(new Bold()), PreservedText(secret.Heading))));
                     foreach (var field in secret.Fields)
@@ -250,6 +255,27 @@ public static class WordExportService
             }
         }
 
+        return paragraph;
+    }
+
+    // One paragraph per line on a light grey band, no spacing between them, so the block
+    // reads as one listing; tabs become real tabs.
+    private static Paragraph CodeLineParagraph(string line)
+    {
+        var paragraph = new Paragraph(new ParagraphProperties(
+            new Shading { Val = ShadingPatternValues.Clear, Color = "auto", Fill = "F2F2F2" },
+            new SpacingBetweenLines { Before = "0", After = "0" }));
+
+        var pieces = line.Split('\t');
+        var run = new Run(new RunProperties(new RunFonts { Ascii = "Consolas", HighAnsi = "Consolas", ComplexScript = "Consolas" }, new FontSize { Val = "19" }));
+        for (var i = 0; i < pieces.Length; i++)
+        {
+            if (i > 0)
+                run.Append(new TabChar());
+            run.Append(PreservedText(pieces[i]));
+        }
+
+        paragraph.Append(run);
         return paragraph;
     }
 

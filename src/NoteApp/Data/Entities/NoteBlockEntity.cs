@@ -9,7 +9,8 @@ public class NoteBlockEntity
     public BlockType BlockType { get; set; }
     public int SortOrder { get; set; }
 
-    // Text block — PlainText is null for rows saved before the column existed.
+    // Text block — PlainText is null for rows saved before the column existed. A code block
+    // keeps its text in PlainText only: it is plain text, and that is the searchable column.
     // A checklist fills PlainText too (its item texts), so search and the list
     // preview need no special case.
     public string? TextContent { get; set; }

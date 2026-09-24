@@ -19,7 +19,8 @@ public sealed record NoteSummary(
     DateTime UpdatedAt,
     DateTime? DeletedAt = null,
     bool IsPinned = false,
-    bool HasSecrets = false)
+    bool HasSecrets = false,
+    bool HasCode = false)
 {
     public bool IsDeleted => DeletedAt is not null;
 }

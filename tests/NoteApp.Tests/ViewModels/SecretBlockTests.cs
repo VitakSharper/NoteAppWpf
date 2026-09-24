@@ -58,6 +58,19 @@ public class SecretBlockTests
     }
 
     [Fact]
+    public async Task A_blank_code_block_is_refused_on_save()
+    {
+        var vm = Editor();
+        vm.Title = "Commands";
+        vm.AddCodeBlockCommand.Execute(null);
+        vm.Blocks[0].CodeText = " \n\t ";
+
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("Code block #1 is empty.", vm.ErrorMessage);
+    }
+
+    [Fact]
     public void No_draft_is_kept_of_a_note_holding_a_secret()
     {
         var vm = Editor();

@@ -19,6 +19,7 @@ public sealed class NoteSummaryRow
     public bool HasLinks { get; init; }
     public bool HasChecklists { get; init; }
     public bool HasSecrets { get; init; }
+    public bool HasCode { get; init; }
     public string? FirstTextPlain { get; init; }
     public string? FirstTextRich { get; init; }
     public List<TagEntity> Tags { get; init; } = [];

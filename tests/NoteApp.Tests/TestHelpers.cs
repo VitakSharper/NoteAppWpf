@@ -27,6 +27,7 @@ internal static class TestHelpers
         new NoteBlock.Link(Url("https://example.com/page"), "example") { SortOrder = 2 },
         new NoteBlock.Checklist([new ChecklistItem("buy milk", true), new ChecklistItem("call the bank", false)])
             { SortOrder = 3 },
-        new NoteBlock.Secret("Support site", "vbanard", " p@ss word ", "https://support.example.com/") { SortOrder = 4 }
+        new NoteBlock.Secret("Support site", "vbanard", " p@ss word ", "https://support.example.com/") { SortOrder = 4 },
+        new NoteBlock.Code("SELECT *\n\tFROM Notes  ") { SortOrder = 5 }
     ];
 }

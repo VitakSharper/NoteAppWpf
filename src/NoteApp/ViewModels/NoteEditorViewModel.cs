@@ -54,6 +54,9 @@ public partial class BlockViewModel : ObservableObject
 
     public bool CanOpenSecretUrl => LinkUrl.From(SecretUrl).IsSuccess;
 
+    // Code block: the text exactly as typed, tabs and trailing spaces included.
+    [ObservableProperty] private string _codeText = string.Empty;
+
     public Guid Id { get; init; } = Guid.NewGuid();
 
     public ObservableCollection<ChecklistItemViewModel> ChecklistItems { get; } = [];
@@ -103,6 +106,7 @@ public partial class BlockViewModel : ObservableObject
         BlockType.Link => "Link",
         BlockType.Checklist => "Checklist",
         BlockType.Secret => "Secret",
+        BlockType.Code => "Code",
         _ => "Block"
     };
 }
@@ -165,6 +169,7 @@ public partial class NoteEditorViewModel : ObservableObject
             BlockType.File => new DraftBlock(BlockType.File, FileName: b.FileName, FileExtension: b.FileExtension, FileData: b.FileData),
             // Never reached while CanKeepDraft holds, and even then: never the password.
             BlockType.Secret => new DraftBlock(BlockType.Secret, SecretLabel: b.SecretLabel, SecretUserName: b.SecretUserName, SecretUrl: b.SecretUrl),
+            BlockType.Code => new DraftBlock(BlockType.Code, PlainText: b.CodeText),
             _ => new DraftBlock(BlockType.Checklist,
                 Items: b.ChecklistItems.Select(i => new DraftChecklistItem(i.Text, i.IsDone)).ToList())
         }).ToList();
@@ -199,7 +204,8 @@ public partial class NoteEditorViewModel : ObservableObject
                 FileSize = block.FileData?.LongLength ?? 0,
                 SecretLabel = block.SecretLabel ?? string.Empty,
                 SecretUserName = block.SecretUserName ?? string.Empty,
-                SecretUrl = block.SecretUrl ?? string.Empty
+                SecretUrl = block.SecretUrl ?? string.Empty,
+                CodeText = block.Type == BlockType.Code ? block.PlainText ?? string.Empty : string.Empty
             };
             foreach (var item in block.Items ?? [])
                 vm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, IsDone = item.IsDone });
@@ -380,7 +386,8 @@ public partial class NoteEditorViewModel : ObservableObject
                     SecretUserName = s.UserName,
                     SecretPassword = s.Password,
                     SecretUrl = s.Url
-                });
+                },
+                code: c => new BlockViewModel { Id = block.Id, BlockType = BlockType.Code, CodeText = c.Content });
             Blocks.Add(vm);
         }
 
@@ -467,6 +474,15 @@ public partial class NoteEditorViewModel : ObservableObject
     {
         var block = new BlockViewModel { BlockType = BlockType.Checklist };
         block.ChecklistItems.Add(new ChecklistItemViewModel());
+        Blocks.Add(block);
+        SelectedBlock = block;
+        BlockAdded?.Invoke(block);
+    }
+
+    [RelayCommand]
+    private void AddCodeBlock()
+    {
+        var block = new BlockViewModel { BlockType = BlockType.Code };
         Blocks.Add(block);
         SelectedBlock = block;
         BlockAdded?.Invoke(block);
@@ -786,6 +802,15 @@ public partial class NoteEditorViewModel : ObservableObject
                             AppError.Validation($"Secret block #{i + 1} is empty."));
 
                     noteBlocks.Add(secret);
+                    break;
+
+                // Kept as typed; only a block with nothing but blanks is refused.
+                case BlockType.Code:
+                    if (string.IsNullOrWhiteSpace(vm.CodeText))
+                        return Result<IReadOnlyList<NoteBlock>, AppError>.Fail(
+                            AppError.Validation($"Code block #{i + 1} is empty."));
+
+                    noteBlocks.Add(new NoteBlock.Code(vm.CodeText) { Id = vm.Id, SortOrder = i });
                     break;
             }
         }

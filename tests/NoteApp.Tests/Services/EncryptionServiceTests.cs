@@ -14,7 +14,7 @@ public class EncryptionServiceTests
         var encrypted = EncryptionService.EncryptBlocks(blocks, "s3cret");
         var decrypted = EncryptionService.DecryptBlocks(encrypted, "s3cret");
 
-        Assert.Equal(5, decrypted.Count);
+        Assert.Equal(6, decrypted.Count);
         Assert.Equal(blocks.Select(b => b.Id), decrypted.Select(b => b.Id));
 
         var text = Assert.IsType<NoteBlock.Text>(decrypted[0]);
@@ -35,6 +35,8 @@ public class EncryptionServiceTests
         var secret = Assert.IsType<NoteBlock.Secret>(decrypted[4]);
         Assert.Equal(" p@ss word ", secret.Password);
         Assert.Equal("https://support.example.com/", secret.Url);
+
+        Assert.Equal("SELECT *\n\tFROM Notes  ", Assert.IsType<NoteBlock.Code>(decrypted[5]).Content);
     }
 
     // Notes encrypted before checklists existed hold no such block: the reader must

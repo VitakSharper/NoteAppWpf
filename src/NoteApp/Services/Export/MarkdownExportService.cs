@@ -73,6 +73,13 @@ public static class MarkdownExportService
                     markdown.Append($"*Attachment: {Escape(attachment.FileName)} ({DocAttachment.Size(attachment.SizeBytes)})*\n\n");
                     break;
 
+                // A fence longer than any run of backticks in the code (at least three).
+                case DocCode code:
+                    var fence = new string('`', Math.Max(3, LongestBacktickRun(code.Text) + 1));
+                    markdown.Append(fence).Append('\n').Append(code.Text.ReplaceLineEndings("\n").TrimEnd('\n')).Append('\n')
+                        .Append(fence).Append("\n\n");
+                    break;
+
                 // One paragraph, hard line breaks between the fields.
                 case DocSecret secret:
                     markdown.Append("**").Append(Escape(secret.Heading)).Append("**");
@@ -146,6 +153,13 @@ public static class MarkdownExportService
     // backticks inside it (CommonMark 6.1), with a space when the text touches a backtick.
     private static string Code(string text)
     {
+        var fence = new string('`', LongestBacktickRun(text) + 1);
+        var pad = text.StartsWith('`') || text.EndsWith('`') ? " " : "";
+        return fence + pad + text + pad + fence;
+    }
+
+    private static int LongestBacktickRun(string text)
+    {
         var longest = 0;
         for (var i = 0; i < text.Length;)
         {
@@ -156,9 +170,7 @@ public static class MarkdownExportService
             i += Math.Max(run, 1);
         }
 
-        var fence = new string('`', longest + 1);
-        var pad = text.StartsWith('`') || text.EndsWith('`') ? " " : "";
-        return fence + pad + text + pad + fence;
+        return longest;
     }
 
     private static string TextWithLinks(string text) =>

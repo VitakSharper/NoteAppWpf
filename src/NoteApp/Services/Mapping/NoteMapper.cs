@@ -37,7 +37,8 @@ public static class NoteMapper
                 row.UpdatedAt,
                 row.DeletedAt,
                 row.IsPinned,
-                row.HasSecrets));
+                row.HasSecrets,
+                row.HasCode));
 
     public static NoteEntity ToEntity(Note note) => new()
     {
@@ -101,6 +102,14 @@ public static class NoteMapper
                 SortOrder = sortOrder,
                 SecretJson = SecretJson.Serialize(s),
                 PlainText = s.PlainText
+            },
+            code: c => new NoteBlockEntity
+            {
+                Id = block.Id,
+                NoteId = noteId,
+                BlockType = BlockType.Code,
+                SortOrder = sortOrder,
+                PlainText = c.Content
             });
 
     // First failure wins; blocks come out ordered by SortOrder.
@@ -141,6 +150,9 @@ public static class NoteMapper
 
             BlockType.Secret => Result<NoteBlock, AppError>.Ok(
                 SecretJson.Deserialize(entity.SecretJson) with { Id = entity.Id, SortOrder = entity.SortOrder }),
+
+            BlockType.Code => Result<NoteBlock, AppError>.Ok(
+                new NoteBlock.Code(entity.PlainText ?? string.Empty) { Id = entity.Id, SortOrder = entity.SortOrder }),
 
             _ => Result<NoteBlock, AppError>.Fail(
                 AppError.Validation($"Unknown block type: {entity.BlockType}"))

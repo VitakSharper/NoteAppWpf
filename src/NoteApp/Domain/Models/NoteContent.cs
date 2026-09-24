@@ -40,6 +40,10 @@ public abstract record NoteBlock
         public string PlainText => string.Join("\n", new[] { Label, UserName, Url }.Where(s => s.Length > 0));
     }
 
+    // Monospace text kept exactly as typed — commands, SQL, configuration — never turned
+    // into links or reformatted. Its text is its PlainText, so search finds it.
+    public sealed record Code(string Content) : NoteBlock;
+
     public BlockType Type => this switch
     {
         Text => BlockType.Text,
@@ -47,6 +51,7 @@ public abstract record NoteBlock
         Link => BlockType.Link,
         Checklist => BlockType.Checklist,
         Secret => BlockType.Secret,
+        Code => BlockType.Code,
         _ => throw new InvalidOperationException($"Unknown block type: {GetType().Name}")
     };
 
@@ -55,7 +60,8 @@ public abstract record NoteBlock
         Func<File, TResult> file,
         Func<Link, TResult> link,
         Func<Checklist, TResult> checklist,
-        Func<Secret, TResult> secret) =>
+        Func<Secret, TResult> secret,
+        Func<Code, TResult> code) =>
         this switch
         {
             Text t => text(t),
@@ -63,6 +69,7 @@ public abstract record NoteBlock
             Link l => link(l),
             Checklist c => checklist(c),
             Secret s => secret(s),
+            Code c => code(c),
             _ => throw new InvalidOperationException($"Unknown block type: {GetType().Name}")
         };
 }
@@ -73,5 +80,6 @@ public enum BlockType
     File = 1,
     Link = 2,
     Checklist = 3,
-    Secret = 4
+    Secret = 4,
+    Code = 5
 }

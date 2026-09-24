@@ -110,6 +110,11 @@ public static class EncryptionService
             {
                 Type = "secret", Id = b.Id, SortOrder = b.SortOrder,
                 SecretJson = SecretJson.Serialize(s)
+            },
+            code: c => new BlockDto
+            {
+                Type = "code", Id = b.Id, SortOrder = b.SortOrder,
+                PlainText = c.Content
             }
         )).ToList();
 
@@ -137,6 +142,7 @@ public static class EncryptionService
                 "checklist" => new NoteBlock.Checklist(ChecklistJson.Deserialize(dto.ChecklistJson))
                     { Id = dto.Id, SortOrder = dto.SortOrder },
                 "secret" => SecretJson.Deserialize(dto.SecretJson) with { Id = dto.Id, SortOrder = dto.SortOrder },
+                "code" => new NoteBlock.Code(dto.PlainText ?? string.Empty) { Id = dto.Id, SortOrder = dto.SortOrder },
                 _ => throw new InvalidOperationException($"Unknown block type: {dto.Type}")
             };
             blocks.Add(block);

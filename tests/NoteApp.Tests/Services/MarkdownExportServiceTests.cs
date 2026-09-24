@@ -95,6 +95,16 @@ public class MarkdownExportServiceTests
             document.Text);
     }
 
+    // Fenced, and the fence outgrows any backticks inside.
+    [Fact]
+    public void A_code_block_is_fenced_as_it_was_typed()
+    {
+        var document = MarkdownExportService.Render("N",
+            [new DocCode("SELECT *\r\n\tFROM Notes"), new DocCode("echo ```done```")], "f");
+
+        Assert.Equal("# N\n\n```\nSELECT *\n\tFROM Notes\n```\n\n````\necho ```done```\n````\n", document.Text);
+    }
+
     // The fields on their own lines; the password only as a placeholder.
     [Fact]
     public void A_secret_is_written_without_its_password()

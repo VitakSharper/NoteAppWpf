@@ -22,7 +22,7 @@ public class NoteMapperTests
 
         Assert.Equal(note.Id, mapped.Id);
         Assert.Equal("Sample", mapped.Title.Value);
-        Assert.Equal(5, mapped.Blocks.Count);
+        Assert.Equal(6, mapped.Blocks.Count);
 
         var text = Assert.IsType<NoteBlock.Text>(mapped.Blocks[0]);
         Assert.Equal("<rich/>", text.RichText);
@@ -43,6 +43,9 @@ public class NoteMapperTests
         var secret = Assert.IsType<NoteBlock.Secret>(mapped.Blocks[4]);
         Assert.Equal(("Support site", "vbanard", " p@ss word ", "https://support.example.com/"),
             (secret.Label, secret.UserName, secret.Password, secret.Url));
+
+        // Tabs and trailing spaces are part of the code.
+        Assert.Equal("SELECT *\n\tFROM Notes  ", Assert.IsType<NoteBlock.Code>(mapped.Blocks[5]).Content);
 
         Assert.Equal("work", Assert.Single(mapped.Tags).Name.Value);
     }

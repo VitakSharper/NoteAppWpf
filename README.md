@@ -6,9 +6,10 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 
 ## Features
 
-- **Multi-block notes** — Each note can contain multiple content blocks: rich text, files, links, checklists and secrets — all in one note
+- **Multi-block notes** — Each note can contain multiple content blocks: rich text, files, links, checklists, code and secrets — all in one note
 - **Checklists** — Tickable items inside a note: Enter adds the next one, `Alt+Up/Down` move one, done items are struck through (or hidden with Hide done), the block counts progress, and item texts are searchable
 - **Rich text editing** — Bold, italic, underline, strikethrough, highlighter, inline code, headings (H1–H3), bullet and numbered lists via a toolbar; Markdown line starters work as you type (`# `…`### ` heading, `- ` bullets, `1. ` numbering, `[] ` turns the line into a checklist block), and every export keeps the formatting
+- **Code blocks** — Monospace text kept exactly as typed (tabs included, never turned into links) for commands, SQL or configuration, with a copy button; searchable, and exported as a fenced block / a monospace listing
 - **Secret blocks** — A login inside a note: what it is for, the user name, the password (masked; the eye reveals it) and an address. The copy buttons put the user name or the password on the clipboard kept out of Windows' clipboard history and cloud clipboard, and wipe it after 30 s. The password is never searched, previewed, exported or kept in a draft, and a secret in a note that is not encrypted says that its password is stored as plain text
 - **Clickable links** — Web addresses (`http://`, `https://`, `www.`) in text blocks become links as soon as a space or a new line follows them; a click opens them in the browser (`Alt+Click` edits the link text). In checklist items and link blocks, where a click edits, `Ctrl+Click` or the open button does
 - **File attachments** — Browse and attach files stored directly in the database
@@ -144,7 +145,7 @@ This project follows **functional programming patterns** inspired by [Zoran Horv
 ```
 noteDb
 ├── Notes        — Id, Title, IsEncrypted, EncryptedContent, CreatedAt, UpdatedAt, DeletedAt (soft delete)
-├── NoteBlocks   — Id, NoteId (FK), BlockType (Text/File/Link/Checklist/Secret), SortOrder,
+├── NoteBlocks   — Id, NoteId (FK), BlockType (Text/File/Link/Checklist/Secret/Code), SortOrder,
 │                  TextContent (rich), PlainText (searchable), FileData, FileName,
 │                  FileExtension, FileSizeBytes, LinkUrl, LinkDescription
 ├── Tags         — Id, Name (unique)

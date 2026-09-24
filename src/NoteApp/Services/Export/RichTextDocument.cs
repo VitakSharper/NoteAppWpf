@@ -37,6 +37,10 @@ public static class RichTextDocument
                 case SecretExportBlock secret:
                     elements.Add(new DocSecret(secret.Label, secret.UserName, secret.Url));
                     break;
+
+                case CodeExportBlock code:
+                    elements.Add(new DocCode(code.Text));
+                    break;
             }
         }
 

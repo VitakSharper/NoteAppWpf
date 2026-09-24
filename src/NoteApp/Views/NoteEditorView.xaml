@@ -379,12 +379,35 @@
             </StackPanel>
         </DataTemplate>
 
+        <!-- Code Block Template: monospace, tabs kept, no wrapping and no links; the copy button
+             goes through SensitiveClipboard when the note is encrypted. -->
+        <DataTemplate x:Key="CodeBlockTemplate" DataType="{x:Type vm:BlockViewModel}">
+            <Grid>
+                <TextBox Text="{Binding CodeText, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding}"
+                         FontFamily="Consolas" FontSize="13"
+                         AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
+                         HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                         MinHeight="60" Padding="10,8,40,8"
+                         materialDesign:HintAssist.Hint="Code, a command, a query…"
+                         materialDesign:TextFieldAssist.DecorationVisibility="Collapsed"
+                         Background="{DynamicResource MaterialDesignChipBackground}"
+                         BorderThickness="0" SpellCheck.IsEnabled="False"
+                         PreviewMouseWheel="OnRichTextBoxPreviewMouseWheel" />
+                <Button HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,2,0"
+                        ToolTip="Copy the code" Style="{StaticResource MaterialDesignIconButton}"
+                        Width="32" Height="32" Tag="{Binding}" Click="OnCopyCode">
+                    <materialDesign:PackIcon Kind="ContentCopy" Width="16" Height="16" />
+                </Button>
+            </Grid>
+        </DataTemplate>
+
         <views:BlockTemplateSelector x:Key="BlockSelector"
                                      TextBlockTemplate="{StaticResource TextBlockTemplate}"
                                      FileBlockTemplate="{StaticResource FileBlockTemplate}"
                                      LinkBlockTemplate="{StaticResource LinkBlockTemplate}"
                                      ChecklistBlockTemplate="{StaticResource ChecklistBlockTemplate}"
-                                     SecretBlockTemplate="{StaticResource SecretBlockTemplate}" />
+                                     SecretBlockTemplate="{StaticResource SecretBlockTemplate}"
+                                     CodeBlockTemplate="{StaticResource CodeBlockTemplate}" />
     </UserControl.Resources>
 
     <!-- The pane itself is Paper (set in MainWindow) so the block cards stand out. -->
@@ -502,6 +525,12 @@
                         <TextBlock Text="Checklist" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
+                <Button Command="{Binding AddCodeBlockCommand}" ToolTip="Monospace text kept as typed: commands, SQL, configuration">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="CodeBraces" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Code" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
                 <Button Command="{Binding AddSecretBlockCommand}" ToolTip="A login: user name, password and address">
                     <StackPanel Orientation="Horizontal">
                         <materialDesign:PackIcon Kind="KeyVariant" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center" />
@@ -599,6 +628,9 @@
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding BlockType}" Value="Secret">
                                                             <Setter Property="Kind" Value="KeyVariant" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding BlockType}" Value="Code">
+                                                            <Setter Property="Kind" Value="CodeBraces" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>

@@ -537,6 +537,29 @@ public partial class NoteEditorView : UserControl
             CopySecret(block.SecretPassword, "Password");
     }
 
+    // An encrypted note's code is as private as the rest of it.
+    private void OnCopyCode(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: BlockViewModel block } || block.CodeText.Length == 0 || DataContext is not NoteEditorViewModel vm)
+            return;
+
+        if (vm.IsEncrypted)
+        {
+            CopySecret(block.CodeText, "Code");
+            return;
+        }
+
+        try
+        {
+            Clipboard.SetText(block.CodeText);
+            Notify("Code copied.");
+        }
+        catch (System.Runtime.InteropServices.ExternalException)
+        {
+            Notify("The clipboard is busy (another program has it open). Try again.");
+        }
+    }
+
     private void CopySecret(string value, string what)
     {
         if (value.Length == 0)
@@ -1549,6 +1572,7 @@ public partial class NoteEditorView : UserControl
                     .ToList()),
             // Never the password: it does not even reach the exporter.
             BlockType.Secret => new SecretExportBlock(b.SecretLabel.Trim(), b.SecretUserName.Trim(), b.SecretUrl.Trim()),
+            BlockType.Code => new CodeExportBlock(b.CodeText),
             _ => new FileExportBlock(b.FileName, b.FileSize)
         }).ToList();
 

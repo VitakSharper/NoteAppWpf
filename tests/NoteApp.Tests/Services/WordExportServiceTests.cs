@@ -143,7 +143,8 @@ public class WordExportServiceTests
             new DocLink("https://example.com/page", "Example"),
             new DocLink("not a url", ""),
             new DocAttachment("report.pdf", 2048),
-            new DocSecret("Support", "vbanard", "https://support.example.com/")
+            new DocSecret("Support", "vbanard", "https://support.example.com/"),
+            new DocCode("a\tb\nc")
         ];
         using var stream = new MemoryStream();
 
@@ -153,6 +154,21 @@ public class WordExportServiceTests
         using var doc = WordprocessingDocument.Open(stream, isEditable: false);
         var errors = new OpenXmlValidator().Validate(doc).Select(e => $"{e.Path?.XPath}: {e.Description}").ToList();
         Assert.True(errors.Count == 0, string.Join("\n", errors));
+    }
+
+    [Fact]
+    public void A_code_block_is_one_monospace_paragraph_per_line_with_its_tabs()
+    {
+        using var stream = new MemoryStream();
+
+        WordExportService.Render("Note", [new DocCode("if x:\n\treturn")], stream);
+
+        stream.Position = 0;
+        using var doc = WordprocessingDocument.Open(stream, isEditable: false);
+        var lines = doc.MainDocumentPart!.Document!.Body!.Elements<Paragraph>().Skip(1).ToList();
+        Assert.Equal(["if x:", "return"], lines.Select(p => p.InnerText));
+        Assert.Single(lines[1].Descendants<TabChar>());
+        Assert.All(lines, p => Assert.Equal("Consolas", p.Descendants<RunFonts>().Single().Ascii?.Value));
     }
 
     [Fact]

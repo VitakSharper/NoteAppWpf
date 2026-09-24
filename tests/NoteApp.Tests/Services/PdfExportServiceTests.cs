@@ -32,7 +32,8 @@ public class PdfExportServiceTests
                 new DocChecklistItem("buy milk", IsDone: false)]),
             new DocLink("https://example.com/page", "Example"),
             new DocAttachment("report.pdf", 2048),
-            new DocSecret("Support site", "vbanard", "https://support.example.com/")
+            new DocSecret("Support site", "vbanard", "https://support.example.com/"),
+            new DocCode("SELECT *\n\tFROM Notes")
         ];
         using var stream = new MemoryStream();
 

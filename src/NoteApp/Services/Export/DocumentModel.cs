@@ -9,6 +9,7 @@ public sealed record FileExportBlock(string FileName, long SizeBytes) : ExportBl
 public sealed record ChecklistExportBlock(IReadOnlyList<DocChecklistItem> Items) : ExportBlock;
 // No password: the editor never hands it to an exporter.
 public sealed record SecretExportBlock(string Label, string UserName, string Url) : ExportBlock;
+public sealed record CodeExportBlock(string Text) : ExportBlock;
 
 // Everything the editor can produce, as plain data: extracted once from the WPF
 // FlowDocument (UI thread) and rendered by every exporter without touching WPF.
@@ -28,6 +29,12 @@ public sealed record DocAttachment(string FileName, long SizeBytes) : DocElement
     };
 }
 public sealed record DocChecklist(IReadOnlyList<DocChecklistItem> Items) : DocElement;
+
+// A code block: its lines exactly as typed, in a monospace font.
+public sealed record DocCode(string Text) : DocElement
+{
+    public IReadOnlyList<string> Lines => Text.ReplaceLineEndings("\n").Split('\n');
+}
 
 // A secret on paper: what it is for, then one line per field — the password only as a
 // placeholder. Every exporter writes these same lines.

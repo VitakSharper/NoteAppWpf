@@ -87,6 +87,13 @@ public static class PdfExportService
                     RenderSecret(column, secret);
                     break;
 
+                // Tabs as four spaces: QuestPDF lays text out without tab stops.
+                case DocCode code:
+                    column.Item().Background(Colors.Grey.Lighten4).Padding(6)
+                        .Text(code.Text.ReplaceLineEndings("\n").Replace("\t", "    "))
+                        .FontFamily(Fonts.Consolas).FontSize(10);
+                    break;
+
                 case DocLink link:
                     RenderLink(column, link);
                     break;
