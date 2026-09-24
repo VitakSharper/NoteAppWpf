@@ -4,5 +4,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/NoteApp.Tests/NoteApp.Tests.csproj" />
+    <Project Path="tests/NoteApp.UiTests/NoteApp.UiTests.csproj" />
   </Folder>
 </Solution>

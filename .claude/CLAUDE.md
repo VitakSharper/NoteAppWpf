@@ -22,7 +22,9 @@ dotnet user-secrets set "ConnectionStrings:NoteDb" "Server=YOUR_SERVER;Database=
 ```
 
 ```bash
-# Tests (from repo root) — xUnit on the pure layers (Domain, mapper, encryption, preview); no DB, no UI thread
+# Tests (from repo root) — NoteApp.Tests: xUnit on the pure layers (Domain, mapper, encryption, preview, view models); no DB, no UI thread.
+# NoteApp.UiTests: the real WPF views (NoteEditorView...) off-screen on one shared STA dispatcher (tests/NoteApp.UiTests/Wpf.cs),
+# view models on repositories that throw — still no DB. Wrap each test body in Wpf.Run(...), drive typing with OpenEditor.Type.
 dotnet test NoteApp.slnx
 ```
 

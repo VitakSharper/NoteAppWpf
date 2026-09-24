@@ -80,7 +80,7 @@ dotnet run --project src/NoteApp
 dotnet test NoteApp.slnx
 ```
 
-The tests cover the pure layers (functional core, value objects, mapping, encryption, preview) and need neither a database nor a UI thread.
+`NoteApp.Tests` covers the pure layers (functional core, value objects, mapping, encryption, preview, view models) and needs neither a database nor a UI thread. `NoteApp.UiTests` drives the real WPF views off-screen on a dedicated STA thread — typing, links, lists — still without a database.
 
 ### 6. Run a test instance (optional)
 
