@@ -44,11 +44,11 @@ public class FocusModeUiTests
         Assert.False(shell.IsFocusMode);
     });
 
-    internal static MainViewModel Shell()
+    internal static MainViewModel Shell(INoteRepository? repository = null)
     {
         var folder = Path.Combine(Path.GetTempPath(), "NoteApp.UiTests", $"shell-{Guid.NewGuid()}");
         var settings = new AppSettingsService(Path.Combine(folder, "settings.json"));
-        var notes = new NoteService(new UnusedNoteRepository());
+        var notes = new NoteService(repository ?? new UnusedNoteRepository());
         var tags = new NoTags();
         var backup = new BackupService("Server=.;Database=none", "none");
         return new MainViewModel(notes, settings, tags,

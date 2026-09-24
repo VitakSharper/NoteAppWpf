@@ -129,6 +129,25 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
         }
     }
 
+    public async Task<Result<IReadOnlyList<NoteRow>, AppError>> LinkedFromAsync(NoteId id)
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var key = id.Value.ToString("D");
+            var rows = await context.Notes.AsNoTracking()
+                .Where(n => n.Id != id.Value && n.Blocks.Any(b => b.LinkedNoteIds != null && b.LinkedNoteIds.Contains(key)))
+                .OrderBy(n => n.Title)
+                .Select(n => new NoteRow { Id = n.Id, Title = n.Title })
+                .ToListAsync();
+            return Result<IReadOnlyList<NoteRow>, AppError>.Ok(rows);
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<NoteRow>, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
     // Soft delete: the row stays, DeletedAt is set, and the global query filter
     // hides it everywhere else. Not FindAsync — query filters do not apply to Find.
     public async Task<Result<Unit, AppError>> DeleteAsync(NoteId id)

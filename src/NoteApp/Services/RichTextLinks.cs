@@ -63,10 +63,46 @@ public static class RichTextLinks
     // Same rule as an address in the text (LinkUrl): a pasted hyperlink can point at
     // file: or anything else the shell would run, and those never open. The exporters
     // use it too, so a link leads to the same place in Word as in the editor.
+    // A link to another note (NoteLinks) has no web address, whatever its text looks like.
     public static Option<LinkUrl> Target(Hyperlink hyperlink) =>
-        hyperlink.NavigateUri is { } uri && LinkUrl.From(uri.OriginalString).TryGet(out var url, out _)
-            ? new Option<LinkUrl>.Some(url)
-            : TextLinks.First(new TextRange(hyperlink.ContentStart, hyperlink.ContentEnd).Text);
+        NoteLinks.Parse(hyperlink.NavigateUri).IsSome
+            ? Option<LinkUrl>.Empty()
+            : hyperlink.NavigateUri is { } uri && LinkUrl.From(uri.OriginalString).TryGet(out var url, out _)
+                ? new Option<LinkUrl>.Some(url)
+                : TextLinks.First(new TextRange(hyperlink.ContentStart, hyperlink.ContentEnd).Text);
+
+    // The note a click landed on, when it is a link to one.
+    public static Option<NoteId> NoteAt(TextPointer position) =>
+        EnclosingHyperlink(position) is { } hyperlink ? NoteLinks.Parse(hyperlink.NavigateUri) : Option<NoteId>.Empty();
+
+    // Every note the document links to, once each, in order.
+    public static IReadOnlyList<NoteId> NoteLinksIn(FlowDocument document) =>
+        ParagraphsOf(document)
+            .SelectMany(p => HyperlinksIn(p.Inlines))
+            .Select(h => NoteLinks.Parse(h.NavigateUri))
+            .OfType<Option<NoteId>.Some>()
+            .Select(s => s.Value)
+            .Distinct()
+            .ToList();
+
+    // A link to a note, its title as its text, at the position; a space follows it so that
+    // typing goes on outside it. Returns where the caret goes.
+    public static TextPointer InsertNoteLink(TextPointer at, NoteId id, string title)
+    {
+        var position = at.GetInsertionPosition(LogicalDirection.Forward);
+        var run = new Run(title, position);
+        var link = new Hyperlink(run.ContentStart, run.ContentEnd) { NavigateUri = NoteLinks.UriFor(id) };
+        var after = new Run(" ", link.ElementEnd);
+        return after.ContentEnd;
+    }
+
+    private static IEnumerable<Hyperlink> HyperlinksIn(InlineCollection inlines) =>
+        inlines.SelectMany(i => i switch
+        {
+            Hyperlink h => [h],
+            Span s => HyperlinksIn(s.Inlines),
+            _ => []
+        });
 
     private static Hyperlink? EnclosingHyperlink(TextPointer position)
     {

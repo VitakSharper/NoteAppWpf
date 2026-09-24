@@ -71,9 +71,9 @@ public class NoteListUiTests
         return new NoteListViewModel(new NoteService(new Rows(notes)), new NoTags(), settings);
     }
 
-    private sealed class Rows((string Title, DateTime UpdatedUtc, bool Pinned)[] notes) : INoteRepository
+    private sealed class Rows((string Title, DateTime UpdatedUtc, bool Pinned)[] notes) : UnusedNoteRepository
     {
-        public Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false) =>
+        public override Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false) =>
             Task.FromResult(Result<IReadOnlyList<NoteSummaryRow>, AppError>.Ok(deletedOnly ? [] : notes.Select(n => new NoteSummaryRow
             {
                 Id = Guid.NewGuid(),
@@ -85,16 +85,7 @@ public class NoteListUiTests
                 HasText = true,
                 FirstTextPlain = "text"
             }).ToList()));
-
-        public Task<Result<Note, AppError>> GetByIdAsync(NoteId id) => throw new NotSupportedException();
-        public Task<Result<Note, AppError>> CreateAsync(Note note, byte[]? encryptedContent = null) => throw new NotSupportedException();
-        public Task<Result<Note, AppError>> UpdateAsync(Note note, byte[]? encryptedContent = null) => throw new NotSupportedException();
-        public Task<Result<Unit, AppError>> DeleteAsync(NoteId id) => throw new NotSupportedException();
-        public Task<Result<Unit, AppError>> RestoreAsync(NoteId id) => throw new NotSupportedException();
-        public Task<Result<Unit, AppError>> SetPinnedAsync(NoteId id, bool isPinned) => throw new NotSupportedException();
-        public Task<Result<Unit, AppError>> PurgeAsync(NoteId id) => throw new NotSupportedException();
-        public Task<Result<int, AppError>> PurgeAllDeletedAsync() => throw new NotSupportedException();
-        public Task<Result<byte[]?, AppError>> GetEncryptedContentAsync(NoteId id) => throw new NotSupportedException();
+        public override Task<Result<byte[]?, AppError>> GetEncryptedContentAsync(NoteId id) => throw new NotSupportedException();
     }
 
     private sealed class NoTags : ITagRepository

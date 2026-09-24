@@ -31,6 +31,7 @@ public partial class HelpWindow : Window
             new("Ctrl + Shift + X / H / C", "Strikethrough, highlighter, inline code in a text block (again to take it off)."),
             new("# ,  - ,  1. ,  [] ", "Typed at the start of a line of a text block, then a space: a heading (## and ### for smaller ones), a bullet list, a numbered list, a checklist block."),
             new("Click / Alt + Click", "In a text block: a click opens a link, Alt + Click puts the cursor in it to edit its text."),
+            new("[[", "In a text block: link to another note — type part of its title, then Enter (Esc keeps the brackets)."),
             new("Ctrl + Click", "Opens the web address under the pointer anywhere — also in a checklist item or a link block, where a plain click edits."),
             new("Enter", "In the note search: run the search. In a text block find bar: next match (Shift + Enter: previous)."),
             new("Alt + Up / Down", "In a checklist item: move the item up or down."),

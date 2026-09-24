@@ -96,25 +96,16 @@ public class SecretBlockTests
 
     private static NoteEditorViewModel Editor() => new(new NoteService(new CapturingRepository()), new NoTags(), []);
 
-    private sealed class CapturingRepository : INoteRepository
+    private sealed class CapturingRepository : ThrowingNoteRepository
     {
         public Note? Created { get; private set; }
 
-        public Task<Result<Note, AppError>> CreateAsync(Note note, byte[]? encryptedContent = null)
+        public override Task<Result<Note, AppError>> CreateAsync(Note note, byte[]? encryptedContent = null)
         {
             Created = note;
             return Task.FromResult(Result<Note, AppError>.Ok(note));
         }
-
-        public Task<Result<Note, AppError>> GetByIdAsync(NoteId id) => throw new NotSupportedException();
-        public Task<Result<Note, AppError>> UpdateAsync(Note note, byte[]? encryptedContent = null) => throw new NotSupportedException();
-        public Task<Result<Unit, AppError>> DeleteAsync(NoteId id) => throw new NotSupportedException();
-        public Task<Result<Unit, AppError>> RestoreAsync(NoteId id) => throw new NotSupportedException();
-        public Task<Result<Unit, AppError>> SetPinnedAsync(NoteId id, bool isPinned) => throw new NotSupportedException();
-        public Task<Result<Unit, AppError>> PurgeAsync(NoteId id) => throw new NotSupportedException();
-        public Task<Result<int, AppError>> PurgeAllDeletedAsync() => throw new NotSupportedException();
-        public Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false) => throw new NotSupportedException();
-        public Task<Result<byte[]?, AppError>> GetEncryptedContentAsync(NoteId id) => throw new NotSupportedException();
+        public override Task<Result<byte[]?, AppError>> GetEncryptedContentAsync(NoteId id) => throw new NotSupportedException();
     }
 
     private sealed class NoTags : ITagRepository

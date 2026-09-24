@@ -23,4 +23,7 @@ public interface INoteRepository
         BlockType? blockType,
         bool deletedOnly = false);
     Task<Result<byte[]?, AppError>> GetEncryptedContentAsync(NoteId id);
+    // The live notes whose text links to this one, by title. Encrypted notes store no blocks,
+    // so their links do not count.
+    Task<Result<IReadOnlyList<NoteRow>, AppError>> LinkedFromAsync(NoteId id);
 }

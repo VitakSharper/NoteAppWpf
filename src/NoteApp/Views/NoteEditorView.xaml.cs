@@ -220,6 +220,7 @@ public partial class NoteEditorView : UserControl
 
         block.RichTextContent = SerializeDocument(rtb.Document);
         block.PlainTextContent = new TextRange(rtb.Document.ContentStart, rtb.Document.ContentEnd).Text;
+        block.NoteLinks = RichTextLinks.NoteLinksIn(rtb.Document);
 
         if (hadHighlights)
             ReapplyHighlights(block.Id);
@@ -247,11 +248,125 @@ public partial class NoteEditorView : UserControl
         vm.MarkDirty();
 
         // Not on undo or redo: undoing an automatic link (or heading) must not bring it straight back.
-        if (sender is RichTextBox rtb && e.UndoAction is not (UndoAction.Undo or UndoAction.Redo) && EndsAWord(rtb, e.Changes))
+        if (sender is not RichTextBox rtb || e.UndoAction is UndoAction.Undo or UndoAction.Redo)
+            return;
+
+        if (EndsAWord(rtb, e.Changes))
         {
             ScheduleLinkify(rtb);
             ScheduleLineShortcut(rtb);
         }
+
+        if (e.Changes.Any(c => c.AddedLength > 0) && TextBefore(rtb.CaretPosition, 2) == "[[")
+            _ = Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => OpenNotePicker(rtb)));
+    }
+
+    // The characters just before the position, across runs (not across paragraphs).
+    private static string TextBefore(TextPointer position, int count)
+    {
+        var start = position;
+        for (var i = 0; i < count && start.GetNextInsertionPosition(LogicalDirection.Backward) is { } previous; i++)
+            start = previous;
+        return new TextRange(start, position).Text;
+    }
+
+    // --- "[[": link to another note ---
+
+    private RichTextBox? _notePickerBox;
+    private IReadOnlyList<NoteRef> _linkableNotes = [];
+
+    internal async void OpenNotePicker(RichTextBox rtb)
+    {
+        if (DataContext is not NoteEditorViewModel vm)
+            return;
+
+        _notePickerBox = rtb;
+        _linkableNotes = await vm.LinkableNotesAsync();
+
+        var caret = rtb.CaretPosition.GetCharacterRect(LogicalDirection.Forward);
+        NotePicker.PlacementTarget = rtb;
+        NotePicker.HorizontalOffset = caret.Left;
+        NotePicker.VerticalOffset = caret.Bottom + 4;
+        NotePickerFilter.Text = string.Empty;
+        FilterNotePicker();
+        NotePicker.IsOpen = true;
+        NotePickerFilter.Focus();
+    }
+
+    private void OnNotePickerFilterChanged(object sender, TextChangedEventArgs e) => FilterNotePicker();
+
+    private void FilterNotePicker()
+    {
+        var term = NotePickerFilter.Text.Trim();
+        var matches = _linkableNotes
+            .Where(n => term.Length == 0 || n.Title.Value.Contains(term, StringComparison.CurrentCultureIgnoreCase))
+            .Take(50)
+            .ToList();
+        NotePickerList.ItemsSource = matches;
+        NotePickerList.SelectedIndex = matches.Count > 0 ? 0 : -1;
+        NotePickerEmpty.Visibility = matches.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    // Handled here, in the preview: Escape must not reach the window, which would close the editor.
+    private void OnNotePickerKeyDown(object sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Down or Key.Up when NotePickerList.Items.Count > 0:
+                var next = NotePickerList.SelectedIndex + (e.Key == Key.Down ? 1 : -1);
+                NotePickerList.SelectedIndex = Math.Clamp(next, 0, NotePickerList.Items.Count - 1);
+                NotePickerList.ScrollIntoView(NotePickerList.SelectedItem);
+                e.Handled = true;
+                break;
+            case Key.Enter or Key.Tab:
+                PickNote(NotePickerList.SelectedItem as NoteRef);
+                e.Handled = true;
+                break;
+            case Key.Escape:
+                NotePicker.IsOpen = false;
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void OnNotePickerClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject source && ItemsControl.ContainerFromElement(NotePickerList, source) is ListBoxItem { DataContext: NoteRef note })
+            PickNote(note);
+    }
+
+    private void OnNotePickerClosed(object? sender, EventArgs e)
+    {
+        if (_notePickerBox is { } rtb)
+            rtb.Focus();
+    }
+
+    // The typed "[[" gives way to the link, and typing goes on after it.
+    internal void PickNote(NoteRef? note)
+    {
+        var rtb = _notePickerBox;
+        NotePicker.IsOpen = false;
+        if (rtb is null || note is null)
+            return;
+
+        rtb.BeginChange();
+        try
+        {
+            var caret = rtb.CaretPosition;
+            var start = caret;
+            for (var i = 0; i < 2 && start.GetNextInsertionPosition(LogicalDirection.Backward) is { } previous; i++)
+                start = previous;
+            if (new TextRange(start, caret).Text == "[[")
+                new TextRange(start, caret).Text = string.Empty;
+
+            rtb.CaretPosition = RichTextLinks.InsertNoteLink(rtb.CaretPosition, note.Id, note.Title.Value);
+        }
+        finally
+        {
+            rtb.EndChange();
+        }
+
+        rtb.Focus();
     }
 
     private void OnRichTextBoxLoaded(object sender, RoutedEventArgs e)
@@ -394,10 +509,26 @@ public partial class NoteEditorView : UserControl
     private void OnLinkPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _linkPress = null;
+        _notePress = null;
         if (sender is not IInputElement host)
             return;
 
         var point = e.GetPosition(host);
+
+        // A link to another note: the same clicks as a web link, and the shell opens the note.
+        if (sender is RichTextBox noteBox && NoteAt(noteBox, point) is Option<NoteId>.Some { Value: var noteId })
+        {
+            if (Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                OpenNote(noteId);
+                e.Handled = true;
+            }
+            else if (OpensOnPlainClick(Keyboard.Modifiers, e.ClickCount))
+            {
+                _notePress = new NotePress(noteBox, noteId, point);
+            }
+            return;
+        }
         if (Keyboard.Modifiers == ModifierKeys.Control && LinkAt(sender, point) is Option<LinkUrl>.Some { Value: var url })
         {
             OpenLink(url);
@@ -411,6 +542,18 @@ public partial class NoteEditorView : UserControl
     }
 
     private sealed record LinkPress(RichTextBox Box, LinkUrl Url, Point At);
+    private sealed record NotePress(RichTextBox Box, NoteId Note, Point At);
+
+    private NotePress? _notePress;
+
+    private static Option<NoteId> NoteAt(RichTextBox rtb, Point point) =>
+        rtb.GetPositionFromPoint(point, snapToText: false) is { } position ? RichTextLinks.NoteAt(position) : Option<NoteId>.Empty();
+
+    private void OpenNote(NoteId id)
+    {
+        if (DataContext is NoteEditorViewModel vm)
+            vm.RequestOpenNote(id);
+    }
 
     private LinkPress? _linkPress;
 
@@ -419,6 +562,19 @@ public partial class NoteEditorView : UserControl
 
     private void OnRichTextPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (_notePress is { } notePress && ReferenceEquals(notePress.Box, sender))
+        {
+            _notePress = null;
+            var releasedAt = e.GetPosition(notePress.Box);
+            var moved = releasedAt - notePress.At;
+            if (Math.Abs(moved.X) <= SystemParameters.MinimumHorizontalDragDistance
+                && Math.Abs(moved.Y) <= SystemParameters.MinimumVerticalDragDistance
+                && notePress.Box.Selection.IsEmpty
+                && NoteAt(notePress.Box, releasedAt) is Option<NoteId>.Some { Value: var released } && released == notePress.Note)
+                OpenNote(released);
+            return;
+        }
+
         if (_linkPress is not { } press || !ReferenceEquals(press.Box, sender))
             return;
 
@@ -489,7 +645,7 @@ public partial class NoteEditorView : UserControl
         var opens = host is RichTextBox
             ? modifiers is ModifierKeys.None or ModifierKeys.Control
             : modifiers == ModifierKeys.Control;
-        var overLink = !leaving && opens && LinkAt(host, point).IsSome;
+        var overLink = !leaving && opens && (LinkAt(host, point).IsSome || host is RichTextBox rtb && NoteAt(rtb, point).IsSome);
         if (overLink == (host.ForceCursor && host.Cursor == Cursors.Hand))
             return;
 

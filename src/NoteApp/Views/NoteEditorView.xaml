@@ -16,6 +16,7 @@
     <UserControl.Resources>
         <converters:FileSizeConverter x:Key="FileSize" />
         <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
+        <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
 
         <!-- Formatting toolbar: flat tool buttons on the card surface, separated by hairlines,
              instead of the stock WPF ToolBar band. -->
@@ -482,12 +483,35 @@
                        VerticalAlignment="Center" />
         </DockPanel>
 
-        <!-- Title -->
-        <TextBox Grid.Row="1" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
-                 materialDesign:HintAssist.Hint="Note title"
-                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                 materialDesign:TextFieldAssist.TextFieldCornerRadius="{StaticResource ControlCornerRadius}"
-                 FontSize="16" Margin="0,0,0,12" />
+        <!-- Title, and the notes that link to this one (typed with [[ in their text) -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,12">
+            <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
+                     materialDesign:HintAssist.Hint="Note title"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     materialDesign:TextFieldAssist.TextFieldCornerRadius="{StaticResource ControlCornerRadius}"
+                     FontSize="16" />
+            <DockPanel Margin="4,6,0,0" Visibility="{Binding HasLinkedFrom, Converter={StaticResource BoolToVis}}">
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
+                    <materialDesign:PackIcon Kind="LinkVariant" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,4,0"
+                                             Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                    <TextBlock Text="Linked from" FontSize="12" VerticalAlignment="Center"
+                               Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                </StackPanel>
+                <ItemsControl ItemsSource="{Binding LinkedFrom}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Content="{Binding Title.Value}" ToolTip="Open this note"
+                                    Style="{StaticResource MaterialDesignFlatButton}" Height="26" Padding="8,0" FontSize="12"
+                                    Command="{Binding DataContext.OpenLinkedNoteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </DockPanel>
+        </StackPanel>
 
         <!-- Add Block -->
         <DockPanel Grid.Row="2" Margin="0,0,0,10">
@@ -753,6 +777,22 @@
                 </Border>
             </StackPanel>
         </Expander>
+
+        <!-- "[[" in a text block: pick the note to link to. Opened at the caret by the code-behind. -->
+        <Popup x:Name="NotePicker" StaysOpen="False" AllowsTransparency="True" Placement="Relative"
+               Closed="OnNotePickerClosed">
+            <Border Background="{DynamicResource MaterialDesignPaper}" BorderBrush="{DynamicResource MaterialDesignDivider}"
+                    BorderThickness="1" CornerRadius="{StaticResource CardCornerRadius}" Padding="10" Width="340" Margin="0,0,8,8">
+                <StackPanel>
+                    <TextBox x:Name="NotePickerFilter" materialDesign:HintAssist.Hint="Link to a note — type its title"
+                             TextChanged="OnNotePickerFilterChanged" PreviewKeyDown="OnNotePickerKeyDown" />
+                    <ListBox x:Name="NotePickerList" MaxHeight="260" Margin="0,6,0,0"
+                             DisplayMemberPath="Title.Value" PreviewMouseLeftButtonUp="OnNotePickerClick" />
+                    <TextBlock x:Name="NotePickerEmpty" Text="No note by that title" Margin="4,8,0,2" FontSize="12"
+                               Foreground="{DynamicResource MaterialDesignBodyLight}" Visibility="Collapsed" />
+                </StackPanel>
+            </Border>
+        </Popup>
 
         <!-- Error + Actions -->
         <DockPanel Grid.Row="5" Margin="0,8,0,0">

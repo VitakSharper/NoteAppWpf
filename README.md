@@ -12,6 +12,7 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **Code blocks** — Monospace text kept exactly as typed (tabs included, never turned into links) for commands, SQL or configuration, with a copy button; searchable, and exported as a fenced block / a monospace listing
 - **Secret blocks** — A login inside a note: what it is for, the user name, the password (masked; the eye reveals it) and an address. The copy buttons put the user name or the password on the clipboard kept out of Windows' clipboard history and cloud clipboard, and wipe it after 30 s. The password is never searched, previewed, exported or kept in a draft, and a secret in a note that is not encrypted says that its password is stored as plain text
 - **Clickable links** — Web addresses (`http://`, `https://`, `www.`) in text blocks become links as soon as a space or a new line follows them; a click opens them in the browser (`Alt+Click` edits the link text). In checklist items and link blocks, where a click edits, `Ctrl+Click` or the open button does
+- **Links between notes** — Type `[[` in a text block and pick a note by its title: the link opens that note (a click, like a web link), and the note it points to lists the notes linking to it under its title ("Linked from")
 - **File attachments** — Browse and attach files stored directly in the database
 - **Block ordering** — Drag a block by its grip, or use the up/down arrows, to reorder the blocks of a note
 - **Drop files** — Drop files from Explorer onto an open note to attach them as file blocks

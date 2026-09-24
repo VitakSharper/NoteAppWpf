@@ -167,7 +167,7 @@ public class NoteListTrashTests
 
     // Titles keyed by id plus the set of trashed ids; rows are built per query the
     // way the real projection would, DeletedAt included.
-    private sealed class FakeNoteRepository : INoteRepository
+    private sealed class FakeNoteRepository : ThrowingNoteRepository
     {
         private readonly Dictionary<Guid, string> _titles = [];
         private readonly Dictionary<Guid, DateTime> _trashed = [];
@@ -186,7 +186,7 @@ public class NoteListTrashTests
         public Guid IdOf(string title) => _titles.Single(kv => kv.Value == title).Key;
         public void Trash(Guid id) => _trashed[id] = DateTime.UtcNow;
 
-        public Task<Result<Unit, AppError>> DeleteAsync(NoteId id)
+        public override Task<Result<Unit, AppError>> DeleteAsync(NoteId id)
         {
             Deleted.Add(id.Value);
             _trashed[id.Value] = DateTime.UtcNow;
@@ -195,20 +195,20 @@ public class NoteListTrashTests
 
         public bool IsPinned(Guid id) => _pinned.Contains(id);
 
-        public Task<Result<Unit, AppError>> SetPinnedAsync(NoteId id, bool isPinned)
+        public override Task<Result<Unit, AppError>> SetPinnedAsync(NoteId id, bool isPinned)
         {
             if (isPinned) _pinned.Add(id.Value); else _pinned.Remove(id.Value);
             return Task.FromResult(Result<Unit, AppError>.Ok(Unit.Value));
         }
 
-        public Task<Result<Unit, AppError>> RestoreAsync(NoteId id)
+        public override Task<Result<Unit, AppError>> RestoreAsync(NoteId id)
         {
             Restored.Add(id.Value);
             _trashed.Remove(id.Value);
             return Task.FromResult(Result<Unit, AppError>.Ok(Unit.Value));
         }
 
-        public Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(
+        public override Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(
             string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false)
         {
             var rows = _titles
@@ -227,13 +227,7 @@ public class NoteListTrashTests
                 .ToList();
             return Task.FromResult(Result<IReadOnlyList<NoteSummaryRow>, AppError>.Ok(rows));
         }
-
-        public Task<Result<Note, AppError>> GetByIdAsync(NoteId id) => throw new NotSupportedException();
-        public Task<Result<Note, AppError>> CreateAsync(Note note, byte[]? encryptedContent = null) => throw new NotSupportedException();
-        public Task<Result<Note, AppError>> UpdateAsync(Note note, byte[]? encryptedContent = null) => throw new NotSupportedException();
-        public Task<Result<Unit, AppError>> PurgeAsync(NoteId id) => throw new NotSupportedException();
-        public Task<Result<int, AppError>> PurgeAllDeletedAsync() => throw new NotSupportedException();
-        public Task<Result<byte[]?, AppError>> GetEncryptedContentAsync(NoteId id) => throw new NotSupportedException();
+        public override Task<Result<byte[]?, AppError>> GetEncryptedContentAsync(NoteId id) => throw new NotSupportedException();
     }
 
     private sealed class EmptyTagRepository : ITagRepository

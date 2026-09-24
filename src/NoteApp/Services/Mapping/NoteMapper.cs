@@ -40,6 +40,12 @@ public static class NoteMapper
                 row.HasSecrets,
                 row.HasCode));
 
+    // Rows whose title would not make a NoteTitle (a hand-edited database) are left out.
+    public static IReadOnlyList<NoteRef> ToRefs(IEnumerable<NoteRow> rows) =>
+        rows.Select(r => NoteTitle.From(r.Title).Match(t => new NoteRef(new NoteId(r.Id), t), _ => null))
+            .OfType<NoteRef>()
+            .ToList();
+
     public static NoteEntity ToEntity(Note note) => new()
     {
         Id = note.Id.Value,
@@ -62,7 +68,8 @@ public static class NoteMapper
                 BlockType = BlockType.Text,
                 SortOrder = sortOrder,
                 TextContent = t.RichText,
-                PlainText = t.PlainText
+                PlainText = t.PlainText,
+                LinkedNoteIds = NoteLinks.Join(t.NoteLinks)
             },
             file: f => new NoteBlockEntity
             {
@@ -130,7 +137,7 @@ public static class NoteMapper
         {
             BlockType.Text => Result<NoteBlock, AppError>.Ok(
                 new NoteBlock.Text(entity.TextContent ?? string.Empty, entity.PlainText ?? string.Empty)
-                    { Id = entity.Id, SortOrder = entity.SortOrder }),
+                    { Id = entity.Id, SortOrder = entity.SortOrder, NoteLinks = NoteLinks.Split(entity.LinkedNoteIds) }),
 
             BlockType.File => Result<NoteBlock, AppError>.Ok(
                 new NoteBlock.File(

@@ -1,6 +1,7 @@
 using NoteApp.Data.Entities;
 using NoteApp.Data.Queries;
 using NoteApp.Domain.Models;
+using NoteApp.Domain.ValueObjects;
 using NoteApp.Services.Mapping;
 
 namespace NoteApp.Tests.Services;
@@ -48,6 +49,20 @@ public class NoteMapperTests
         Assert.Equal("SELECT *\n\tFROM Notes  ", Assert.IsType<NoteBlock.Code>(mapped.Blocks[5]).Content);
 
         Assert.Equal("work", Assert.Single(mapped.Tags).Name.Value);
+    }
+
+    // "Linked from" is looked up by the ids stored with the text blocks.
+    [Fact]
+    public void The_notes_a_text_block_links_to_round_trip_through_their_column()
+    {
+        var target = NoteId.New();
+        var note = SampleNote(new NoteBlock.Text("<rich/>", "see Other") { NoteLinks = [target] });
+
+        var entity = Assert.Single(NoteMapper.ToBlockEntities(note));
+        Assert.Equal(target.Value.ToString("D"), entity.LinkedNoteIds);
+
+        var back = NoteMapper.ToDomain(new NoteEntity { Id = note.Id.Value, Title = "T", Blocks = [entity] }).Unwrap();
+        Assert.Equal([target], Assert.IsType<NoteBlock.Text>(Assert.Single(back.Blocks)).NoteLinks);
     }
 
     // Search and the list read PlainText: a secret is found by its label, its user name and

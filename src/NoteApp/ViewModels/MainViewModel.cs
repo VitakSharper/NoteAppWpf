@@ -236,16 +236,12 @@ public partial class MainViewModel : ObservableObject
 
         if (summary.IsEncrypted)
         {
-            var dialog = new PasswordDialog(isSetMode: false)
-            {
-                Owner = Application.Current.MainWindow
-            };
-            if (dialog.ShowDialog() != true)
+            password = AskPassword();
+            if (password is null)
             {
                 NoteListViewModel.SelectedNote = null;
                 return;
             }
-            password = dialog.Password;
         }
 
         var noteResult = password is null
@@ -260,6 +256,46 @@ public partial class MainViewModel : ObservableObject
         }
 
         await OpenEditorAsync(note, password, NoteListViewModel.SearchText);
+    }
+
+    private static string? AskPassword()
+    {
+        var dialog = new PasswordDialog(isSetMode: false) { Owner = Application.Current.MainWindow };
+        return dialog.ShowDialog() == true ? dialog.Password : null;
+    }
+
+    // A link to another note, a "Linked from" chip: the note is opened by its id, through the
+    // same leave guard and password prompt as a click in the list, which then shows it selected.
+    public async Task OpenNoteByIdAsync(NoteId id)
+    {
+        if (CurrentEditor is NoteEditorViewModel { EditedNoteId: { } open } && open == id)
+            return;
+
+        if (!await ConfirmLeaveEditorAsync())
+            return;
+
+        if (!(await _noteService.GetNoteByIdAsync(id)).TryGet(out var note, out var error))
+        {
+            MessageQueue.Enqueue(error.Code == "NOT_FOUND" ? "That note no longer exists (it may be in the trash)." : error.Message);
+            return;
+        }
+
+        string? password = null;
+        if (note.IsEncrypted)
+        {
+            password = AskPassword();
+            if (password is null)
+                return;
+
+            if (!(await _noteService.UnlockNoteAsync(id, password)).TryGet(out note, out error))
+            {
+                MessageQueue.Enqueue(error.Message);
+                return;
+            }
+        }
+
+        await OpenEditorAsync(note, password);
+        RestoreListSelectionToOpenNote();
     }
 
     private void OnCreateNoteRequested() => CreateNoteCommand.Execute(null);
@@ -294,8 +330,12 @@ public partial class MainViewModel : ObservableObject
         };
         editor.SaveCompleted += OnNoteSaved;
         editor.CancelRequested += OnEditorCancelled;
+        editor.OpenNoteRequested += id => _ = OpenNoteByIdAsync(id);
         CurrentEditor = editor;
         RearmEncryptedNoteLock();
+
+        if (note is not null)
+            await editor.LoadLinkedFromAsync();
     }
 
     private async void OnEditorCancelled() => await CloseEditorAsync();

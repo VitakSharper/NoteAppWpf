@@ -11,7 +11,12 @@ public abstract record NoteBlock
 
     // PlainText is the searchable / previewable form of RichText (a Base64
     // XamlPackage). It is computed by the editor, which has the document.
-    public sealed record Text(string RichText, string PlainText = "") : NoteBlock;
+    // NoteLinks: the notes its text links to (Services/NoteLinks), computed by the editor
+    // like PlainText, and what the other notes' "Linked from" is looked up by.
+    public sealed record Text(string RichText, string PlainText = "") : NoteBlock
+    {
+        public IReadOnlyList<NoteId> NoteLinks { get; init; } = [];
+    }
 
     public sealed record File(
         byte[] Data,

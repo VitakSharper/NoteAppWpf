@@ -59,6 +59,10 @@ public partial class BlockViewModel : ObservableObject
 
     public Guid Id { get; init; } = Guid.NewGuid();
 
+    // Text block: the notes its text links to, refreshed by the view's SyncBlock together with
+    // the rich text — not an edit of its own, hence a plain property.
+    public IReadOnlyList<NoteId> NoteLinks { get; set; } = [];
+
     public ObservableCollection<ChecklistItemViewModel> ChecklistItems { get; } = [];
 
     public string ChecklistSummary => $"{ChecklistItems.Count(i => i.IsDone)}/{ChecklistItems.Count} done";
@@ -140,6 +144,45 @@ public partial class NoteEditorViewModel : ObservableObject
     // The note-list search that led here, if any: the view opens the find bar of the
     // first text block that contains it, so the match is on screen straight away.
     public string? SearchTerm { get; init; }
+
+    // --- Links between notes (Services/NoteLinks) ---
+
+    // The notes whose text links to this one; filled by LoadLinkedFromAsync.
+    public ObservableCollection<NoteRef> LinkedFrom { get; } = [];
+
+    [ObservableProperty] private bool _hasLinkedFrom;
+
+    // The shell opens it — through the leave guard, and the password prompt if need be.
+    public event Action<NoteId>? OpenNoteRequested;
+
+    public void RequestOpenNote(NoteId id) => OpenNoteRequested?.Invoke(id);
+
+    [RelayCommand]
+    private void OpenLinkedNote(NoteRef note) => RequestOpenNote(note.Id);
+
+    public async Task LoadLinkedFromAsync()
+    {
+        if (_existingNote is not { } note || !(await _noteService.LinkedFromAsync(note.Id)).TryGet(out var notes, out _))
+            return;
+
+        LinkedFrom.Clear();
+        foreach (var other in notes)
+            LinkedFrom.Add(other);
+        HasLinkedFrom = LinkedFrom.Count > 0;
+    }
+
+    // What "[[" offers: every other live note, by title.
+    public async Task<IReadOnlyList<NoteRef>> LinkableNotesAsync()
+    {
+        if (!(await _noteService.SearchAsync(null, null, null)).TryGet(out var summaries, out _))
+            return [];
+
+        return summaries
+            .Where(s => s.Id != EditedNoteId)
+            .OrderBy(s => s.Title.Value, StringComparer.CurrentCultureIgnoreCase)
+            .Select(s => new NoteRef(s.Id, s.Title))
+            .ToList();
+    }
 
     // --- Drafts (see DraftStore) ---
 
@@ -353,7 +396,8 @@ public partial class NoteEditorViewModel : ObservableObject
                     Id = block.Id,
                     BlockType = BlockType.Text,
                     RichTextContent = t.RichText,
-                    PlainTextContent = t.PlainText
+                    PlainTextContent = t.PlainText,
+                    NoteLinks = t.NoteLinks
                 },
                 file: f => new BlockViewModel
                 {
@@ -753,7 +797,7 @@ public partial class NoteEditorViewModel : ObservableObject
             {
                 case BlockType.Text:
                     noteBlocks.Add(new NoteBlock.Text(vm.RichTextContent, vm.PlainTextContent)
-                        { Id = vm.Id, SortOrder = i });
+                        { Id = vm.Id, SortOrder = i, NoteLinks = vm.NoteLinks });
                     break;
 
                 case BlockType.File:

@@ -240,18 +240,9 @@ public class NoteEditorDirtyTests
             existingNote);
 
     // Nothing under test reaches storage: any call is a bug in the test, not a scenario.
-    private sealed class UnusedNoteRepository : INoteRepository
+    private sealed class UnusedNoteRepository : ThrowingNoteRepository
     {
-        public Task<Result<Note, AppError>> GetByIdAsync(NoteId id) => throw new NotSupportedException();
-        public Task<Result<Note, AppError>> CreateAsync(Note note, byte[]? encryptedContent = null) => throw new NotSupportedException();
-        public Task<Result<Note, AppError>> UpdateAsync(Note note, byte[]? encryptedContent = null) => throw new NotSupportedException();
-        public Task<Result<Unit, AppError>> DeleteAsync(NoteId id) => throw new NotSupportedException();
-        public Task<Result<Unit, AppError>> RestoreAsync(NoteId id) => throw new NotSupportedException();
-        public Task<Result<Unit, AppError>> SetPinnedAsync(NoteId id, bool isPinned) => throw new NotSupportedException();
-        public Task<Result<Unit, AppError>> PurgeAsync(NoteId id) => throw new NotSupportedException();
-        public Task<Result<int, AppError>> PurgeAllDeletedAsync() => throw new NotSupportedException();
-        public Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false) => throw new NotSupportedException();
-        public Task<Result<byte[]?, AppError>> GetEncryptedContentAsync(NoteId id) => throw new NotSupportedException();
+        public override Task<Result<byte[]?, AppError>> GetEncryptedContentAsync(NoteId id) => throw new NotSupportedException();
     }
 
     private sealed class UnusedTagRepository : ITagRepository

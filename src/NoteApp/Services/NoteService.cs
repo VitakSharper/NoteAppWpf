@@ -68,6 +68,14 @@ public sealed class NoteService(INoteRepository noteRepository)
         }
     }
 
+    public async Task<Result<IReadOnlyList<NoteRef>, AppError>> LinkedFromAsync(NoteId id)
+    {
+        if (!(await noteRepository.LinkedFromAsync(id)).TryGet(out var rows, out var error))
+            return Result<IReadOnlyList<NoteRef>, AppError>.Fail(error);
+
+        return Result<IReadOnlyList<NoteRef>, AppError>.Ok(NoteMapper.ToRefs(rows));
+    }
+
     // Soft: the note goes to the trash, where it can be restored or purged.
     public Task<Result<Unit, AppError>> DeleteNoteAsync(NoteId id) =>
         noteRepository.DeleteAsync(id);

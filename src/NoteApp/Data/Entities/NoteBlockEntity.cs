@@ -15,6 +15,8 @@ public class NoteBlockEntity
     // preview need no special case.
     public string? TextContent { get; set; }
     public string? PlainText { get; set; }
+    // The notes a text block links to, comma-separated ids (Services/NoteLinks); null when none.
+    public string? LinkedNoteIds { get; set; }
 
     // File block
     public byte[]? FileData { get; set; }

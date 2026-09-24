@@ -22,9 +22,9 @@ public sealed class OpenEditor : IDisposable
     public NoteEditorView View { get; }
     public NoteEditorViewModel ViewModel { get; }
 
-    public OpenEditor(Note? note, string? searchTerm = null)
+    public OpenEditor(Note? note, string? searchTerm = null, INoteRepository? repository = null)
     {
-        ViewModel = new NoteEditorViewModel(new NoteService(new UnusedNoteRepository()), new UnusedTagRepository(), [], note)
+        ViewModel = new NoteEditorViewModel(new NoteService(repository ?? new UnusedNoteRepository()), new UnusedTagRepository(), [], note)
         {
             SearchTerm = searchTerm
         };
@@ -110,19 +110,21 @@ public static class Notes
         inlines.SelectMany(i => i is Span span ? [i, .. Inlines(span.Inlines)] : new[] { i });
 }
 
-// Nothing a UI test does may reach storage: a call is a bug in the test.
-internal sealed class UnusedNoteRepository : INoteRepository
+// Nothing a UI test does may reach storage: a call is a bug in the test — unless the test
+// overrides the one it means to reach.
+internal class UnusedNoteRepository : INoteRepository
 {
-    public Task<Result<Note, AppError>> GetByIdAsync(NoteId id) => throw new NotSupportedException();
-    public Task<Result<Note, AppError>> CreateAsync(Note note, byte[]? encryptedContent = null) => throw new NotSupportedException();
-    public Task<Result<Note, AppError>> UpdateAsync(Note note, byte[]? encryptedContent = null) => throw new NotSupportedException();
-    public Task<Result<Unit, AppError>> DeleteAsync(NoteId id) => throw new NotSupportedException();
-    public Task<Result<Unit, AppError>> RestoreAsync(NoteId id) => throw new NotSupportedException();
-    public Task<Result<Unit, AppError>> SetPinnedAsync(NoteId id, bool isPinned) => throw new NotSupportedException();
-    public Task<Result<Unit, AppError>> PurgeAsync(NoteId id) => throw new NotSupportedException();
-    public Task<Result<int, AppError>> PurgeAllDeletedAsync() => throw new NotSupportedException();
-    public Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false) => throw new NotSupportedException();
-    public Task<Result<byte[]?, AppError>> GetEncryptedContentAsync(NoteId id) => throw new NotSupportedException();
+    public virtual Task<Result<Note, AppError>> GetByIdAsync(NoteId id) => throw new NotSupportedException();
+    public virtual Task<Result<Note, AppError>> CreateAsync(Note note, byte[]? encryptedContent = null) => throw new NotSupportedException();
+    public virtual Task<Result<Note, AppError>> UpdateAsync(Note note, byte[]? encryptedContent = null) => throw new NotSupportedException();
+    public virtual Task<Result<Unit, AppError>> DeleteAsync(NoteId id) => throw new NotSupportedException();
+    public virtual Task<Result<Unit, AppError>> RestoreAsync(NoteId id) => throw new NotSupportedException();
+    public virtual Task<Result<Unit, AppError>> SetPinnedAsync(NoteId id, bool isPinned) => throw new NotSupportedException();
+    public virtual Task<Result<Unit, AppError>> PurgeAsync(NoteId id) => throw new NotSupportedException();
+    public virtual Task<Result<int, AppError>> PurgeAllDeletedAsync() => throw new NotSupportedException();
+    public virtual Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false) => throw new NotSupportedException();
+    public virtual Task<Result<byte[]?, AppError>> GetEncryptedContentAsync(NoteId id) => throw new NotSupportedException();
+    public virtual Task<Result<IReadOnlyList<NoteRow>, AppError>> LinkedFromAsync(NoteId id) => throw new NotSupportedException();
 }
 
 internal sealed class UnusedTagRepository : ITagRepository
