@@ -121,16 +121,17 @@
                              LostFocus="OnRichTextLostFocus"
                              TextChanged="OnRichTextChanged"
                              PreviewMouseLeftButtonDown="OnLinkPreviewMouseLeftButtonDown"
+                             PreviewMouseLeftButtonUp="OnRichTextPreviewMouseLeftButtonUp"
                              PreviewMouseMove="OnLinkHostMouseMove"
                              MouseLeave="OnLinkHostMouseLeave"
                              PreviewMouseWheel="OnRichTextBoxPreviewMouseWheel">
                     <RichTextBox.Resources>
-                        <!-- The document stays disabled (IsDocumentEnabled is false) so a plain click
-                             edits a link like any text: hence the tooltip on disabled content. -->
+                        <!-- The document stays disabled (IsDocumentEnabled is false): the clicks are
+                             handled in code-behind, WPF's own Hyperlink logic stays out of it. -->
                         <Style TargetType="Hyperlink">
                             <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
                             <Setter Property="TextDecorations" Value="Underline" />
-                            <Setter Property="ToolTip" Value="Ctrl+Click to open" />
+                            <Setter Property="ToolTip" Value="Click to open · Alt+Click to edit" />
                             <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
                         </Style>
                     </RichTextBox.Resources>

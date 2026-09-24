@@ -197,7 +197,7 @@ public partial class NoteEditorView : UserControl
 
         // An address typed last, with no space after it yet, is linked before it is stored.
         if (linkify)
-            RichTextLinks.Linkify(rtb.Document);
+            RichTextLinks.Linkify(rtb.Document, rtb.Selection);
 
         block.RichTextContent = SerializeDocument(rtb.Document);
         block.PlainTextContent = new TextRange(rtb.Document.ContentStart, rtb.Document.ContentEnd).Text;
@@ -359,22 +359,66 @@ public partial class NoteEditorView : UserControl
         _ = Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
         {
             _linkifyPending.Remove(rtb);
-            WithoutDirtyTracking(() => RichTextLinks.Linkify(rtb.Document));
+            WithoutDirtyTracking(() => RichTextLinks.Linkify(rtb.Document, rtb.Selection));
         }));
     }
 
     // Ctrl+Click opens the link under the pointer, in a text block, a checklist item or a
     // link block alike; a plain click still places the caret, so a link stays editable.
+    // In a text block a plain click opens a link too — on the release, so a drag that
+    // starts on a link still selects — and Alt+Click places the caret to edit its text.
+    // In a TextBox (checklist item, link block) a click has to edit: Ctrl+Click only.
     private void OnLinkPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (Keyboard.Modifiers != ModifierKeys.Control)
+        _linkPress = null;
+        if (sender is not IInputElement host)
             return;
 
-        if (sender is IInputElement host && LinkAt(sender, e.GetPosition(host)) is Option<LinkUrl>.Some { Value: var url })
+        var point = e.GetPosition(host);
+        if (Keyboard.Modifiers == ModifierKeys.Control && LinkAt(sender, point) is Option<LinkUrl>.Some { Value: var url })
         {
             OpenLink(url);
             e.Handled = true;
+            return;
         }
+
+        if (sender is RichTextBox box && OpensOnPlainClick(Keyboard.Modifiers, e.ClickCount)
+            && LinkAt(box, point) is Option<LinkUrl>.Some { Value: var pressed })
+            _linkPress = new LinkPress(box, pressed, point);
+    }
+
+    private sealed record LinkPress(RichTextBox Box, LinkUrl Url, Point At);
+
+    private LinkPress? _linkPress;
+
+    internal static bool OpensOnPlainClick(ModifierKeys modifiers, int clickCount) =>
+        modifiers == ModifierKeys.None && clickCount == 1;
+
+    private void OnRichTextPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_linkPress is not { } press || !ReferenceEquals(press.Box, sender))
+            return;
+
+        _linkPress = null;
+        if (ReleasedOnSameLink(press, e.GetPosition(press.Box)) is Option<LinkUrl>.Some { Value: var url })
+            OpenLink(url);
+    }
+
+    // Not a drag, nothing selected, and still over the link it started on.
+    internal static Option<LinkUrl> ReleasedOnSameLink(RichTextBox box, LinkUrl pressed, Point pressedAt, Point releasedAt) =>
+        ReleasedOnSameLink(new LinkPress(box, pressed, pressedAt), releasedAt);
+
+    private static Option<LinkUrl> ReleasedOnSameLink(LinkPress press, Point releasedAt)
+    {
+        var moved = releasedAt - press.At;
+        if (Math.Abs(moved.X) > SystemParameters.MinimumHorizontalDragDistance
+            || Math.Abs(moved.Y) > SystemParameters.MinimumVerticalDragDistance
+            || !press.Box.Selection.IsEmpty)
+            return Option<LinkUrl>.Empty();
+
+        return LinkAt(press.Box, releasedAt) is Option<LinkUrl>.Some { Value: var url } && url == press.Url
+            ? new Option<LinkUrl>.Some(url)
+            : Option<LinkUrl>.Empty();
     }
 
     private static Option<LinkUrl> LinkAt(object host, Point point) => host switch
@@ -396,27 +440,33 @@ public partial class NoteEditorView : UserControl
             return;
 
         _linkHost = host;
-        UpdateLinkCursor(host, e.GetPosition(host), Keyboard.Modifiers == ModifierKeys.Control);
+        UpdateLinkCursor(host, e.GetPosition(host), Keyboard.Modifiers);
     }
 
     private void OnLinkHostMouseLeave(object sender, MouseEventArgs e)
     {
         if (sender is FrameworkElement host)
-            UpdateLinkCursor(host, default, ctrl: false);
+            UpdateLinkCursor(host, default, ModifierKeys.None, leaving: true);
         _linkHost = null;
     }
 
-    // Pressing or releasing Ctrl with the mouse still: no move comes to say so.
+    // Pressing or releasing Ctrl or Alt with the mouse still: no move comes to say so.
     private void OnEditorPreviewKeyChanged(object sender, KeyEventArgs e)
     {
-        if (e.Key is Key.LeftCtrl or Key.RightCtrl && _linkHost is { } host)
-            UpdateLinkCursor(host, Mouse.GetPosition(host), Keyboard.Modifiers == ModifierKeys.Control);
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt && _linkHost is { } host)
+            UpdateLinkCursor(host, Mouse.GetPosition(host), Keyboard.Modifiers);
     }
 
-    // ForceCursor: the RichTextBox's own cursor logic would otherwise put its I-beam back.
-    internal static void UpdateLinkCursor(FrameworkElement host, Point point, bool ctrl)
+    // The hand shows over exactly what a click would open: in a text block a plain click or
+    // a Ctrl+Click (not Alt, which edits), in a TextBox only a Ctrl+Click. ForceCursor: the
+    // RichTextBox's own cursor logic would otherwise put its I-beam back.
+    internal static void UpdateLinkCursor(FrameworkElement host, Point point, ModifierKeys modifiers, bool leaving = false)
     {
-        var overLink = ctrl && LinkAt(host, point).IsSome;
+        var opens = host is RichTextBox
+            ? modifiers is ModifierKeys.None or ModifierKeys.Control
+            : modifiers == ModifierKeys.Control;
+        var overLink = !leaving && opens && LinkAt(host, point).IsSome;
         if (overLink == (host.ForceCursor && host.Cursor == Cursors.Hand))
             return;
 

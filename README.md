@@ -9,7 +9,7 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **Multi-block notes** — Each note can contain multiple content blocks: rich text, files, links and checklists — all in one note
 - **Checklists** — Tickable items inside a note: Enter adds the next one, `Alt+Up/Down` move one, done items are struck through (or hidden with Hide done), the block counts progress, and item texts are searchable
 - **Rich text editing** — Bold, italic, underline, bullet and numbered lists via a toolbar
-- **Clickable links** — Web addresses (`http://`, `https://`, `www.`) in text blocks become links as soon as a space or a new line follows them, and `Ctrl+Click` opens them in the browser — in checklist items and link blocks too, which also get an open button
+- **Clickable links** — Web addresses (`http://`, `https://`, `www.`) in text blocks become links as soon as a space or a new line follows them; a click opens them in the browser (`Alt+Click` edits the link text). In checklist items and link blocks, where a click edits, `Ctrl+Click` or the open button does
 - **File attachments** — Browse and attach files stored directly in the database
 - **Block ordering** — Drag a block by its grip, or use the up/down arrows, to reorder the blocks of a note
 - **Drop files** — Drop files from Explorer onto an open note to attach them as file blocks
@@ -21,7 +21,7 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **Trash with undo** — Deleting a note moves it to the trash and the snackbar offers UNDO; the Trash view restores or deletes forever, and only the permanent gestures ask for confirmation
 - **Draft recovery** — While a note has unsaved changes a draft is kept every 20 s (never for encrypted notes); after a crash NoteApp offers to restore it at the next start
 - **Unsaved-changes guard** — Leaving a modified note (opening another one, New note, Cancel, closing the window) offers to save, discard, or stay in the editor
-- **Keyboard shortcuts** — `Ctrl+N` new note, `Ctrl+S` save, `Esc` close the editor (or the Settings dialog), `Ctrl+F` search the text block under the cursor or, from anywhere else, the note list; `Ctrl+B/I/U` are native to the rich text box; `Ctrl+Click` opens a link; `F11` focus mode (the editor takes the whole window); `Ctrl+wheel`, `Ctrl+Plus/Minus` zoom the blocks, `Ctrl+0` resets
+- **Keyboard shortcuts** — `Ctrl+N` new note, `Ctrl+S` save, `Esc` close the editor (or the Settings dialog), `Ctrl+F` search the text block under the cursor or, from anywhere else, the note list; `Ctrl+B/I/U` are native to the rich text box; a click (text blocks) or `Ctrl+Click` (anywhere) opens a link; `F11` focus mode (the editor takes the whole window); `Ctrl+wheel`, `Ctrl+Plus/Minus` zoom the blocks, `Ctrl+0` resets
 - **In-app help** — `F1` or the `?` in the rail opens a non-modal help window: getting started, the shortcut table, blocks, search and tags, encryption, backup, and where settings and logs live
 - **Encrypted notes** — Optional per-note password; blocks are stored AES-GCM encrypted (PBKDF2 key derivation)
 - **Automatic lock** — An open encrypted note closes itself after a configurable idle period (default 5 minutes, `Never` to disable), saving unsaved changes first and forgetting the password

@@ -38,7 +38,7 @@ public class EditorLinkUiTests
 
         Assert.Equal(Accent, Assert.IsType<SolidColorBrush>(link.Foreground).Color);
         Assert.NotEmpty(link.TextDecorations);
-        Assert.Equal("Ctrl+Click to open", link.ToolTip);
+        Assert.Equal("Click to open · Alt+Click to edit", link.ToolTip);
     });
 
     [Fact]
@@ -198,7 +198,7 @@ public class EditorLinkUiTests
 
     // What a Ctrl+Click would open shows as a hand, and only while Ctrl is down.
     [Fact]
-    public void Ctrl_over_a_link_shows_the_hand() => Wpf.Run(() =>
+    public void The_hand_shows_over_what_a_click_would_open() => Wpf.Run(() =>
     {
         using var editor = new OpenEditor(With(Text("ab https://old.example.com cd"), Checklist("read https://mid.example.com later")));
         var box = editor.RichText();
@@ -206,21 +206,53 @@ public class EditorLinkUiTests
         var onLink = CenterOf(run, 2);
         var before = CenterOf((Run)((Paragraph)box.Document.Blocks.FirstBlock).Inlines.FirstInline, 0);
 
-        NoteEditorView.UpdateLinkCursor(box, onLink, ctrl: true);
+        // A text block: a plain click opens, so no modifier needed; Alt edits instead.
+        NoteEditorView.UpdateLinkCursor(box, onLink, System.Windows.Input.ModifierKeys.None);
         Assert.Equal(System.Windows.Input.Cursors.Hand, box.Cursor);
         Assert.True(box.ForceCursor);
 
-        NoteEditorView.UpdateLinkCursor(box, onLink, ctrl: false);
+        NoteEditorView.UpdateLinkCursor(box, onLink, System.Windows.Input.ModifierKeys.Alt);
         Assert.False(box.ForceCursor);
         Assert.NotEqual(System.Windows.Input.Cursors.Hand, box.Cursor);
 
-        NoteEditorView.UpdateLinkCursor(box, before, ctrl: true);
+        NoteEditorView.UpdateLinkCursor(box, onLink, System.Windows.Input.ModifierKeys.Control);
+        Assert.True(box.ForceCursor);
+
+        NoteEditorView.UpdateLinkCursor(box, before, System.Windows.Input.ModifierKeys.None);
         Assert.False(box.ForceCursor);
 
+        // A checklist item: a click edits it, so the hand needs Ctrl.
         var item = editor.Find<TextBox>().Single(t => t.Tag is ChecklistItemViewModel);
         var rect = item.GetRectFromCharacterIndex(item.Text.IndexOf("mid", StringComparison.Ordinal));
-        NoteEditorView.UpdateLinkCursor(item, new Point(rect.X + 2, rect.Y + rect.Height / 2), ctrl: true);
+        var onItemLink = new Point(rect.X + 2, rect.Y + rect.Height / 2);
+        NoteEditorView.UpdateLinkCursor(item, onItemLink, System.Windows.Input.ModifierKeys.None);
+        Assert.False(item.ForceCursor);
+        NoteEditorView.UpdateLinkCursor(item, onItemLink, System.Windows.Input.ModifierKeys.Control);
         Assert.Equal(System.Windows.Input.Cursors.Hand, item.Cursor);
+    });
+
+    // A click in a text block opens on the release: not after a drag, not with a selection,
+    // not with Alt (edit), not on the second click of a double-click.
+    [Fact]
+    public void A_plain_click_on_a_text_link_opens_it_unless_it_was_a_drag() => Wpf.Run(() =>
+    {
+        using var editor = new OpenEditor(With(Text("ab https://old.example.com cd")));
+        var box = editor.RichText();
+        var run = (Run)Assert.Single(Hyperlinks(box.Document)).Inlines.FirstInline;
+        var at = CenterOf(run, 3);
+        var url = RichTextLinks.LinkAt(box.GetPositionFromPoint(at, false)!).Match(u => u, () => throw new InvalidOperationException());
+
+        Assert.True(NoteEditorView.OpensOnPlainClick(System.Windows.Input.ModifierKeys.None, clickCount: 1));
+        Assert.False(NoteEditorView.OpensOnPlainClick(System.Windows.Input.ModifierKeys.Alt, clickCount: 1));
+        Assert.False(NoteEditorView.OpensOnPlainClick(System.Windows.Input.ModifierKeys.Shift, clickCount: 1));
+        Assert.False(NoteEditorView.OpensOnPlainClick(System.Windows.Input.ModifierKeys.None, clickCount: 2));
+
+        Assert.True(NoteEditorView.ReleasedOnSameLink(box, url, at, at).IsSome);
+        Assert.True(NoteEditorView.ReleasedOnSameLink(box, url, at, at + new Vector(1, 0)).IsSome);
+        Assert.True(NoteEditorView.ReleasedOnSameLink(box, url, at, at + new Vector(40, 0)).IsNone);
+
+        box.Selection.Select(run.ContentStart, run.ContentEnd);
+        Assert.True(NoteEditorView.ReleasedOnSameLink(box, url, at, at).IsNone);
     });
 
     private static Point CenterOf(Run run, int charIndex)
