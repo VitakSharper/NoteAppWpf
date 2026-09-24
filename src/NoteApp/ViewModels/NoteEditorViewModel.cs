@@ -286,7 +286,37 @@ public partial class NoteEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(IsEditing));
         OnPropertyChanged(nameof(EditorTitle));
         IsDirty = false;
+        SavedLabel = NoteStatus.SavedLabel(savedNote.UpdatedAt, DateTime.Now);
     }
+
+    // --- The status line: words, and when it was saved ---
+
+    [ObservableProperty] private int _wordCount;
+    [ObservableProperty] private string _savedLabel = "Not saved yet";
+
+    public string WordLabel => NoteStatus.WordLabel(WordCount);
+
+    partial void OnWordCountChanged(int value) => OnPropertyChanged(nameof(WordLabel));
+
+    // The text of each text block as it is on screen: the view reports it while typing,
+    // since the block's PlainTextContent only follows at the next sync.
+    private readonly Dictionary<Guid, string> _liveText = [];
+
+    public void UpdateLiveText(Guid blockId, string text)
+    {
+        _liveText[blockId] = text;
+        RecountWords();
+    }
+
+    private void RecountWords() =>
+        WordCount = Blocks.Sum(b => b.BlockType switch
+        {
+            BlockType.Text => NoteStatus.Words(_liveText.GetValueOrDefault(b.Id) ?? b.PlainTextContent),
+            BlockType.Checklist => b.ChecklistItems.Sum(i => NoteStatus.Words(i.Text)),
+            BlockType.Code => NoteStatus.Words(b.CodeText),
+            BlockType.Link => NoteStatus.Words(b.LinkDescription),
+            _ => 0
+        });
 
     public event Action<Note, string?>? SaveCompleted;
     public event Action? CancelRequested;
@@ -313,6 +343,10 @@ public partial class NoteEditorViewModel : ObservableObject
         SelectedTags.CollectionChanged += OnSelectedTagsCollectionChanged;
         foreach (var block in Blocks)
             Track(block);
+
+        if (existingNote is not null)
+            SavedLabel = NoteStatus.SavedLabel(existingNote.UpdatedAt, DateTime.Now);
+        RecountWords();
     }
 
     // Title and IsEncrypted are the only editable scalars on this view model; the rest
@@ -332,6 +366,7 @@ public partial class NoteEditorViewModel : ObservableObject
             Track(block);
 
         MarkDirty();
+        RecountWords();
     }
 
     // A checklist edit is three different events — an item added or removed, an item
@@ -361,9 +396,15 @@ public partial class NoteEditorViewModel : ObservableObject
             item.PropertyChanged += OnChecklistItemPropertyChanged;
 
         MarkDirty();
+        RecountWords();
     }
 
-    private void OnChecklistItemPropertyChanged(object? sender, PropertyChangedEventArgs e) => MarkDirty();
+    private void OnChecklistItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        MarkDirty();
+        if (e.PropertyName == nameof(ChecklistItemViewModel.Text))
+            RecountWords();
+    }
 
     private void OnSelectedTagsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
         MarkDirty();
@@ -372,6 +413,9 @@ public partial class NoteEditorViewModel : ObservableObject
     // the user: that write is a serialization artefact and must not look like an edit.
     private void OnBlockPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(BlockViewModel.PlainTextContent) or nameof(BlockViewModel.CodeText) or nameof(BlockViewModel.LinkDescription))
+            RecountWords();
+
         if (e.PropertyName is nameof(BlockViewModel.RichTextContent) or nameof(BlockViewModel.PlainTextContent)
             or nameof(BlockViewModel.HideDone))
             return;

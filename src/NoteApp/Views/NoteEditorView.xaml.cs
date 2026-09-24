@@ -246,6 +246,8 @@ public partial class NoteEditorView : UserControl
             return;
 
         vm.MarkDirty();
+        if (sender is RichTextBox { Tag: BlockViewModel counted } typedIn)
+            ScheduleWordCount(typedIn, counted);
 
         // Not on undo or redo: undoing an automatic link (or heading) must not bring it straight back.
         if (sender is not RichTextBox rtb || e.UndoAction is UndoAction.Undo or UndoAction.Redo)
@@ -259,6 +261,22 @@ public partial class NoteEditorView : UserControl
 
         if (e.Changes.Any(c => c.AddedLength > 0) && TextBefore(rtb.CaretPosition, 2) == "[[")
             _ = Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => OpenNotePicker(rtb)));
+    }
+
+    // The status line's word count follows the typing, a little behind it.
+    private readonly HashSet<RichTextBox> _wordCountPending = [];
+
+    private void ScheduleWordCount(RichTextBox rtb, BlockViewModel block)
+    {
+        if (!_wordCountPending.Add(rtb))
+            return;
+
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
+        {
+            _wordCountPending.Remove(rtb);
+            if (DataContext is NoteEditorViewModel vm)
+                vm.UpdateLiveText(block.Id, new TextRange(rtb.Document.ContentStart, rtb.Document.ContentEnd).Text);
+        }));
     }
 
     // The characters just before the position, across runs (not across paragraphs).

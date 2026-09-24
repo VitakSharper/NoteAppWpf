@@ -40,3 +40,20 @@ public class CodeBlockUiTests
         Assert.Equal("ls -la", Assert.Single(editor.ViewModel.Blocks).CodeText);
     });
 }
+
+public class StatusLineUiTests
+{
+    [Fact]
+    public void Typing_in_a_text_block_updates_the_word_count() => Wpf.Run(() =>
+    {
+        using var editor = new OpenEditor(With(Text("one")));
+        Assert.Equal(1, editor.ViewModel.WordCount);
+
+        editor.Type(editor.RichText(), " two three");
+        Wpf.Pump();
+
+        Assert.Equal(3, editor.ViewModel.WordCount);
+        var unsaved = editor.Find<System.Windows.Controls.TextBlock>().Single(t => t.Text == "● Unsaved changes");
+        Assert.True(unsaved.IsVisible);
+    });
+}
