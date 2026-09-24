@@ -72,7 +72,9 @@ public sealed class AppSettingsService
         int? KeepBackups = null,
         double? EditorZoom = null,
         bool? LockEncryptedNotesWhenWindowsLocks = null,
-        int? KeepVersions = null)
+        int? KeepVersions = null,
+        bool? CloseToTray = null,
+        bool? QuickNoteHotKey = null)
     {
         public static PersistedSettings From(AppSettings settings) => new(
             settings.ConfirmNoteDeletion,
@@ -87,7 +89,9 @@ public sealed class AppSettingsService
             settings.KeepBackups,
             settings.EditorZoom,
             settings.LockEncryptedNotesWhenWindowsLocks,
-            settings.KeepVersions);
+            settings.KeepVersions,
+            settings.CloseToTray,
+            settings.QuickNoteHotKey);
 
         public AppSettings ToSettings() => new(
             ConfirmNoteDeletion,
@@ -101,7 +105,9 @@ public sealed class AppSettingsService
             KeepBackups ?? AppSettings.Default.KeepBackups,
             Math.Clamp(EditorZoom ?? AppSettings.Default.EditorZoom, AppSettings.MinEditorZoom, AppSettings.MaxEditorZoom),
             LockEncryptedNotesWhenWindowsLocks ?? AppSettings.Default.LockEncryptedNotesWhenWindowsLocks,
-            Math.Max(0, KeepVersions ?? AppSettings.Default.KeepVersions));
+            Math.Max(0, KeepVersions ?? AppSettings.Default.KeepVersions),
+            CloseToTray ?? AppSettings.Default.CloseToTray,
+            QuickNoteHotKey ?? AppSettings.Default.QuickNoteHotKey);
 
         private static string? Protect(string value) =>
             string.IsNullOrEmpty(value)

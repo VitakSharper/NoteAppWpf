@@ -661,6 +661,30 @@ public partial class MainViewModel : ObservableObject
             await LockEncryptedNoteAsync(why);
     }
 
+    // The window going to the notification area: whatever the settings, no decrypted note stays
+    // open behind an icon.
+    public Task LockEncryptedNoteNowAsync(string why) => LockEncryptedNoteAsync(why);
+
+    public bool KeepsRunningInTray => _settingsService.Current.CloseToTray;
+
+    // --- Quick notes (Ctrl+Alt+N, the tray icon) ---
+
+    // One text block, titled by what was typed or by its first line. The error message, or
+    // null once it is stored.
+    public async Task<string?> SaveQuickNoteAsync(string title, string text)
+    {
+        var body = text.Trim('\r', '\n');
+        var name = QuickNotes.TitleFor(title, body, DateTime.Now);
+        var block = new NoteBlock.Text(RichTextPayload.FromPlainText(body), body);
+
+        if (!(await _noteService.CreateNoteAsync(name, [block], [])).TryGet(out var note, out var error))
+            return error.Message;
+
+        NoteListViewModel.LoadNotesCommand.Execute(null);
+        MessageQueue.Enqueue($"Quick note '{note.Title}' saved.");
+        return null;
+    }
+
     private async Task LockEncryptedNoteAsync(string why)
     {
         if (CurrentEditor is not NoteEditorViewModel { EditedNote.IsEncrypted: true } editor)

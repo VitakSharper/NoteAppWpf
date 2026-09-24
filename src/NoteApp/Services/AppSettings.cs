@@ -24,7 +24,11 @@ public sealed record AppSettings(
     // Close an open encrypted note at once when Windows locks or the computer sleeps.
     bool LockEncryptedNotesWhenWindowsLocks = true,
     // Earlier states a save keeps of each note (0 = none).
-    int KeepVersions = 10)
+    int KeepVersions = 10,
+    // Closing the window leaves NoteApp running in the notification area.
+    bool CloseToTray = false,
+    // Ctrl+Alt+N from any application opens a quick note (read at startup).
+    bool QuickNoteHotKey = true)
 {
     public const double MinEditorZoom = 0.5;
     public const double MaxEditorZoom = 2.5;
@@ -44,5 +48,7 @@ public sealed record AppSettings(
         KeepBackups: 10,
         EditorZoom: 1.0,
         LockEncryptedNotesWhenWindowsLocks: true,
-        KeepVersions: 10);
+        KeepVersions: 10,
+        CloseToTray: false,
+        QuickNoteHotKey: true);
 }

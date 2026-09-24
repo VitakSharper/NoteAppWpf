@@ -78,6 +78,9 @@
                 <TextBlock Style="{StaticResource Body}"
                            Text="The line under the editor counts the note's words as you type, says when it was last saved, and shows Unsaved changes as long as there are some. Save with Ctrl+S or the Save button. If you leave a note with unsaved changes (by opening another one, pressing Escape or closing the app) NoteApp asks whether to save, discard or stay. While a note has unsaved changes NoteApp also keeps a draft of it every 20 seconds (never for an encrypted note); if it ever closes without saving, the next start offers to restore that draft." />
 
+                <TextBlock Style="{StaticResource Body}"
+                           Text="Ctrl+Alt+N opens a quick note from any application, even with NoteApp's window closed to the notification area: type, Ctrl+Enter, and it is a note (titled by its first line unless you give it one). NoteApp's icon near the clock does the same, opens the window (double-click) and quits (right-click › Exit). In Settings, Keep NoteApp running in the notification area makes the window's close button hide it there instead of quitting; an open encrypted note is locked when it goes." />
+
                 <TextBlock Style="{StaticResource Section}" Text="Keyboard shortcuts" />
                 <ItemsControl x:Name="ShortcutsList" Grid.IsSharedSizeScope="True">
                     <ItemsControl.ItemTemplate>

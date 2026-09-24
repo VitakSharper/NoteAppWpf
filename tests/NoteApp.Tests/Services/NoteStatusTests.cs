@@ -56,3 +56,36 @@ public class NoteStatusTests
         public Task<NoteApp.Domain.Functional.Result<NoteApp.Domain.Functional.Unit, NoteApp.Domain.Functional.AppError>> DeleteAsync(Guid id) => throw new NotSupportedException();
     }
 }
+
+public class QuickNotesTests
+{
+    [Fact]
+    public void A_quick_note_takes_the_title_typed_or_its_first_line_or_when_it_was_written()
+    {
+        var now = new DateTime(2026, 9, 24, 15, 30, 0);
+
+        Assert.Equal("Idea", QuickNotes.TitleFor("  Idea ", "text", now));
+        Assert.Equal("Call the bank", QuickNotes.TitleFor("", "\n  Call the bank \nlater", now));
+        Assert.StartsWith("Quick note ", QuickNotes.TitleFor("", " \n ", now));
+
+        var long_ = QuickNotes.TitleFor("", new string('x', 200), now);
+        Assert.Equal(QuickNotes.MaxTitleFromText + 1, long_.Length);
+        Assert.EndsWith("…", long_);
+    }
+
+    [Fact]
+    public void The_tray_settings_survive_a_save_and_reload()
+    {
+        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "NoteApp.Tests", Guid.NewGuid() + ".json");
+        var service = new AppSettingsService(path);
+        Assert.False(service.Current.CloseToTray);
+        Assert.True(service.Current.QuickNoteHotKey);
+        Assert.Equal(10, service.Current.KeepVersions);
+
+        service.Save(service.Current with { CloseToTray = true, QuickNoteHotKey = false, KeepVersions = 0 });
+
+        var reloaded = new AppSettingsService(path).Current;
+        Assert.Equal((true, false, 0), (reloaded.CloseToTray, reloaded.QuickNoteHotKey, reloaded.KeepVersions));
+        System.IO.File.Delete(path);
+    }
+}

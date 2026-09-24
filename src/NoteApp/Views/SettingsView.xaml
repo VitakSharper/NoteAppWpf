@@ -116,6 +116,26 @@
                                    Foreground="{DynamicResource MaterialDesignBodyLight}" />
                     </StackPanel>
 
+                    <StackPanel Margin="0,0,0,16">
+                        <CheckBox IsChecked="{Binding CloseToTray}"
+                                  Content="Keep NoteApp running in the notification area when its window is closed"
+                                  FontSize="14" />
+                        <TextBlock Text="The icon near the clock opens it again (double-click), writes a quick note, or quits (right-click › Exit). An open encrypted note is locked when the window goes."
+                                   TextWrapping="Wrap"
+                                   Margin="28,4,0,0"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,16">
+                        <CheckBox IsChecked="{Binding QuickNoteHotKey}"
+                                  Content="Ctrl+Alt+N opens a quick note from any application"
+                                  FontSize="14" />
+                        <TextBlock Text="A small window to jot something down; Ctrl+Enter saves it as a note. Takes effect at the next start."
+                                   TextWrapping="Wrap"
+                                   Margin="28,4,0,0"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                    </StackPanel>
+
                     <StackPanel Margin="0,0,0,20">
                         <TextBlock Text="Versions kept of each note"
                                    FontSize="14"

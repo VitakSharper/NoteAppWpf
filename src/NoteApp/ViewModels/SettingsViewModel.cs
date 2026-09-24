@@ -66,6 +66,8 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private LockTimeoutOption _lockTimeout = LockTimeoutOption.For(AppSettings.Default.LockEncryptedNotesAfterMinutes);
     [ObservableProperty] private bool _lockWhenWindowsLocks = AppSettings.Default.LockEncryptedNotesWhenWindowsLocks;
     [ObservableProperty] private KeepVersionsOption _keepVersions = KeepVersionsOption.For(AppSettings.Default.KeepVersions);
+    [ObservableProperty] private bool _closeToTray = AppSettings.Default.CloseToTray;
+    [ObservableProperty] private bool _quickNoteHotKey = AppSettings.Default.QuickNoteHotKey;
 
     public IReadOnlyList<KeepVersionsOption> KeepVersionsOptions { get; } = KeepVersionsOption.All;
     [ObservableProperty] private AutoBackupInterval _autoBackup;
@@ -122,6 +124,8 @@ public partial class SettingsViewModel : ObservableObject
             LockEncryptedNotesAfterMinutes = LockTimeout.Minutes,
             LockEncryptedNotesWhenWindowsLocks = LockWhenWindowsLocks,
             KeepVersions = KeepVersions.Count,
+            CloseToTray = CloseToTray,
+            QuickNoteHotKey = QuickNoteHotKey,
             AutoBackup = AutoBackup,
             KeepBackups = KeepBackups.Count
         });
@@ -211,6 +215,8 @@ public partial class SettingsViewModel : ObservableObject
         LockTimeout = LockTimeoutOption.For(settings.LockEncryptedNotesAfterMinutes);
         LockWhenWindowsLocks = settings.LockEncryptedNotesWhenWindowsLocks;
         KeepVersions = KeepVersionsOption.For(settings.KeepVersions);
+        CloseToTray = settings.CloseToTray;
+        QuickNoteHotKey = settings.QuickNoteHotKey;
         AutoBackup = settings.AutoBackup;
         KeepBackups = KeepBackupsOption.For(settings.KeepBackups);
     }

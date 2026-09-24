@@ -23,6 +23,13 @@ public partial class MainWindow : Window
 
     private bool _closeConfirmed;
 
+    // Set by App.xaml.cs: the notification-area icon, when there is one (never in tests).
+    internal TrayIcon? Tray { get; set; }
+
+    // Exit from the tray menu, or Windows ending the session: the window really closes.
+    private bool _exitRequested;
+    private bool _toldAboutTray;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -220,6 +227,14 @@ public partial class MainWindow : Window
     // cancelled and the window closes itself again once the guard has an answer.
     private async void OnClosing(object sender, CancelEventArgs e)
     {
+        // Settings › Keep running in the notification area: the window goes, NoteApp stays.
+        if (!_exitRequested && !_closeConfirmed && Tray is not null && DataContext is MainViewModel { KeepsRunningInTray: true } shell)
+        {
+            e.Cancel = true;
+            _ = HideToTrayAsync(shell);
+            return;
+        }
+
         // Nothing to guard: let this pass close the window. Cancelling here and
         // re-closing would only be a detour — and the guard answers synchronously in
         // that case, so the re-close would land inside this very Closing pass, which
@@ -238,6 +253,36 @@ public partial class MainWindow : Window
         // is illegal until this handler has returned.
         _ = Dispatcher.BeginInvoke(new Action(Close));
     }
+
+    private async Task HideToTrayAsync(MainViewModel vm)
+    {
+        await vm.LockEncryptedNoteNowAsync("when NoteApp went to the notification area");
+        Hide();
+        if (_toldAboutTray)
+            return;
+
+        _toldAboutTray = true;
+        Tray?.Notify("NoteApp is still running", "Double-click its icon to come back; right-click › Exit to quit.");
+    }
+
+    internal void ShowFromTray()
+    {
+        Show();
+        if (WindowState == WindowState.Minimized)
+            WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    // The tray's Exit, or the end of the Windows session: close for real, through the usual
+    // unsaved-changes question (the window comes back for it).
+    internal void ExitFromTray()
+    {
+        _exitRequested = true;
+        ShowFromTray();
+        Close();
+    }
+
+    internal void PrepareForSessionEnd() => _exitRequested = true;
 
     private static BitmapSource CreateAppIcon()
     {

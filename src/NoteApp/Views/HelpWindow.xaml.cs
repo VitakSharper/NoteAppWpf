@@ -24,6 +24,7 @@ public partial class HelpWindow : Window
         ShortcutsList.ItemsSource = new HelpShortcut[]
         {
             new("Ctrl + N", "New note."),
+            new("Ctrl + Alt + N", "From any application: a quick note — Ctrl+Enter saves it (its first line becomes the title), Esc drops it."),
             new("Ctrl + K", "Quick switcher: type part of a note's title and press Enter to open it — or run a command (new note, templates, archive, trash, settings, theme…)."),
             new("Alt + Left / Right", "Back / Forward through the notes you opened (also the mouse's side buttons and the arrows in the editor header)."),
             new("Ctrl + S", "Save the open note."),

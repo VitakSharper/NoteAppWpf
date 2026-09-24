@@ -11,6 +11,7 @@ using NoteApp.Data;
 using NoteApp.Data.Repositories;
 using NoteApp.Services;
 using NoteApp.ViewModels;
+using NoteApp.Views;
 
 namespace NoteApp;
 
@@ -20,6 +21,10 @@ public partial class App : Application
 
     private ServiceProvider? _serviceProvider;
     private MainViewModel? _mainViewModel;
+    private MainWindow? _mainWindow;
+    private TrayIcon? _tray;
+    private GlobalHotKey? _quickNoteKey;
+    private QuickNoteWindow? _quickNote;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -103,7 +108,40 @@ public partial class App : Application
         if (IsOverridden(configuration, "ConnectionStrings:NoteDb"))
             mainWindow.Title = $"NoteApp — {sqlBuilder.InitialCatalog} (test instance)";
 
+        _mainWindow = mainWindow;
+        _tray = new TrayIcon();
+        _tray.OpenRequested += mainWindow.ShowFromTray;
+        _tray.QuickNoteRequested += ShowQuickNote;
+        _tray.ExitRequested += mainWindow.ExitFromTray;
+        mainWindow.Tray = _tray;
+        SessionEnding += (_, _) => mainWindow.PrepareForSessionEnd();
+
+        if (settingsService.Current.QuickNoteHotKey)
+        {
+            _quickNoteKey = new GlobalHotKey(mainWindow, System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Alt,
+                System.Windows.Input.Key.N, ShowQuickNote);
+            if (!_quickNoteKey.IsRegistered)
+                _mainViewModel.MessageQueue.Enqueue("Ctrl+Alt+N is already taken by another program: the quick-note shortcut is off (the tray icon still has Quick note).");
+        }
+
         mainWindow.Show();
+    }
+
+    // One at a time: the shortcut again brings the open one to the front.
+    private void ShowQuickNote()
+    {
+        if (_quickNote is { IsLoaded: true })
+        {
+            _quickNote.Activate();
+            return;
+        }
+
+        if (_mainViewModel is not { } vm)
+            return;
+
+        _quickNote = new QuickNoteWindow(vm.SaveQuickNoteAsync);
+        _quickNote.Closed += (_, _) => _quickNote = null;
+        _quickNote.Show();
     }
 
     public const string EnvironmentPrefix = "NOTEAPP_";
@@ -131,6 +169,8 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _quickNoteKey?.Dispose();
+        _tray?.Dispose();
         SystemEvents.SessionSwitch -= OnSessionSwitch;
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         // A password copied in the last 30 s does not stay on the clipboard after NoteApp.
