@@ -39,7 +39,7 @@ public class QuickNoteUiTests
         var window = new QuickNoteWindow((title, text) =>
         {
             saved = (title, text);
-            return Task.FromResult(failWith);
+            return Task.FromResult<string?>(failWith);
         }) { Left = -10000, Top = -10000, ShowActivated = false, Topmost = false };
         window.Show();
         window.TitleBox.Text = "Idea";

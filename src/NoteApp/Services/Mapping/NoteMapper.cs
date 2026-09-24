@@ -44,7 +44,7 @@ public static class NoteMapper
 
     // Rows whose title would not make a NoteTitle (a hand-edited database) are left out.
     public static IReadOnlyList<NoteRef> ToRefs(IEnumerable<NoteRow> rows) =>
-        rows.Select(r => NoteTitle.From(r.Title).Match(t => new NoteRef(new NoteId(r.Id), t), _ => null))
+        rows.Select(r => NoteTitle.From(r.Title).Match<NoteRef?>(t => new NoteRef(new NoteId(r.Id), t), _ => null))
             .OfType<NoteRef>()
             .ToList();
 

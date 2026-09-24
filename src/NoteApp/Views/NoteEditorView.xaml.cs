@@ -1098,13 +1098,13 @@ public partial class NoteEditorView : UserControl
         var document = rtb.Document;
         var itemText = new TextRange(caret, paragraph.ContentEnd).Text.Trim();
         var following = document.Blocks.SkipWhile(b => !ReferenceEquals(b, paragraph)).Skip(1).ToList();
-        var tail = following.Count > 0 && HasContent(new TextRange(following[0].ContentStart, document.ContentEnd))
+        var tail = following.Count > 0 && HoldsContent(new TextRange(following[0].ContentStart, document.ContentEnd))
             ? SerializeRange(new TextRange(following[0].ElementStart, document.ContentEnd))
             : null;
 
         foreach (var gone in following.Prepend(paragraph))
             document.Blocks.Remove(gone);
-        var nothingLeft = !HasContent(new TextRange(document.ContentStart, document.ContentEnd));
+        var nothingLeft = !HoldsContent(new TextRange(document.ContentStart, document.ContentEnd));
         if (document.Blocks.Count == 0)
             document.Blocks.Add(new Paragraph());
 
@@ -1122,7 +1122,7 @@ public partial class NoteEditorView : UserControl
     }
 
     // Text that is not blank, or an image.
-    private static bool HasContent(TextRange range)
+    private static bool HoldsContent(TextRange range)
     {
         if (!string.IsNullOrWhiteSpace(range.Text))
             return true;
