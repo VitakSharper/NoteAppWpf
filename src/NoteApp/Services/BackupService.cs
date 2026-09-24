@@ -9,12 +9,8 @@ public sealed class BackupService(string connectionString, string databaseName)
 {
     public async Task<Result<string, AppError>> ExportAsync(string password, string backupFolderPath)
     {
-        var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
-        var folderName = $"NoteApp_{timestamp}";
-        var basePath = string.IsNullOrWhiteSpace(backupFolderPath)
-            ? AppSettings.DefaultBackupFolderPath
-            : backupFolderPath;
-        var folderPath = Path.Combine(basePath, folderName);
+        var folderName = BackupSchedule.FolderName(DateTime.Now);
+        var folderPath = Path.Combine(ResolveFolder(backupFolderPath), folderName);
 
         try
         {
@@ -74,6 +70,53 @@ public sealed class BackupService(string connectionString, string databaseName)
             return Result<string, AppError>.Fail(AppError.Io(Describe(ex)));
         }
     }
+
+    // Names of the backup folders already there (BackupSchedule decides which are ours).
+    public static IReadOnlyList<string> ExistingBackups(string backupFolderPath)
+    {
+        var folder = ResolveFolder(backupFolderPath);
+        try
+        {
+            return Directory.Exists(folder)
+                ? Directory.GetDirectories(folder).Select(d => Path.GetFileName(d)).ToList()
+                : [];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
+    // Deletes the backups beyond the newest `keep`. A folder is only removed when it holds
+    // nothing but its own archive: one the user put something else into is left alone.
+    public static int Prune(string backupFolderPath, int keep)
+    {
+        var folder = ResolveFolder(backupFolderPath);
+        var deleted = 0;
+
+        foreach (var name in BackupSchedule.ToDelete(ExistingBackups(folder), keep))
+        {
+            var path = Path.Combine(folder, name);
+            try
+            {
+                var entries = Directory.GetFileSystemEntries(path);
+                if (entries.Length != 1 || Path.GetFileName(entries[0]) != $"{name}.zip")
+                    continue;
+
+                Directory.Delete(path, recursive: true);
+                deleted++;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Locked or gone: try again after the next backup.
+            }
+        }
+
+        return deleted;
+    }
+
+    private static string ResolveFolder(string backupFolderPath) =>
+        string.IsNullOrWhiteSpace(backupFolderPath) ? AppSettings.DefaultBackupFolderPath : backupFolderPath;
 
     // The caller shows this in a one-line snackbar, so name the exception type and
     // unwrap to the innermost cause: a bare "The path is empty. (Parameter 'path')"

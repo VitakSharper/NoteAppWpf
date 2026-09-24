@@ -60,6 +60,31 @@ public class AppSettingsServiceTests : IDisposable
     }
 
     [Fact]
+    public void The_backup_schedule_survives_a_save_and_reload()
+    {
+        var service = new AppSettingsService(_path);
+
+        service.Save(service.Current with { AutoBackup = AutoBackupInterval.Weekly, KeepBackups = 0 });
+
+        var reloaded = new AppSettingsService(_path).Current;
+        Assert.Equal(AutoBackupInterval.Weekly, reloaded.AutoBackup);
+        Assert.Equal(0, reloaded.KeepBackups);
+    }
+
+    // Files written before the schedule existed: no automatic backup nobody asked for.
+    [Fact]
+    public void A_file_without_the_backup_schedule_leaves_it_off()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
+        File.WriteAllText(_path, """{ "ConfirmNoteDeletion": true, "ConfirmTagDeletion": true, "LaunchPage": "Notes", "IsDarkMode": false }""");
+
+        var settings = new AppSettingsService(_path).Current;
+
+        Assert.Equal(AutoBackupInterval.Off, settings.AutoBackup);
+        Assert.Equal(10, settings.KeepBackups);
+    }
+
+    [Fact]
     public void Unreadable_content_falls_back_to_the_defaults()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);

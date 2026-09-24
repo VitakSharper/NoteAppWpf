@@ -67,7 +67,9 @@ public sealed class AppSettingsService
         string? BackupPassword,
         // Nullable so a file written before the setting existed takes the default
         // rather than "never".
-        int? LockEncryptedNotesAfterMinutes)
+        int? LockEncryptedNotesAfterMinutes,
+        AutoBackupInterval? AutoBackup = null,
+        int? KeepBackups = null)
     {
         public static PersistedSettings From(AppSettings settings) => new(
             settings.ConfirmNoteDeletion,
@@ -77,7 +79,9 @@ public sealed class AppSettingsService
             settings.BackupFolderPath,
             Protect(settings.BackupPassword),
             BackupPassword: null,
-            settings.LockEncryptedNotesAfterMinutes);
+            settings.LockEncryptedNotesAfterMinutes,
+            settings.AutoBackup,
+            settings.KeepBackups);
 
         public AppSettings ToSettings() => new(
             ConfirmNoteDeletion,
@@ -86,7 +90,9 @@ public sealed class AppSettingsService
             IsDarkMode,
             Unprotect(BackupPasswordProtected) ?? BackupPassword ?? string.Empty,
             string.IsNullOrWhiteSpace(BackupFolderPath) ? AppSettings.DefaultBackupFolderPath : BackupFolderPath,
-            LockEncryptedNotesAfterMinutes ?? AppSettings.Default.LockEncryptedNotesAfterMinutes);
+            LockEncryptedNotesAfterMinutes ?? AppSettings.Default.LockEncryptedNotesAfterMinutes,
+            AutoBackup ?? AppSettings.Default.AutoBackup,
+            KeepBackups ?? AppSettings.Default.KeepBackups);
 
         private static string? Protect(string value) =>
             string.IsNullOrEmpty(value)

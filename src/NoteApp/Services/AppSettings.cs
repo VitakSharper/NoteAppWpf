@@ -15,7 +15,10 @@ public sealed record AppSettings(
     string BackupPassword,
     string BackupFolderPath,
     // Minutes of inactivity before an open encrypted note is closed again. 0 = never.
-    int LockEncryptedNotesAfterMinutes)
+    int LockEncryptedNotesAfterMinutes,
+    AutoBackupInterval AutoBackup = AutoBackupInterval.Off,
+    // Backups kept when an automatic one runs; 0 = keep them all.
+    int KeepBackups = 10)
 {
     // Computed, not stored: AppPaths.DataFolder is only known once the configuration is read.
     public static string DefaultBackupFolderPath => AppPaths.DefaultBackupFolder;
@@ -27,5 +30,7 @@ public sealed record AppSettings(
         IsDarkMode: false,
         BackupPassword: "",
         BackupFolderPath: DefaultBackupFolderPath,
-        LockEncryptedNotesAfterMinutes: 5);
+        LockEncryptedNotesAfterMinutes: 5,
+        AutoBackup: AutoBackupInterval.Off,
+        KeepBackups: 10);
 }

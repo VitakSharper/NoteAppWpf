@@ -15,6 +15,7 @@ public partial class MainViewModel : ObservableObject
     private readonly NoteService _noteService;
     private readonly ITagRepository _tagRepository;
     private readonly AppSettingsService _settingsService;
+    private readonly AutoBackupService _autoBackup;
 
     // Middle pane: NoteList <-> TagManager
     [ObservableProperty] private ObservableObject? _middlePaneContent;
@@ -39,10 +40,12 @@ public partial class MainViewModel : ObservableObject
         ITagRepository tagRepository,
         NoteListViewModel noteListViewModel,
         TagManagerViewModel tagManagerViewModel,
-        SettingsViewModel settingsViewModel)
+        SettingsViewModel settingsViewModel,
+        AutoBackupService autoBackup)
     {
         _noteService = noteService;
         _settingsService = settingsService;
+        _autoBackup = autoBackup;
         _tagRepository = tagRepository;
         NoteListViewModel = noteListViewModel;
         TagManagerViewModel = tagManagerViewModel;
@@ -62,6 +65,11 @@ public partial class MainViewModel : ObservableObject
         // runs while an encrypted note is actually open.
         _lockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
         _lockTimer.Tick += OnLockTimerTick;
+
+        // First look shortly after startup (not during it), then once an hour.
+        _backupTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+        _backupTimer.Tick += OnBackupTimerTick;
+        _backupTimer.Start();
 
         // Startup: choose middle pane; Settings.LaunchPage opens the dialog over Notes
         MiddlePaneContent = _settingsService.Current.LaunchPage == StartupPage.Tags
@@ -383,6 +391,35 @@ public partial class MainViewModel : ObservableObject
         NoteListViewModel.SelectedNote = null;
         RearmEncryptedNoteLock();
         MessageQueue.Enqueue($"'{title}' locked after {minutes:0} minute(s) of inactivity.");
+    }
+
+    // --- Automatic backup ---
+
+    private readonly DispatcherTimer _backupTimer;
+    private bool _noPasswordReported;
+
+    private async void OnBackupTimerTick(object? sender, EventArgs e)
+    {
+        _backupTimer.Interval = TimeSpan.FromHours(1);
+
+        switch (await _autoBackup.RunIfDueAsync(DateTime.Now))
+        {
+            case AutoBackupOutcome.Saved { ZipPath: var zip, Pruned: var pruned }:
+                MessageQueue.Enqueue(pruned > 0
+                    ? $"Automatic backup saved to {zip} ({pruned} old backup(s) removed)."
+                    : $"Automatic backup saved to {zip}.");
+                break;
+
+            case AutoBackupOutcome.Failed { Error: var error }:
+                MessageQueue.Enqueue($"Automatic backup failed: {error.Message}");
+                break;
+
+            // Once per session: it stays true until someone types a password in Settings.
+            case AutoBackupOutcome.NoPassword when !_noPasswordReported:
+                _noPasswordReported = true;
+                MessageQueue.Enqueue("Automatic backup is on, but no backup password is set (Settings).");
+                break;
+        }
     }
 
     private void OnShowMessage(string message) => MessageQueue.Enqueue(message);

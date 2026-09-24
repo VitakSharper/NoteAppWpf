@@ -129,7 +129,7 @@
 
                 <TextBlock Style="{StaticResource Section}" Text="Backup" />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="Settings > Backup Now exports the whole database as a BACPAC and packs it into a password-protected AES-256 zip in the backup folder you chose. The backup password is kept encrypted for your Windows account." />
+                           Text="Settings > Backup Now exports the whole database as a BACPAC and packs it into a password-protected AES-256 zip in the backup folder you chose. The backup password is kept encrypted for your Windows account. Automatic backup (Daily or Weekly) runs the same export on its own: NoteApp checks when it starts and every hour, counts backups taken by hand, and keeps only the number of backups you chose — it never deletes a folder that is not one of its own backups." />
                 <TextBlock Style="{StaticResource Body}"
                            Text="Restoring is manual for now: unzip the archive, then import the .bacpac with SqlPackage or SQL Server Management Studio." />
 

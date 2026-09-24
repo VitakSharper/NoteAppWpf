@@ -198,6 +198,27 @@
                                    Foreground="{DynamicResource MaterialDesignBodyLight}" />
                     </StackPanel>
 
+                    <StackPanel Margin="0,0,16,0">
+                        <TextBlock Text="Automatic backup"
+                                   FontSize="14"
+                                   FontWeight="Medium"
+                                   Margin="0,0,0,8" />
+                        <StackPanel Orientation="Horizontal">
+                            <ComboBox ItemsSource="{Binding AutoBackupIntervals}"
+                                      SelectedItem="{Binding AutoBackup}"
+                                      MinWidth="140" />
+                            <TextBlock Text="keep" VerticalAlignment="Center" Margin="16,0,8,0"
+                                       Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                            <ComboBox ItemsSource="{Binding KeepBackupsOptions}"
+                                      SelectedItem="{Binding KeepBackups}"
+                                      MinWidth="140" />
+                        </StackPanel>
+                        <TextBlock Text="Checked when NoteApp starts and every hour while it runs; a backup taken by hand counts. After an automatic backup, only NoteApp's own backup folders beyond the kept number are deleted. Needs the backup password below. Saved as soon as you change it."
+                                   TextWrapping="Wrap"
+                                   Margin="0,8,0,0"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                    </StackPanel>
+
                     <StackPanel Orientation="Horizontal"
                                 Margin="0,8,0,0">
                         <Button Content="Backup Now"

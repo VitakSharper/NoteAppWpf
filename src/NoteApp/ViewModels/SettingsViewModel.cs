@@ -27,6 +27,18 @@ public sealed record LockTimeoutOption(int Minutes)
         ?? All.Single(o => o.Minutes == AppSettings.Default.LockEncryptedNotesAfterMinutes);
 }
 
+// How many backups an automatic one leaves behind.
+public sealed record KeepBackupsOption(int Count)
+{
+    public override string ToString() => Count == 0 ? "All of them" : $"The last {Count}";
+
+    public static readonly IReadOnlyList<KeepBackupsOption> All = [new(5), new(10), new(20), new(50), new(0)];
+
+    public static KeepBackupsOption For(int count) =>
+        All.FirstOrDefault(o => o.Count == count)
+        ?? All.Single(o => o.Count == AppSettings.Default.KeepBackups);
+}
+
 public partial class SettingsViewModel : ObservableObject
 {
     private readonly AppSettingsService _settingsService;
@@ -40,9 +52,13 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _backupFolderPath = AppSettings.DefaultBackupFolderPath;
     [ObservableProperty] private bool _isBackingUp;
     [ObservableProperty] private LockTimeoutOption _lockTimeout = LockTimeoutOption.For(AppSettings.Default.LockEncryptedNotesAfterMinutes);
+    [ObservableProperty] private AutoBackupInterval _autoBackup;
+    [ObservableProperty] private KeepBackupsOption _keepBackups = KeepBackupsOption.For(AppSettings.Default.KeepBackups);
 
     public IReadOnlyList<StartupPage> StartupPages { get; } = Enum.GetValues<StartupPage>();
     public IReadOnlyList<LockTimeoutOption> LockTimeouts { get; } = LockTimeoutOption.All;
+    public IReadOnlyList<AutoBackupInterval> AutoBackupIntervals { get; } = Enum.GetValues<AutoBackupInterval>();
+    public IReadOnlyList<KeepBackupsOption> KeepBackupsOptions { get; } = KeepBackupsOption.All;
     public string SettingsFilePath => _settingsService.SettingsFilePath;
 
     public event Action<string>? ShowMessage;
@@ -63,6 +79,18 @@ public partial class SettingsViewModel : ObservableObject
     partial void OnIsDarkModeChanged(bool value) =>
         ApplyTheme(value);
 
+    // The schedule is saved at once: it lives in the backup card, far from "Save settings",
+    // and a schedule picked but never saved would silently never run.
+    private bool _isLoading;
+    partial void OnAutoBackupChanged(AutoBackupInterval value) => PersistUnlessLoading();
+    partial void OnKeepBackupsChanged(KeepBackupsOption value) => PersistUnlessLoading();
+
+    private void PersistUnlessLoading()
+    {
+        if (!_isLoading)
+            PersistSettings();
+    }
+
     private void PersistSettings()
     {
         _settingsService.Save(new AppSettings(
@@ -72,7 +100,9 @@ public partial class SettingsViewModel : ObservableObject
             IsDarkMode,
             BackupPassword,
             BackupFolderPath,
-            LockTimeout.Minutes));
+            LockTimeout.Minutes,
+            AutoBackup,
+            KeepBackups.Count));
     }
 
     [RelayCommand]
@@ -143,6 +173,13 @@ public partial class SettingsViewModel : ObservableObject
 
     private void LoadFrom(AppSettings settings)
     {
+        _isLoading = true;
+        try { Fill(settings); }
+        finally { _isLoading = false; }
+    }
+
+    private void Fill(AppSettings settings)
+    {
         ConfirmNoteDeletion = settings.ConfirmNoteDeletion;
         ConfirmTagDeletion = settings.ConfirmTagDeletion;
         StartupPage = settings.LaunchPage;
@@ -150,6 +187,8 @@ public partial class SettingsViewModel : ObservableObject
         BackupPassword = settings.BackupPassword;
         BackupFolderPath = settings.BackupFolderPath;
         LockTimeout = LockTimeoutOption.For(settings.LockEncryptedNotesAfterMinutes);
+        AutoBackup = settings.AutoBackup;
+        KeepBackups = KeepBackupsOption.For(settings.KeepBackups);
     }
 
     public static void ApplyTheme(bool isDark)
