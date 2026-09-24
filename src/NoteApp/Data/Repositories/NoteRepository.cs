@@ -150,6 +150,26 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
         }
     }
 
+    // Only the flag: UpdatedAt stays, so pinning does not reorder "Updated (newest)".
+    public async Task<Result<Unit, AppError>> SetPinnedAsync(NoteId id, bool isPinned)
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var count = await context.Notes
+                .Where(n => n.Id == id.Value)
+                .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsPinned, isPinned));
+
+            return count == 0
+                ? Result<Unit, AppError>.Fail(AppError.NotFound($"Note with ID {id} not found."))
+                : Result<Unit, AppError>.Ok(Unit.Value);
+        }
+        catch (Exception ex)
+        {
+            return Result<Unit, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
     public async Task<Result<Unit, AppError>> RestoreAsync(NoteId id)
     {
         try
@@ -255,6 +275,7 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
                     CreatedAt = n.CreatedAt,
                     UpdatedAt = n.UpdatedAt,
                     DeletedAt = n.DeletedAt,
+                    IsPinned = n.IsPinned,
                     HasText = n.Blocks.Any(b => b.BlockType == BlockType.Text),
                     HasFiles = n.Blocks.Any(b => b.BlockType == BlockType.File),
                     HasLinks = n.Blocks.Any(b => b.BlockType == BlockType.Link),

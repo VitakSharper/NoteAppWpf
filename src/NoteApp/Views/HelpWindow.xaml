@@ -109,7 +109,7 @@
 
                 <TextBlock Style="{StaticResource Section}" Text="Search, tags and filters" />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="The search box matches titles, text, checklist items, link descriptions and file names; press Enter to run it. Opening a note from a search opens the find bar of its first text block that contains the term, with the matches highlighted. Narrow the list with the All / Text / File / Link / Tasks chips and with tags under Tags; the sort menu orders by date or title. The filter icon next to the search box clears everything at once." />
+                           Text="The search box matches titles, text, checklist items, link descriptions and file names; press Enter to run it. Opening a note from a search opens the find bar of its first text block that contains the term, with the matches highlighted. Narrow the list with the All / Text / File / Link / Tasks chips and with tags under Tags; the sort menu orders by date or title. Right-click a note to pin it: pinned notes stay at the top whatever the sort. The filter icon next to the search box clears everything at once." />
                 <TextBlock Style="{StaticResource Body}"
                            Text="Tags are created inline from the editor, and renamed or deleted from the Tags page in the rail." />
 

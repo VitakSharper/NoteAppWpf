@@ -120,6 +120,38 @@ public class NoteListTrashTests
         Assert.True(vm.EmptyTrashCommand.CanExecute(null));
     }
 
+    [Fact]
+    public async Task A_pinned_note_goes_to_the_top_whatever_the_sort()
+    {
+        var (vm, repo) = ListWith("alpha", "beta", "gamma");
+        vm.SelectedSort = SortOption.TitleAsc;
+        await vm.LoadNotes();
+
+        await vm.TogglePinCommand.ExecuteAsync(vm.Notes.Single(n => n.Title.Value == "gamma"));
+
+        Assert.Equal(["gamma", "alpha", "beta"], vm.Notes.Select(n => n.Title.Value));
+        Assert.True(vm.Notes[0].IsPinned);
+        Assert.True(repo.IsPinned(repo.IdOf("gamma")));
+
+        vm.SelectedSort = SortOption.TitleDesc;
+        Assert.Equal(["gamma", "beta", "alpha"], vm.Notes.Select(n => n.Title.Value));
+    }
+
+    [Fact]
+    public async Task Unpinning_puts_the_note_back_in_sort_order()
+    {
+        var (vm, repo) = ListWith("alpha", "beta");
+        await repo.SetPinnedAsync(new NoteId(repo.IdOf("beta")), true);
+        vm.SelectedSort = SortOption.TitleAsc;
+        await vm.LoadNotes();
+        Assert.Equal(["beta", "alpha"], vm.Notes.Select(n => n.Title.Value));
+
+        await vm.TogglePinCommand.ExecuteAsync(vm.Notes[0]);
+
+        Assert.Equal(["alpha", "beta"], vm.Notes.Select(n => n.Title.Value));
+        Assert.False(repo.IsPinned(repo.IdOf("beta")));
+    }
+
     private static (NoteListViewModel Vm, FakeNoteRepository Repo) ListWith(params string[] titles)
     {
         var repo = new FakeNoteRepository();
@@ -139,6 +171,7 @@ public class NoteListTrashTests
     {
         private readonly Dictionary<Guid, string> _titles = [];
         private readonly Dictionary<Guid, DateTime> _trashed = [];
+        private readonly HashSet<Guid> _pinned = [];
 
         public List<Guid> Deleted { get; } = [];
         public List<Guid> Restored { get; } = [];
@@ -157,6 +190,14 @@ public class NoteListTrashTests
         {
             Deleted.Add(id.Value);
             _trashed[id.Value] = DateTime.UtcNow;
+            return Task.FromResult(Result<Unit, AppError>.Ok(Unit.Value));
+        }
+
+        public bool IsPinned(Guid id) => _pinned.Contains(id);
+
+        public Task<Result<Unit, AppError>> SetPinnedAsync(NoteId id, bool isPinned)
+        {
+            if (isPinned) _pinned.Add(id.Value); else _pinned.Remove(id.Value);
             return Task.FromResult(Result<Unit, AppError>.Ok(Unit.Value));
         }
 
@@ -179,6 +220,7 @@ public class NoteListTrashTests
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     DeletedAt = _trashed.TryGetValue(kv.Key, out var at) ? at : null,
+                    IsPinned = _pinned.Contains(kv.Key),
                     HasText = true,
                     FirstTextPlain = "plain"
                 })

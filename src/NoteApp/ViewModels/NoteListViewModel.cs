@@ -161,20 +161,22 @@ public partial class NoteListViewModel : ObservableObject
         }
     }
 
+    // Pinned notes first, whatever the sort; the sort then orders each group.
     private void ApplySort()
     {
+        var pinnedFirst = Notes.OrderByDescending(n => n.IsPinned);
         var sorted = SelectedSort.Direction == ListSortDirection.Ascending
             ? SelectedSort.Field switch
             {
-                "Title.Value" => Notes.OrderBy(n => n.Title.Value, StringComparer.OrdinalIgnoreCase),
-                nameof(NoteSummary.CreatedAt) => Notes.OrderBy(n => n.CreatedAt),
-                _ => Notes.OrderBy(n => n.UpdatedAt)
+                "Title.Value" => pinnedFirst.ThenBy(n => n.Title.Value, StringComparer.OrdinalIgnoreCase),
+                nameof(NoteSummary.CreatedAt) => pinnedFirst.ThenBy(n => n.CreatedAt),
+                _ => pinnedFirst.ThenBy(n => n.UpdatedAt)
             }
             : SelectedSort.Field switch
             {
-                "Title.Value" => Notes.OrderByDescending(n => n.Title.Value, StringComparer.OrdinalIgnoreCase),
-                nameof(NoteSummary.CreatedAt) => Notes.OrderByDescending(n => n.CreatedAt),
-                _ => Notes.OrderByDescending(n => n.UpdatedAt)
+                "Title.Value" => pinnedFirst.ThenByDescending(n => n.Title.Value, StringComparer.OrdinalIgnoreCase),
+                nameof(NoteSummary.CreatedAt) => pinnedFirst.ThenByDescending(n => n.CreatedAt),
+                _ => pinnedFirst.ThenByDescending(n => n.UpdatedAt)
             };
 
         Notes = new ObservableCollection<NoteSummary>(sorted);
@@ -220,6 +222,23 @@ public partial class NoteListViewModel : ObservableObject
         Notes.Remove(note);
         NoteDeleted?.Invoke(note);
         ShowUndoableMessage?.Invoke($"Note '{note.Title}' moved to trash.", () => RestoreNoteCommand.Execute(note));
+    }
+
+    // The row menu. The row is replaced in place rather than reloaded: the open editor and
+    // the current filters stay as they are, and only the order changes.
+    [RelayCommand]
+    private async Task TogglePin(NoteSummary note)
+    {
+        if (!(await _noteService.SetPinnedAsync(note.Id, !note.IsPinned)).TryGet(out _, out var error))
+        {
+            ShowMessage?.Invoke(error.Message);
+            return;
+        }
+
+        var index = Notes.IndexOf(note);
+        if (index >= 0)
+            Notes[index] = note with { IsPinned = !note.IsPinned };
+        ApplySort();
     }
 
     // UNDO and the trash row menu. Reloads rather than re-inserting the row: the

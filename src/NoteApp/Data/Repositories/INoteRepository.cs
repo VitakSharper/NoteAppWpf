@@ -13,6 +13,7 @@ public interface INoteRepository
     // Soft delete: the note goes to the trash and disappears from every other query.
     Task<Result<Unit, AppError>> DeleteAsync(NoteId id);
     Task<Result<Unit, AppError>> RestoreAsync(NoteId id);
+    Task<Result<Unit, AppError>> SetPinnedAsync(NoteId id, bool isPinned);
     // Permanent. Trash only: a live note has to be deleted (trashed) first.
     Task<Result<Unit, AppError>> PurgeAsync(NoteId id);
     Task<Result<int, AppError>> PurgeAllDeletedAsync();

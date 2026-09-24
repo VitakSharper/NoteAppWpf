@@ -17,7 +17,8 @@ public sealed record NoteSummary(
     bool HasChecklists,
     DateTime CreatedAt,
     DateTime UpdatedAt,
-    DateTime? DeletedAt = null)
+    DateTime? DeletedAt = null,
+    bool IsPinned = false)
 {
     public bool IsDeleted => DeletedAt is not null;
 }

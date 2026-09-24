@@ -35,7 +35,8 @@ public static class NoteMapper
                 row.HasChecklists,
                 row.CreatedAt,
                 row.UpdatedAt,
-                row.DeletedAt));
+                row.DeletedAt,
+                row.IsPinned));
 
     public static NoteEntity ToEntity(Note note) => new()
     {

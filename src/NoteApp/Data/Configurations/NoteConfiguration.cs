@@ -13,6 +13,7 @@ public sealed class NoteConfiguration : IEntityTypeConfiguration<NoteEntity>
         builder.Property(n => n.Id).ValueGeneratedNever();
         builder.Property(n => n.Title).HasMaxLength(500).IsRequired();
         builder.Property(n => n.IsEncrypted).HasDefaultValue(false);
+        builder.Property(n => n.IsPinned).HasDefaultValue(false);
         builder.Property(n => n.EncryptedContent).HasColumnType("varbinary(max)");
         builder.Property(n => n.CreatedAt).IsRequired();
         builder.Property(n => n.UpdatedAt).IsRequired();

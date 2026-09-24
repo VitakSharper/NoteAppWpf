@@ -75,6 +75,9 @@ public sealed class NoteService(INoteRepository noteRepository)
     public Task<Result<Unit, AppError>> RestoreNoteAsync(NoteId id) =>
         noteRepository.RestoreAsync(id);
 
+    public Task<Result<Unit, AppError>> SetPinnedAsync(NoteId id, bool isPinned) =>
+        noteRepository.SetPinnedAsync(id, isPinned);
+
     public Task<Result<Unit, AppError>> PurgeNoteAsync(NoteId id) =>
         noteRepository.PurgeAsync(id);
 

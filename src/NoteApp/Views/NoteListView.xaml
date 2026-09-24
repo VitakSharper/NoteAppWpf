@@ -250,6 +250,21 @@
                                           CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                                     <MenuItem.Icon><materialDesign:PackIcon Kind="OpenInApp" /></MenuItem.Icon>
                                 </MenuItem>
+                                <MenuItem Visibility="{Binding PlacementTarget.Tag.IsTrashView, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource InverseBoolToVis}}"
+                                          Command="{Binding PlacementTarget.Tag.TogglePinCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                    <MenuItem.Style>
+                                        <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                                            <Setter Property="Header" Value="Pin to top" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                                    <Setter Property="Header" Value="Unpin" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </MenuItem.Style>
+                                    <MenuItem.Icon><materialDesign:PackIcon Kind="PinOutline" /></MenuItem.Icon>
+                                </MenuItem>
                                 <MenuItem Header="Delete"
                                           Visibility="{Binding PlacementTarget.Tag.IsTrashView, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource InverseBoolToVis}}"
                                           Command="{Binding PlacementTarget.Tag.DeleteNoteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
@@ -302,6 +317,11 @@
                                            Text="{Binding DeletedAt, StringFormat='Deleted {0:MMM dd}'}"
                                            FontSize="11" Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
                                            Visibility="{Binding IsDeleted, Converter={StaticResource BoolToVis}}" />
+
+                                <materialDesign:PackIcon Kind="Pin" DockPanel.Dock="Right" Width="14" Height="14"
+                                                         VerticalAlignment="Center" Margin="6,0,0,0" ToolTip="Pinned"
+                                                         Foreground="{StaticResource AccentBrush}"
+                                                         Visibility="{Binding IsPinned, Converter={StaticResource BoolToVis}}" />
 
                                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="6,0,0,0">
                                     <materialDesign:PackIcon Kind="NoteText" Width="13" Height="13" Margin="3,0,0,0"

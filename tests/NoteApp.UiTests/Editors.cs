@@ -118,6 +118,7 @@ internal sealed class UnusedNoteRepository : INoteRepository
     public Task<Result<Note, AppError>> UpdateAsync(Note note, byte[]? encryptedContent = null) => throw new NotSupportedException();
     public Task<Result<Unit, AppError>> DeleteAsync(NoteId id) => throw new NotSupportedException();
     public Task<Result<Unit, AppError>> RestoreAsync(NoteId id) => throw new NotSupportedException();
+    public Task<Result<Unit, AppError>> SetPinnedAsync(NoteId id, bool isPinned) => throw new NotSupportedException();
     public Task<Result<Unit, AppError>> PurgeAsync(NoteId id) => throw new NotSupportedException();
     public Task<Result<int, AppError>> PurgeAllDeletedAsync() => throw new NotSupportedException();
     public Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false) => throw new NotSupportedException();
