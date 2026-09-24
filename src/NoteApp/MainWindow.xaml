@@ -22,6 +22,7 @@
         <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCurrentEditorCommand}" />
         <KeyBinding Key="Escape" Command="{Binding DismissCommand}" />
         <KeyBinding Gesture="Ctrl+F" Command="{x:Static local:MainWindow.FocusSearchCommand}" />
+        <KeyBinding Gesture="Ctrl+K" Command="{x:Static local:MainWindow.QuickSwitchCommand}" />
         <KeyBinding Key="F1" Command="{Binding ShowHelpCommand}" />
         <KeyBinding Key="F11" Command="{Binding ToggleFocusModeCommand}" />
         <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding ZoomEditorCommand}" CommandParameter="{x:Static local:MainWindow.ZoomIn}" />
@@ -34,6 +35,7 @@
     <Window.CommandBindings>
         <!-- Focus is a view concern, hence code-behind rather than a view-model command. -->
         <CommandBinding Command="{x:Static local:MainWindow.FocusSearchCommand}" Executed="OnFocusSearch" />
+        <CommandBinding Command="{x:Static local:MainWindow.QuickSwitchCommand}" Executed="OnQuickSwitch" />
     </Window.CommandBindings>
 
     <Window.Resources>

@@ -15,6 +15,7 @@ namespace NoteApp;
 public partial class MainWindow : Window
 {
     public static readonly RoutedCommand FocusSearchCommand = new(nameof(FocusSearchCommand), typeof(MainWindow));
+    public static readonly RoutedCommand QuickSwitchCommand = new(nameof(QuickSwitchCommand), typeof(MainWindow));
 
     // CommandParameter values for ZoomEditorCommand: an int, which XAML literals are not.
     public static readonly int ZoomIn = 1;
@@ -33,6 +34,10 @@ public partial class MainWindow : Window
         AddHandler(PreviewKeyDownEvent, new KeyEventHandler(OnUserActivity), handledEventsToo: true);
         AddHandler(PreviewMouseDownEvent, new MouseButtonEventHandler(OnUserActivity), handledEventsToo: true);
         AddHandler(PreviewMouseWheelEvent, new MouseWheelEventHandler(OnUserActivity), handledEventsToo: true);
+
+        // Back / Forward. Alt turns the arrows into Key.System, which a KeyBinding would not see.
+        PreviewKeyDown += OnHistoryKey;
+        PreviewMouseDown += OnHistoryMouseButton;
 
         DataContextChanged += (_, e) =>
         {
@@ -102,6 +107,47 @@ public partial class MainWindow : Window
         }
 
         menu.IsOpen = true;
+    }
+
+    private void OnHistoryKey(object sender, KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.Alt || DataContext is not MainViewModel vm)
+            return;
+
+        var command = (e.Key == Key.System ? e.SystemKey : e.Key) switch
+        {
+            Key.Left => vm.GoBackCommand,
+            Key.Right => vm.GoForwardCommand,
+            _ => null
+        };
+        if (command is null)
+            return;
+
+        e.Handled = true;
+        if (command.CanExecute(null))
+            command.Execute(null);
+    }
+
+    private void OnHistoryMouseButton(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || e.ChangedButton is not (MouseButton.XButton1 or MouseButton.XButton2))
+            return;
+
+        var command = e.ChangedButton == MouseButton.XButton1 ? vm.GoBackCommand : vm.GoForwardCommand;
+        e.Handled = true;
+        if (command.CanExecute(null))
+            command.Execute(null);
+    }
+
+    // Ctrl+K: the switcher lists the notes and the commands; what it hands back runs here.
+    private async void OnQuickSwitch(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || vm.IsSettingsOpen)
+            return;
+
+        var switcher = new QuickSwitcherWindow(await vm.QuickSwitchEntriesAsync()) { Owner = this };
+        if (switcher.ShowDialog() == true && switcher.Chosen is { } chosen)
+            await vm.RunQuickSwitchAsync(chosen);
     }
 
     private void OnUserActivity(object sender, RoutedEventArgs e) =>

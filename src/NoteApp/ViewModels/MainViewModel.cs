@@ -33,7 +33,7 @@ public partial class MainViewModel : ObservableObject
     // Settings modal (hosted in RootDialog). The keyboard shortcuts stay inert while
     // it is open: Ctrl+N would otherwise create a note underneath the overlay.
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(CreateNoteCommand), nameof(SaveCurrentEditorCommand), nameof(DismissCommand), nameof(DeleteOpenNoteCommand), nameof(DuplicateOpenNoteCommand), nameof(NewFromTemplateCommand), nameof(ToggleFocusModeCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CreateNoteCommand), nameof(SaveCurrentEditorCommand), nameof(DismissCommand), nameof(DeleteOpenNoteCommand), nameof(DuplicateOpenNoteCommand), nameof(NewFromTemplateCommand), nameof(ToggleFocusModeCommand), nameof(GoBackCommand), nameof(GoForwardCommand))]
     private bool _isSettingsOpen;
 
     public NoteListViewModel NoteListViewModel { get; }
@@ -291,6 +291,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (value is null)
             IsFocusMode = false;
+        NotifyHistoryChanged();
     }
 
     // The list only carries summaries: the full note (blocks included) is
@@ -341,18 +342,19 @@ public partial class MainViewModel : ObservableObject
 
     // A link to another note, a "Linked from" chip: the note is opened by its id, through the
     // same leave guard and password prompt as a click in the list, which then shows it selected.
-    public async Task OpenNoteByIdAsync(NoteId id)
+    // true when the note is open (already, or now).
+    public async Task<bool> OpenNoteByIdAsync(NoteId id)
     {
         if (CurrentEditor is NoteEditorViewModel { EditedNoteId: { } open } && open == id)
-            return;
+            return true;
 
         if (!await ConfirmLeaveEditorAsync())
-            return;
+            return false;
 
         if (!(await _noteService.GetNoteByIdAsync(id)).TryGet(out var note, out var error))
         {
             MessageQueue.Enqueue(error.Code == "NOT_FOUND" ? "That note no longer exists (it may be in the trash)." : error.Message);
-            return;
+            return false;
         }
 
         string? password = null;
@@ -360,17 +362,112 @@ public partial class MainViewModel : ObservableObject
         {
             password = AskPassword();
             if (password is null)
-                return;
+                return false;
 
             if (!(await _noteService.UnlockNoteAsync(id, password)).TryGet(out note, out error))
             {
                 MessageQueue.Enqueue(error.Message);
-                return;
+                return false;
             }
         }
 
         await OpenEditorAsync(note, password);
         RestoreListSelectionToOpenNote();
+        return true;
+    }
+
+    // --- Back / Forward (Alt+Left / Alt+Right, the mouse's side buttons) ---
+
+    private readonly NavigationHistory _history = new();
+
+    // With no note on screen (closed, deleted), Back first brings back the one the history is on.
+    private bool IsShowingCurrent => CurrentEditor is NoteEditorViewModel { EditedNoteId: { } open } && open == _history.Current;
+    private bool CanGoBack => !IsSettingsOpen && (_history.CanGoBack || _history.Current is not null && !IsShowingCurrent);
+    private bool CanGoForward => !IsSettingsOpen && _history.CanGoForward;
+
+    [RelayCommand(CanExecute = nameof(CanGoBack))]
+    private async Task GoBack()
+    {
+        if (!IsShowingCurrent && _history.Current is { } current)
+        {
+            await OpenNoteByIdAsync(current);
+        }
+        else if (_history.Back() is { } previous && !await OpenNoteByIdAsync(previous))
+        {
+            _history.Forward(); // stayed where it was
+        }
+
+        NotifyHistoryChanged();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanGoForward))]
+    private async Task GoForward()
+    {
+        if (_history.Forward() is { } next && !await OpenNoteByIdAsync(next))
+            _history.Back();
+
+        NotifyHistoryChanged();
+    }
+
+    private void NotifyHistoryChanged()
+    {
+        GoBackCommand.NotifyCanExecuteChanged();
+        GoForwardCommand.NotifyCanExecuteChanged();
+    }
+
+    // --- Ctrl+K ---
+
+    // Recent notes first (the list's order), then what the shell can do.
+    public async Task<IReadOnlyList<QuickSwitchEntry>> QuickSwitchEntriesAsync()
+    {
+        var entries = new List<QuickSwitchEntry>();
+        if ((await _noteService.SearchAsync(new NoteQuery(NoteShelf.AllLive))).TryGet(out var notes, out var error))
+            entries.AddRange(notes.OrderByDescending(n => n.UpdatedAt).Select(n => new NoteEntry(n.Id, n.Title.Value, n.IsEncrypted, n.IsArchived)));
+        else
+            MessageQueue.Enqueue(error.Message);
+
+        entries.Add(new CommandEntry("New note", () => CreateNoteCommand.ExecuteAsync(null)));
+        await LoadTemplatesAsync();
+        entries.AddRange(Templates.Select(t => new CommandEntry($"New from template: {t.Title}", () => NewFromTemplateCommand.ExecuteAsync(t))));
+        entries.Add(new CommandEntry("Back", () => GoBackCommand.ExecuteAsync(null)));
+        entries.Add(new CommandEntry("Forward", () => GoForwardCommand.ExecuteAsync(null)));
+        entries.Add(new CommandEntry("Show the notes", () => ShowShelf(archive: false, trash: false)));
+        entries.Add(new CommandEntry("Show the archive", () => ShowShelf(archive: true, trash: false)));
+        entries.Add(new CommandEntry("Show the trash", () => ShowShelf(archive: false, trash: true)));
+        entries.Add(new CommandEntry("Tags", () => Run(NavigateToTagsCommand)));
+        entries.Add(new CommandEntry("Settings", () => Run(OpenSettingsCommand)));
+        entries.Add(new CommandEntry("Help", () => Run(ShowHelpCommand)));
+        if (CurrentEditor is NoteEditorViewModel)
+            entries.Add(new CommandEntry("Focus mode", () => Run(ToggleFocusModeCommand)));
+        entries.Add(new CommandEntry(SettingsViewModel.IsDarkMode ? "Light theme" : "Dark theme", () =>
+        {
+            SettingsViewModel.IsDarkMode = !SettingsViewModel.IsDarkMode;
+            SettingsViewModel.SaveCommand.Execute(null);
+            return Task.CompletedTask;
+        }));
+        return entries;
+    }
+
+    public Task RunQuickSwitchAsync(QuickSwitchEntry entry) => entry switch
+    {
+        NoteEntry note => OpenNoteByIdAsync(note.Id),
+        CommandEntry command => command.Run(),
+        _ => Task.CompletedTask
+    };
+
+    private Task ShowShelf(bool archive, bool trash)
+    {
+        MiddlePaneContent = NoteListViewModel;
+        NoteListViewModel.IsArchiveView = archive;
+        NoteListViewModel.IsTrashView = trash;
+        return Task.CompletedTask;
+    }
+
+    private static Task Run(System.Windows.Input.ICommand command)
+    {
+        if (command.CanExecute(null))
+            command.Execute(null);
+        return Task.CompletedTask;
     }
 
     private void OnCreateNoteRequested() => CreateNoteCommand.Execute(null);
@@ -387,6 +484,10 @@ public partial class MainViewModel : ObservableObject
             existingEditor.RefreshAfterSave(note);
         else
             await OpenEditorAsync(note, password);
+
+        // A note saved for the first time joins the history.
+        _history.Visit(note.Id);
+        NotifyHistoryChanged();
 
         // A just-created note now has a stored identity: its trash button wakes up,
         // and if it was saved encrypted the idle lock starts watching it.
@@ -412,6 +513,10 @@ public partial class MainViewModel : ObservableObject
         RearmEncryptedNoteLock();
 
         if (note is not null)
+            _history.Visit(note.Id);
+        NotifyHistoryChanged();
+
+        if (note is not null)
             await editor.LoadLinkedFromAsync();
     }
 
@@ -433,6 +538,9 @@ public partial class MainViewModel : ObservableObject
     // nothing left to save it into.
     private void OnNoteDeleted(NoteSummary deleted)
     {
+        _history.Forget(deleted.Id);
+        NotifyHistoryChanged();
+
         if (CurrentEditor is NoteEditorViewModel editor && editor.EditedNoteId == deleted.Id)
         {
             DropDraft(editor);

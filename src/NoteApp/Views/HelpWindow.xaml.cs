@@ -24,6 +24,8 @@ public partial class HelpWindow : Window
         ShortcutsList.ItemsSource = new HelpShortcut[]
         {
             new("Ctrl + N", "New note."),
+            new("Ctrl + K", "Quick switcher: type part of a note's title and press Enter to open it — or run a command (new note, templates, archive, trash, settings, theme…)."),
+            new("Alt + Left / Right", "Back / Forward through the notes you opened (also the mouse's side buttons and the arrows in the editor header)."),
             new("Ctrl + S", "Save the open note."),
             new("Esc", "Close the editor (asks first if the note has unsaved changes). Closes Settings when it is open, and leaves focus mode first when it is on."),
             new("Ctrl + F", "Find in the text block you are typing in; from anywhere else, jump to the note search."),

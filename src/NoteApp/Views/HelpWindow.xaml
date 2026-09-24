@@ -72,7 +72,7 @@
 
                 <TextBlock Style="{StaticResource Section}" Text="Getting started" />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="Your notes are listed in the middle pane. Click one to open it on the right, or press Ctrl+N to start a new one." />
+                           Text="Your notes are listed in the middle pane. Click one to open it on the right, or press Ctrl+N to start a new one. Ctrl+K opens the quick switcher: a few letters of a title are enough to get to any note, and the same box runs commands. Alt+Left and Alt+Right go back and forward through the notes you have opened." />
                 <TextBlock Style="{StaticResource Body}"
                            Text="A note is a title followed by ordered blocks: text, file, link or checklist. Add blocks with the buttons under the title, and reorder them by dragging the grip at the left of a block's header, or with its arrows. Files dropped from Explorer onto an open note become file blocks. A note needs at least one block." />
                 <TextBlock Style="{StaticResource Body}"

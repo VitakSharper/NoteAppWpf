@@ -1,0 +1,66 @@
+<Window x:Class="NoteApp.Views.QuickSwitcherWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:views="clr-namespace:NoteApp.Views"
+        xmlns:vm="clr-namespace:NoteApp.ViewModels"
+        Title="Go to" Width="600" SizeToContent="Height"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Deactivated="OnDeactivated">
+
+    <!-- Ctrl+K: type, arrows, Enter. Clicking elsewhere or Escape closes it. -->
+    <Border Margin="16" Padding="14,12" CornerRadius="{StaticResource CardCornerRadius}"
+            Background="{DynamicResource MaterialDesignPaper}"
+            BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.35" />
+        </Border.Effect>
+        <StackPanel>
+            <TextBox x:Name="QueryBox" FontSize="15"
+                     materialDesign:HintAssist.Hint="Go to a note, or run a command…"
+                     materialDesign:TextFieldAssist.HasLeadingIcon="True"
+                     materialDesign:TextFieldAssist.LeadingIcon="Magnify"
+                     TextChanged="OnQueryChanged" PreviewKeyDown="OnQueryKeyDown" />
+            <ListBox x:Name="Results" MaxHeight="400" Margin="0,8,0,0"
+                     HorizontalContentAlignment="Stretch"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     PreviewMouseLeftButtonUp="OnResultClick">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:QuickSwitchEntry}">
+                        <DockPanel Margin="2,1">
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding Kind}" FontSize="11" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="12,0,0,0" />
+                            <materialDesign:PackIcon Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,10,0"
+                                                     Foreground="{StaticResource AccentBrush}">
+                                <materialDesign:PackIcon.Style>
+                                    <Style TargetType="materialDesign:PackIcon">
+                                        <Setter Property="Kind" Value="Note" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Kind}" Value="Encrypted">
+                                                <Setter Property="Kind" Value="Lock" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Kind}" Value="Archived">
+                                                <Setter Property="Kind" Value="ArchiveOutline" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Kind}" Value="Command">
+                                                <Setter Property="Kind" Value="ConsoleLine" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </materialDesign:PackIcon.Style>
+                            </materialDesign:PackIcon>
+                            <TextBlock views:Highlighting.Text="{Binding Label}"
+                                       views:Highlighting.Terms="{Binding Terms, RelativeSource={RelativeSource AncestorType=Window}}"
+                                       FontSize="14" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        </DockPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock x:Name="NothingFound" Text="Nothing matches" Margin="6,10,0,4" Visibility="Collapsed"
+                       Foreground="{DynamicResource MaterialDesignBodyLight}" />
+            <TextBlock Text="↑ ↓ to choose · Enter to go · Esc to close" FontSize="11" Margin="4,8,0,0"
+                       Foreground="{DynamicResource MaterialDesignBodyLight}" />
+        </StackPanel>
+    </Border>
+</Window>
