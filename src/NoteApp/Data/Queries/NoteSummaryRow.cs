@@ -14,6 +14,7 @@ public sealed class NoteSummaryRow
     public DateTime UpdatedAt { get; init; }
     public DateTime? DeletedAt { get; init; }
     public DateTime? ArchivedAt { get; init; }
+    public DateTime? RemindAt { get; init; }
     public bool IsPinned { get; init; }
     public bool HasText { get; init; }
     public bool HasFiles { get; init; }

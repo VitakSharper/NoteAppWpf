@@ -28,7 +28,10 @@ public sealed record AppSettings(
     // Closing the window leaves NoteApp running in the notification area.
     bool CloseToTray = false,
     // Ctrl+Alt+N from any application opens a quick note (read at startup).
-    bool QuickNoteHotKey = true)
+    bool QuickNoteHotKey = true,
+    // The last time reminders were checked (UTC): the ones due since then fire at the next
+    // check, so a reminder due while NoteApp was closed still comes.
+    DateTime? LastReminderCheckUtc = null)
 {
     public const double MinEditorZoom = 0.5;
     public const double MaxEditorZoom = 2.5;

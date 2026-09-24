@@ -4,7 +4,7 @@ using NoteApp.Domain.Models;
 
 namespace NoteApp.Services;
 
-public sealed record DraftChecklistItem(string Text, bool IsDone);
+public sealed record DraftChecklistItem(string Text, bool IsDone, DateTime? Due = null);
 
 // One block as the editor holds it, valid or not: a draft keeps a half-typed link too.
 public sealed record DraftBlock(

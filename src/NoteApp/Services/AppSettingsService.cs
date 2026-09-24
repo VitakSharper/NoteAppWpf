@@ -74,7 +74,8 @@ public sealed class AppSettingsService
         bool? LockEncryptedNotesWhenWindowsLocks = null,
         int? KeepVersions = null,
         bool? CloseToTray = null,
-        bool? QuickNoteHotKey = null)
+        bool? QuickNoteHotKey = null,
+        DateTime? LastReminderCheckUtc = null)
     {
         public static PersistedSettings From(AppSettings settings) => new(
             settings.ConfirmNoteDeletion,
@@ -91,7 +92,8 @@ public sealed class AppSettingsService
             settings.LockEncryptedNotesWhenWindowsLocks,
             settings.KeepVersions,
             settings.CloseToTray,
-            settings.QuickNoteHotKey);
+            settings.QuickNoteHotKey,
+            settings.LastReminderCheckUtc);
 
         public AppSettings ToSettings() => new(
             ConfirmNoteDeletion,
@@ -107,7 +109,8 @@ public sealed class AppSettingsService
             LockEncryptedNotesWhenWindowsLocks ?? AppSettings.Default.LockEncryptedNotesWhenWindowsLocks,
             Math.Max(0, KeepVersions ?? AppSettings.Default.KeepVersions),
             CloseToTray ?? AppSettings.Default.CloseToTray,
-            QuickNoteHotKey ?? AppSettings.Default.QuickNoteHotKey);
+            QuickNoteHotKey ?? AppSettings.Default.QuickNoteHotKey,
+            LastReminderCheckUtc is { } check ? DateTime.SpecifyKind(check, DateTimeKind.Utc) : null);
 
         private static string? Protect(string value) =>
             string.IsNullOrEmpty(value)

@@ -22,6 +22,9 @@ public class NoteEntity
     // Archived: kept out of the list without going to the trash. Like the pin, a list
     // preference: setting it leaves UpdatedAt alone.
     public DateTime? ArchivedAt { get; set; }
+    // When to be reminded of the note (UTC). Outside the encrypted payload, so an encrypted
+    // note can have one too; like the pin, setting it leaves UpdatedAt alone.
+    public DateTime? RemindAt { get; set; }
 
     public ICollection<NoteBlockEntity> Blocks { get; set; } = [];
     public ICollection<NoteTagEntity> NoteTags { get; set; } = [];

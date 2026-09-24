@@ -39,7 +39,8 @@ public static class NoteMapper
                 row.IsPinned,
                 row.HasSecrets,
                 row.HasCode,
-                row.ArchivedAt));
+                row.ArchivedAt,
+                row.RemindAt is { } remind ? DateTime.SpecifyKind(remind, DateTimeKind.Utc) : null));
 
     // Rows whose title would not make a NoteTitle (a hand-edited database) are left out.
     public static IReadOnlyList<NoteRef> ToRefs(IEnumerable<NoteRow> rows) =>

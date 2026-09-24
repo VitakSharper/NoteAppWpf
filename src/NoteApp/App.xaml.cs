@@ -114,6 +114,11 @@ public partial class App : Application
         _tray.QuickNoteRequested += ShowQuickNote;
         _tray.ExitRequested += mainWindow.ExitFromTray;
         mainWindow.Tray = _tray;
+        _mainViewModel.ReminderDue += (title, text, open) => _tray.Notify(title, text, () =>
+        {
+            mainWindow.ShowFromTray();
+            open();
+        });
         SessionEnding += (_, _) => mainWindow.PrepareForSessionEnd();
 
         if (settingsService.Current.QuickNoteHotKey)
@@ -171,6 +176,7 @@ public partial class App : Application
     {
         _quickNoteKey?.Dispose();
         _tray?.Dispose();
+        _mainViewModel?.SaveReminderCheckpoint();
         SystemEvents.SessionSwitch -= OnSessionSwitch;
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         // A password copied in the last 30 s does not stay on the clipboard after NoteApp.

@@ -37,6 +37,7 @@ public partial class MainViewModel : ObservableObject
     private bool _isSettingsOpen;
 
     public NoteListViewModel NoteListViewModel { get; }
+    public RemindersViewModel RemindersViewModel { get; }
     public TagManagerViewModel TagManagerViewModel { get; }
     public SettingsViewModel SettingsViewModel { get; }
     public SnackbarMessageQueue MessageQueue { get; } = new(TimeSpan.FromSeconds(3));
@@ -81,6 +82,16 @@ public partial class MainViewModel : ObservableObject
         _backupTimer.Tick += OnBackupTimerTick;
         _backupTimer.Start();
 
+        RemindersViewModel = new RemindersViewModel(noteService);
+        RemindersViewModel.OpenNoteRequested += id => _ = OpenNoteByIdAsync(id);
+        RemindersViewModel.ShowMessage += OnShowMessage;
+
+        // A reminder that fell due while NoteApp was closed fires at the first check.
+        _lastReminderCheck = _settingsService.Current.LastReminderCheckUtc ?? DateTime.UtcNow;
+        _reminderTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        _reminderTimer.Tick += OnReminderTimerTick;
+        _reminderTimer.Start();
+
         _draftTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
         _draftTimer.Tick += (_, _) => KeepDraft();
         _draftTimer.Start();
@@ -110,6 +121,69 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void OpenSettings() => IsSettingsOpen = true;
+
+    [RelayCommand]
+    private void NavigateToReminders()
+    {
+        MiddlePaneContent = RemindersViewModel;
+        RemindersViewModel.LoadCommand.Execute(null);
+    }
+
+    // --- Reminders ---
+
+    private readonly DispatcherTimer _reminderTimer;
+    private DateTime _lastReminderCheck;
+
+    // App.xaml.cs shows it as a Windows notification from the tray icon; open is what a click
+    // on it does.
+    public event Action<string, string, Action>? ReminderDue;
+
+    // A reminder check must never be what brings the app down: a failure waits for the next.
+    private async void OnReminderTimerTick(object? sender, EventArgs e)
+    {
+        _reminderTimer.Interval = TimeSpan.FromSeconds(30);
+        try
+        {
+            await CheckRemindersAsync(DateTime.UtcNow);
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    public async Task CheckRemindersAsync(DateTime nowUtc)
+    {
+        if (!(await _noteService.RemindersAsync()).TryGet(out var reminders, out _))
+            return;
+
+        var due = ReminderSchedule.DueBetween(reminders, _lastReminderCheck, nowUtc);
+        _lastReminderCheck = nowUtc;
+        if (due.Count == 0)
+            return;
+
+        SaveReminderCheckpoint();
+        if (due.Count == 1)
+        {
+            var only = due[0];
+            ReminderDue?.Invoke("Reminder", only.Label, () => _ = OpenNoteByIdAsync(only.NoteId));
+            MessageQueue.Enqueue($"Reminder: {only.Label}", "OPEN", _ => _ = OpenNoteByIdAsync(only.NoteId), (object?)null,
+                promote: false, neverConsiderToBeDuplicate: true, durationOverride: TimeSpan.FromSeconds(10));
+        }
+        else
+        {
+            var text = string.Join("\n", due.Take(3).Select(r => r.Label)) + (due.Count > 3 ? $"\n…and {due.Count - 3} more" : "");
+            ReminderDue?.Invoke($"{due.Count} reminders", text, () => NavigateToRemindersCommand.Execute(null));
+            MessageQueue.Enqueue($"{due.Count} reminders are due.", "SHOW", _ => NavigateToRemindersCommand.Execute(null), (object?)null,
+                promote: false, neverConsiderToBeDuplicate: true, durationOverride: TimeSpan.FromSeconds(10));
+        }
+
+        if (MiddlePaneContent == RemindersViewModel)
+            await RemindersViewModel.LoadCommand.ExecuteAsync(null);
+    }
+
+    // On exit, and after a reminder fired: where the next start picks up from.
+    public void SaveReminderCheckpoint() =>
+        _settingsService.Save(_settingsService.Current with { LastReminderCheckUtc = _lastReminderCheck });
 
     private HelpWindow? _helpWindow;
 
@@ -509,6 +583,11 @@ public partial class MainViewModel : ObservableObject
         editor.CancelRequested += OnEditorCancelled;
         editor.OpenNoteRequested += id => _ = OpenNoteByIdAsync(id);
         editor.ShowMessage += OnShowMessage;
+        editor.ReminderChanged += () =>
+        {
+            if (MiddlePaneContent == RemindersViewModel)
+                RemindersViewModel.LoadCommand.Execute(null);
+        };
         CurrentEditor = editor;
         RearmEncryptedNoteLock();
 
@@ -517,7 +596,10 @@ public partial class MainViewModel : ObservableObject
         NotifyHistoryChanged();
 
         if (note is not null)
+        {
             await editor.LoadLinkedFromAsync();
+            await editor.LoadReminderAsync();
+        }
     }
 
     private async void OnEditorCancelled() => await CloseEditorAsync();

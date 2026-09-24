@@ -35,6 +35,11 @@ public interface INoteRepository
     Task<Result<Unit, AppError>> SaveTemplateAsync(Note template);
     Task<Result<Unit, AppError>> DeleteTemplateAsync(NoteId id);
 
+    // Reminders: a note's own (a column, like the pin) and its checklist items' (in their JSON).
+    Task<Result<Unit, AppError>> SetReminderAsync(NoteId id, DateTime? remindAtUtc);
+    Task<Result<DateTime?, AppError>> GetReminderAsync(NoteId id);
+    Task<Result<IReadOnlyList<ReminderRow>, AppError>> RemindersAsync();
+
     // Every save keeps what it replaces (UpdateAsync); newest first, without their content.
     Task<Result<IReadOnlyList<NoteVersionRow>, AppError>> VersionsAsync(NoteId id);
     Task<Result<NoteVersionRow, AppError>> GetVersionAsync(Guid versionId);

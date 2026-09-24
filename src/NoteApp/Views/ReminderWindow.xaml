@@ -1,0 +1,52 @@
+<Window x:Class="NoteApp.Views.ReminderWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="Remind me" Width="400" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Style="{StaticResource MaterialDesignWindow}">
+
+    <Window.InputBindings>
+        <KeyBinding Key="Escape" Command="Close" />
+    </Window.InputBindings>
+    <Window.CommandBindings>
+        <CommandBinding Command="Close" Executed="OnCancel" />
+    </Window.CommandBindings>
+
+    <StackPanel Margin="20,16" Background="{DynamicResource MaterialDesignPaper}">
+        <TextBlock x:Name="What" TextWrapping="Wrap" Margin="0,0,0,12"
+                   Style="{StaticResource MaterialDesignSubtitle1TextBlock}" />
+
+        <!-- One click for the usual times -->
+        <ItemsControl x:Name="Choices" Margin="-4,0,0,8">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Button Content="{Binding Label}" Tag="{Binding Local}" Click="OnChoice"
+                            Style="{StaticResource MaterialDesignOutlinedButton}" Height="30" Padding="10,0" Margin="4" FontSize="12" />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+            <DatePicker x:Name="Day" Width="170" materialDesign:HintAssist.Hint="Day"
+                        Style="{StaticResource MaterialDesignOutlinedDatePicker}" />
+            <materialDesign:TimePicker x:Name="Time" Width="120" Margin="12,0,0,0" Is24Hours="True"
+                                       materialDesign:HintAssist.Hint="Time"
+                                       Style="{StaticResource MaterialDesignOutlinedTimePicker}" />
+        </StackPanel>
+        <TextBlock x:Name="Error" Margin="0,8,0,0" TextWrapping="Wrap" Visibility="Collapsed"
+                   Foreground="{DynamicResource MaterialDesignValidationErrorBrush}" />
+
+        <DockPanel Margin="0,18,0,0">
+            <Button x:Name="ClearButton" DockPanel.Dock="Left" Content="Remove" Click="OnClear"
+                    Style="{StaticResource MaterialDesignFlatButton}" ToolTip="No reminder" />
+            <Button DockPanel.Dock="Right" Content="Set" Click="OnSet" IsDefault="True"
+                    Style="{StaticResource MaterialDesignRaisedButton}" Margin="8,0,0,0" />
+            <Button DockPanel.Dock="Right" Content="Cancel" Command="Close"
+                    Style="{StaticResource MaterialDesignOutlinedButton}" HorizontalAlignment="Right" />
+        </DockPanel>
+    </StackPanel>
+</Window>

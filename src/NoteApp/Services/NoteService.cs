@@ -76,6 +76,35 @@ public sealed class NoteService(INoteRepository noteRepository)
         return Result<IReadOnlyList<NoteRef>, AppError>.Ok(NoteMapper.ToRefs(rows));
     }
 
+    // --- Reminders ---
+
+    public Task<Result<Unit, AppError>> SetReminderAsync(NoteId id, DateTime? remindAtUtc) =>
+        noteRepository.SetReminderAsync(id, remindAtUtc);
+
+    public Task<Result<DateTime?, AppError>> GetReminderAsync(NoteId id) => noteRepository.GetReminderAsync(id);
+
+    // Every reminder there is: notes' own, and checklist items not yet done.
+    public async Task<Result<IReadOnlyList<Reminder>, AppError>> RemindersAsync()
+    {
+        if (!(await noteRepository.RemindersAsync()).TryGet(out var rows, out var error))
+            return Result<IReadOnlyList<Reminder>, AppError>.Fail(error);
+
+        var reminders = new List<Reminder>();
+        foreach (var row in rows)
+        {
+            var id = new NoteId(row.NoteId);
+            if (row.RemindAt is { } remindAt)
+                reminders.Add(new Reminder(id, row.Title, null, DateTime.SpecifyKind(remindAt, DateTimeKind.Utc)));
+
+            reminders.AddRange(row.ChecklistJson
+                .SelectMany(ChecklistJson.Deserialize)
+                .Where(item => item is { IsDone: false, Due: not null })
+                .Select(item => new Reminder(id, row.Title, item.Text, item.Due!.Value)));
+        }
+
+        return Result<IReadOnlyList<Reminder>, AppError>.Ok(reminders.OrderBy(r => r.DueUtc).ToList());
+    }
+
     // --- Versions ---
 
     public async Task<Result<IReadOnlyList<NoteVersion>, AppError>> VersionsAsync(NoteId id)

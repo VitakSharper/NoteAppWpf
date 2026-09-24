@@ -502,6 +502,68 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
         }
     }
 
+    public async Task<Result<Unit, AppError>> SetReminderAsync(NoteId id, DateTime? remindAtUtc)
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var count = await context.Notes
+                .Where(n => n.Id == id.Value)
+                .ExecuteUpdateAsync(s => s.SetProperty(n => n.RemindAt, remindAtUtc));
+
+            return count == 0
+                ? Result<Unit, AppError>.Fail(AppError.NotFound($"Note with ID {id} not found."))
+                : Result<Unit, AppError>.Ok(Unit.Value);
+        }
+        catch (Exception ex)
+        {
+            return Result<Unit, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
+    public async Task<Result<DateTime?, AppError>> GetReminderAsync(NoteId id)
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var remindAt = await context.Notes.AsNoTracking().Where(n => n.Id == id.Value).Select(n => n.RemindAt).FirstOrDefaultAsync();
+            return Result<DateTime?, AppError>.Ok(remindAt is { } at ? DateTime.SpecifyKind(at, DateTimeKind.Utc) : null);
+        }
+        catch (Exception ex)
+        {
+            return Result<DateTime?, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
+    // Live notes (archived included) with a reminder of their own or a checklist that mentions
+    // a due time. Encrypted notes store no blocks: only their own reminder counts.
+    public async Task<Result<IReadOnlyList<ReminderRow>, AppError>> RemindersAsync()
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var marker = ChecklistJson.DueMarker;
+            var rows = await context.Notes.AsNoTracking()
+                .Where(n => n.RemindAt != null || n.Blocks.Any(b => b.BlockType == BlockType.Checklist && b.ChecklistJson != null && b.ChecklistJson.Contains(marker)))
+                .Select(n => new ReminderRow
+                {
+                    NoteId = n.Id,
+                    Title = n.Title,
+                    RemindAt = n.RemindAt,
+                    ChecklistJson = n.Blocks
+                        .Where(b => b.BlockType == BlockType.Checklist && b.ChecklistJson != null && b.ChecklistJson.Contains(marker))
+                        .Select(b => b.ChecklistJson!)
+                        .ToList()
+                })
+                .ToListAsync();
+            return Result<IReadOnlyList<ReminderRow>, AppError>.Ok(rows);
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<ReminderRow>, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
     public async Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(NoteQuery noteQuery)
     {
         try
@@ -557,6 +619,7 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
                     UpdatedAt = n.UpdatedAt,
                     DeletedAt = n.DeletedAt,
                     ArchivedAt = n.ArchivedAt,
+                    RemindAt = n.RemindAt,
                     IsPinned = n.IsPinned,
                     HasText = n.Blocks.Any(b => b.BlockType == BlockType.Text),
                     HasFiles = n.Blocks.Any(b => b.BlockType == BlockType.File),

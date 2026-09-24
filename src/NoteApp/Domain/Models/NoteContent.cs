@@ -2,7 +2,8 @@ using NoteApp.Domain.ValueObjects;
 
 namespace NoteApp.Domain.Models;
 
-public sealed record ChecklistItem(string Text, bool IsDone);
+// Due: when to be reminded of the item (UTC), if ever.
+public sealed record ChecklistItem(string Text, bool IsDone, DateTime? Due = null);
 
 public abstract record NoteBlock
 {

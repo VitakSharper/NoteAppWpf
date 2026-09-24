@@ -21,8 +21,10 @@ public sealed record NoteSummary(
     bool IsPinned = false,
     bool HasSecrets = false,
     bool HasCode = false,
-    DateTime? ArchivedAt = null)
+    DateTime? ArchivedAt = null,
+    DateTime? RemindAt = null)
 {
     public bool IsDeleted => DeletedAt is not null;
     public bool IsArchived => ArchivedAt is not null;
+    public bool HasReminder => RemindAt is not null;
 }

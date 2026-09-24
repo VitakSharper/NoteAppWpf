@@ -127,6 +127,9 @@ public class NoteLinkUiTests
                 ? Result<Note, AppError>.Ok(With(Text("the other one")) with { Id = OtherId })
                 : Result<Note, AppError>.Fail(AppError.NotFound("gone")));
 
+        public override Task<Result<DateTime?, AppError>> GetReminderAsync(NoteId id) =>
+            Task.FromResult(Result<DateTime?, AppError>.Ok(null));
+
         public override Task<Result<IReadOnlyList<NoteRow>, AppError>> LinkedFromAsync(NoteId id) =>
             Task.FromResult(Result<IReadOnlyList<NoteRow>, AppError>.Ok([new NoteRow { Id = PlanId, Title = "Plan" }]));
     }

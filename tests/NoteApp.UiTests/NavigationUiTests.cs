@@ -81,6 +81,9 @@ public class NavigationUiTests
             Task.FromResult(Result<Note, AppError>.Ok(
                 With(Text(TitleOf(id))) with { Id = id, Title = NoteTitle.From(TitleOf(id)).Match(t => t, e => throw new InvalidOperationException(e.Message)) }));
 
+        public override Task<Result<DateTime?, AppError>> GetReminderAsync(NoteId id) =>
+            Task.FromResult(Result<DateTime?, AppError>.Ok(null));
+
         public override Task<Result<IReadOnlyList<NoteRow>, AppError>> LinkedFromAsync(NoteId id) =>
             Task.FromResult(Result<IReadOnlyList<NoteRow>, AppError>.Ok([]));
 

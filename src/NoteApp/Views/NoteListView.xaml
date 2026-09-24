@@ -383,6 +383,10 @@
                                            FontSize="11" Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
                                            Visibility="{Binding IsDeleted, Converter={StaticResource BoolToVis}}" />
 
+                                <materialDesign:PackIcon Kind="BellRingOutline" DockPanel.Dock="Right" Width="14" Height="14"
+                                                         VerticalAlignment="Center" Margin="6,0,0,0" ToolTip="Has a reminder"
+                                                         Foreground="{StaticResource AccentBrush}"
+                                                         Visibility="{Binding HasReminder, Converter={StaticResource BoolToVis}}" />
                                 <materialDesign:PackIcon Kind="Pin" DockPanel.Dock="Right" Width="14" Height="14"
                                                          VerticalAlignment="Center" Margin="6,0,0,0" ToolTip="Pinned"
                                                          Foreground="{StaticResource AccentBrush}"

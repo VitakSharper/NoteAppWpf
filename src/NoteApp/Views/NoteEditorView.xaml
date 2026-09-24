@@ -242,6 +242,35 @@
                                         CommandParameter="{Binding}">
                                     <materialDesign:PackIcon Kind="Close" Width="14" Height="14" />
                                 </Button>
+                                <!-- The item's reminder: saved with the checklist. -->
+                                <Button DockPanel.Dock="Right" Height="26" Padding="4,0" Margin="4,0,0,0"
+                                        Tag="{Binding}" Click="OnItemReminder">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                                            <Setter Property="ToolTip" Value="Remind me of this item" />
+                                            <Setter Property="Opacity" Value="0.45" />
+                                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Opacity" Value="1" />
+                                                </Trigger>
+                                                <DataTrigger Binding="{Binding HasDue}" Value="True">
+                                                    <Setter Property="Opacity" Value="1" />
+                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                    <Setter Property="ToolTip" Value="Change or remove the reminder" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsOverdue}" Value="True">
+                                                    <Setter Property="Foreground" Value="{DynamicResource MaterialDesignValidationErrorBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="BellOutline" Width="14" Height="14" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding DueLabel}" FontSize="11" Margin="4,0,0,0" VerticalAlignment="Center"
+                                                   Visibility="{Binding HasDue, Converter={StaticResource BoolToVis}}" />
+                                    </StackPanel>
+                                </Button>
                                 <Button DockPanel.Dock="Right" ToolTip="Open link (or Ctrl+Click it)"
                                         Width="26" Height="26" Margin="4,0,0,0"
                                         Tag="{Binding}" Click="OnOpenChecklistLink">
@@ -430,6 +459,30 @@
                     Width="36" Height="36">
                 <materialDesign:PackIcon Kind="Close" Width="22" Height="22" />
             </Button>
+            <!-- The note's reminder: set at once (it is not content), shown next to the title. -->
+            <Button DockPanel.Dock="Right" Click="OnNoteReminder"
+                    Width="36" Height="36" Margin="0,0,4,0">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignIconButton}">
+                        <Setter Property="ToolTip" Value="Remind me of this note" />
+                        <Setter Property="Content">
+                            <Setter.Value>
+                                <materialDesign:PackIcon Kind="BellOutline" Width="22" Height="22" />
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasReminder}" Value="True">
+                                <Setter Property="ToolTip" Value="{Binding ReminderLabel}" />
+                                <Setter Property="Content">
+                                    <Setter.Value>
+                                        <materialDesign:PackIcon Kind="BellRing" Width="22" Height="22" Foreground="{StaticResource AccentBrush}" />
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
             <!-- Save as template, Duplicate… (NoteEditorView.OnMoreActions builds the menu) -->
             <Button DockPanel.Dock="Right" ToolTip="More actions"
                     Style="{StaticResource MaterialDesignIconButton}"
@@ -496,9 +549,13 @@
                     Command="{Binding DataContext.GoForwardCommand, RelativeSource={RelativeSource AncestorType=Window}}">
                 <materialDesign:PackIcon Kind="ArrowRight" Width="20" Height="20" />
             </Button>
-            <TextBlock Text="{Binding EditorTitle}"
+            <TextBlock DockPanel.Dock="Left" Text="{Binding EditorTitle}"
                        Style="{StaticResource MaterialDesignHeadline5TextBlock}"
                        VerticalAlignment="Center" />
+            <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" FontSize="12" TextTrimming="CharacterEllipsis"
+                       Foreground="{StaticResource AccentBrush}"
+                       Text="{Binding ReminderLabel, StringFormat='🔔 {0}'}"
+                       Visibility="{Binding HasReminder, Converter={StaticResource BoolToVis}}" />
         </DockPanel>
 
         <!-- Title, and the notes that link to this one (typed with [[ in their text) -->

@@ -1715,6 +1715,42 @@ public partial class NoteEditorView : UserControl
         card.BorderThickness = new Thickness(1);
     }
 
+    // --- Reminders ---
+
+    private async void OnNoteReminder(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not NoteEditorViewModel vm)
+            return;
+
+        if (!vm.CanRemind)
+        {
+            Notify("Save the note first: a reminder belongs to a stored note.");
+            return;
+        }
+
+        var window = new ReminderWindow($"Remind me of “{vm.Title.Trim()}”", vm.RemindAt) { Owner = Window.GetWindow(this) };
+        if (window.ShowDialog() != true)
+            return;
+
+        await vm.SetReminderAsync(window.Removed ? null : window.Chosen);
+    }
+
+    // An item's reminder is part of the checklist: it is saved with the note.
+    private void OnItemReminder(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ChecklistItemViewModel item })
+            return;
+
+        var what = string.IsNullOrWhiteSpace(item.Text) ? "Remind me of this item" : $"Remind me of “{item.Text.Trim()}”";
+        var window = new ReminderWindow(what, item.Due) { Owner = Window.GetWindow(this) };
+        if (window.ShowDialog() != true)
+            return;
+
+        item.Due = window.Removed ? null : window.Chosen;
+        if (DataContext is NoteEditorViewModel { IsEncrypted: true })
+            Notify("Reminders on checklist items of an encrypted note cannot be seen while it is locked: set one on the note itself instead.");
+    }
+
     // --- The ⋮ menu ---
 
     private void OnMoreActions(object sender, RoutedEventArgs e)

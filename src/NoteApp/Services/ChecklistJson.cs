@@ -18,7 +18,7 @@ public static class ChecklistJson
     };
 
     public static string Serialize(IReadOnlyList<ChecklistItem> items) =>
-        JsonSerializer.Serialize(items.Select(i => new ItemDto { Text = i.Text, IsDone = i.IsDone }), Options);
+        JsonSerializer.Serialize(items.Select(i => new ItemDto { Text = i.Text, IsDone = i.IsDone, Due = i.Due }), Options);
 
     // Anything unreadable — a hand-edited row, a truncated column — yields an empty
     // checklist rather than breaking the whole note.
@@ -30,7 +30,7 @@ public static class ChecklistJson
         try
         {
             var dtos = JsonSerializer.Deserialize<List<ItemDto>>(json, Options) ?? [];
-            return dtos.Select(d => new ChecklistItem(d.Text ?? string.Empty, d.IsDone)).ToList();
+            return dtos.Select(d => new ChecklistItem(d.Text ?? string.Empty, d.IsDone, d.Due is { } due ? DateTime.SpecifyKind(due, DateTimeKind.Utc) : null)).ToList();
         }
         catch (JsonException)
         {
@@ -42,5 +42,10 @@ public static class ChecklistJson
     {
         [JsonPropertyName("t")] public string? Text { get; init; }
         [JsonPropertyName("d")] public bool IsDone { get; init; }
+        // A reminder, UTC; left out when there is none.
+        [JsonPropertyName("r")] public DateTime? Due { get; init; }
     }
+
+    // What the reminder query looks for in the column before parsing it.
+    public const string DueMarker = "\"r\":";
 }

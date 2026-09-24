@@ -28,5 +28,8 @@ internal class ThrowingNoteRepository : INoteRepository
     public virtual Task<Result<Unit, AppError>> SaveTemplateAsync(Note template) => throw new NotSupportedException();
     public virtual Task<Result<Unit, AppError>> DeleteTemplateAsync(NoteId id) => throw new NotSupportedException();
     public virtual Task<Result<IReadOnlyList<NoteVersionRow>, AppError>> VersionsAsync(NoteId id) => throw new NotSupportedException();
+    public virtual Task<Result<Unit, AppError>> SetReminderAsync(NoteId id, DateTime? remindAtUtc) => throw new NotSupportedException();
+    public virtual Task<Result<DateTime?, AppError>> GetReminderAsync(NoteId id) => throw new NotSupportedException();
+    public virtual Task<Result<IReadOnlyList<ReminderRow>, AppError>> RemindersAsync() => throw new NotSupportedException();
     public virtual Task<Result<NoteVersionRow, AppError>> GetVersionAsync(Guid versionId) => throw new NotSupportedException();
 }

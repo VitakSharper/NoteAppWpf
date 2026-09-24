@@ -163,7 +163,7 @@ public class EditorLinkUiTests
         Assert.NotEmpty(boxes[0].TextDecorations);
         Assert.True(boxes[1].TextDecorations is null || boxes[1].TextDecorations.Count == 0);
 
-        var openButtons = editor.Find<Button>().Where(b => b.Tag is ChecklistItemViewModel).ToList();
+        var openButtons = editor.Find<Button>().Where(b => b.Tag is ChecklistItemViewModel && b.ToolTip is string tip && tip.StartsWith("Open link")).ToList();
         Assert.Equal([Visibility.Visible, Visibility.Visible, Visibility.Collapsed], openButtons.Select(b => b.Visibility));
 
         // Done wins over the link styling.

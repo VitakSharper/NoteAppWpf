@@ -49,6 +49,9 @@
         <DataTemplate DataType="{x:Type vm:TagManagerViewModel}">
             <views:TagManagerView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:RemindersViewModel}">
+            <views:RemindersView />
+        </DataTemplate>
     </Window.Resources>
 
     <materialDesign:DialogHost Identifier="RootDialog"
@@ -91,6 +94,11 @@
                             Foreground="{StaticResource RailForegroundBrush}" Height="48"
                             Command="{Binding NavigateToTagsCommand}" ToolTip="Tags">
                         <materialDesign:PackIcon Kind="TagMultiple" Width="24" Height="24" />
+                    </Button>
+                    <Button DockPanel.Dock="Top" Style="{StaticResource MaterialDesignIconButton}"
+                            Foreground="{StaticResource RailForegroundBrush}" Height="48"
+                            Command="{Binding NavigateToRemindersCommand}" ToolTip="Reminders">
+                        <materialDesign:PackIcon Kind="BellOutline" Width="24" Height="24" />
                     </Button>
                     <Button DockPanel.Dock="Top" Style="{StaticResource MaterialDesignIconButton}"
                             Foreground="{StaticResource RailForegroundBrush}" Height="48"

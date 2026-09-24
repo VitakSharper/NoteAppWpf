@@ -20,7 +20,18 @@ public partial class ChecklistItemViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasLink), nameof(IsLink))]
     private string _text = string.Empty;
 
-    [ObservableProperty] private bool _isDone;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DueLabel), nameof(HasDue), nameof(IsOverdue))]
+    private bool _isDone;
+
+    // A reminder for the item (UTC), saved with the checklist.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DueLabel), nameof(HasDue), nameof(IsOverdue))]
+    private DateTime? _due;
+
+    public bool HasDue => Due is not null;
+    public string DueLabel => Due is { } due ? ReminderSchedule.Label(due, DateTime.Now) : string.Empty;
+    public bool IsOverdue => Due is { } due && !IsDone && ReminderSchedule.IsOverdue(due, DateTime.UtcNow);
 
     // The row shows an open button as soon as the item holds an address, and reads as
     // a link when the address is all there is.
@@ -214,7 +225,7 @@ public partial class NoteEditorViewModel : ObservableObject
             BlockType.Secret => new DraftBlock(BlockType.Secret, SecretLabel: b.SecretLabel, SecretUserName: b.SecretUserName, SecretUrl: b.SecretUrl),
             BlockType.Code => new DraftBlock(BlockType.Code, PlainText: b.CodeText),
             _ => new DraftBlock(BlockType.Checklist,
-                Items: b.ChecklistItems.Select(i => new DraftChecklistItem(i.Text, i.IsDone)).ToList())
+                Items: b.ChecklistItems.Select(i => new DraftChecklistItem(i.Text, i.IsDone, i.Due)).ToList())
         }).ToList();
 
         return new NoteDraft(DraftKey, EditedNoteId?.Value, Title, blocks, SelectedTags.Select(t => t.Id).ToList(), DateTime.Now);
@@ -251,7 +262,7 @@ public partial class NoteEditorViewModel : ObservableObject
                 CodeText = block.Type == BlockType.Code ? block.PlainText ?? string.Empty : string.Empty
             };
             foreach (var item in block.Items ?? [])
-                vm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, IsDone = item.IsDone });
+                vm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, IsDone = item.IsDone, Due = item.Due });
             Blocks.Add(vm);
         }
 
@@ -286,6 +297,7 @@ public partial class NoteEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(IsEditing));
         OnPropertyChanged(nameof(EditorTitle));
         OnPropertyChanged(nameof(HasHistory));
+        OnPropertyChanged(nameof(CanRemind));
         IsDirty = false;
         SavedLabel = NoteStatus.SavedLabel(savedNote.UpdatedAt, DateTime.Now);
     }
@@ -490,7 +502,7 @@ public partial class NoteEditorViewModel : ObservableObject
                 {
                     var blockVm = new BlockViewModel { Id = id, BlockType = BlockType.Checklist };
                     foreach (var item in c.Items)
-                        blockVm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, IsDone = item.IsDone });
+                        blockVm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, IsDone = item.IsDone, Due = item.Due });
                     return blockVm;
                 },
                 secret: s => new BlockViewModel
@@ -503,6 +515,42 @@ public partial class NoteEditorViewModel : ObservableObject
                     SecretUrl = s.Url
                 },
                 code: c => new BlockViewModel { Id = id, BlockType = BlockType.Code, CodeText = c.Content });
+
+    // --- The note's reminder (a column like the pin: set at once, not with a save) ---
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasReminder), nameof(ReminderLabel))]
+    private DateTime? _remindAt;
+
+    public bool HasReminder => RemindAt is not null;
+    public string ReminderLabel => RemindAt is { } at ? ReminderSchedule.Label(at, DateTime.Now) : string.Empty;
+
+    // A note must exist to hold a reminder: a new one is saved first.
+    public bool CanRemind => _existingNote is not null;
+
+    public async Task LoadReminderAsync()
+    {
+        if (_existingNote is { } note && (await _noteService.GetReminderAsync(note.Id)).TryGet(out var at, out _))
+            RemindAt = at;
+    }
+
+    public async Task SetReminderAsync(DateTime? atUtc)
+    {
+        if (_existingNote is not { } note)
+            return;
+
+        (await _noteService.SetReminderAsync(note.Id, atUtc)).Match(
+            success: _ =>
+            {
+                RemindAt = atUtc;
+                ShowMessage?.Invoke(atUtc is { } at ? $"Reminder set for {ReminderSchedule.Label(at, DateTime.Now)}." : "Reminder removed.");
+                ReminderChanged?.Invoke();
+            },
+            failure: error => ErrorMessage = error.Message);
+    }
+
+    // The shell refreshes the Reminders view.
+    public event Action? ReminderChanged;
 
     // --- Version history ---
 
@@ -952,7 +1000,7 @@ public partial class NoteEditorViewModel : ObservableObject
                     // mistake worth reporting.
                     var items = vm.ChecklistItems
                         .Where(item => !string.IsNullOrWhiteSpace(item.Text))
-                        .Select(item => new ChecklistItem(item.Text.Trim(), item.IsDone))
+                        .Select(item => new ChecklistItem(item.Text.Trim(), item.IsDone, item.Due))
                         .ToList();
 
                     if (items.Count == 0)
