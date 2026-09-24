@@ -24,7 +24,8 @@ public class QuickNoteUiTests
         var note = repo.Created!;
         Assert.Equal("Call the bank", note.Title.Value);
         var text = Assert.IsType<NoteBlock.Text>(Assert.Single(note.Blocks));
-        Assert.Equal("Call the bank\nabout https://bank.example.com/card", text.PlainText);
+        Assert.Equal("Call the bank\nabout https://bank.example.com/card", text.PlainText.ReplaceLineEndings("\n"));
+        Assert.Equal(text.PlainText.ReplaceLineEndings(), text.PlainText);
         var document = Notes.Load(text.RichText);
         Assert.Equal(2, document.Blocks.Count);
         Assert.Equal("https://bank.example.com/card", Notes.TextOf(Assert.Single(Notes.Hyperlinks(document))));

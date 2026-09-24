@@ -830,7 +830,8 @@ public partial class MainViewModel : ObservableObject
     // null once it is stored.
     public async Task<string?> SaveQuickNoteAsync(string title, string text)
     {
-        var body = text.Trim('\r', '\n');
+        // A TextBox may hand over lone CRs: one kind of line ending, the editor's.
+        var body = text.ReplaceLineEndings().Trim('\r', '\n');
         var name = QuickNotes.TitleFor(title, body, DateTime.Now);
         var block = new NoteBlock.Text(RichTextPayload.FromPlainText(body), body);
 
