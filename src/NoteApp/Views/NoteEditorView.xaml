@@ -9,7 +9,9 @@
              AllowDrop="True"
              PreviewDragOver="OnEditorPreviewDragOver"
              PreviewDrop="OnEditorPreviewDrop"
-             PreviewMouseWheel="OnEditorPreviewMouseWheel">
+             PreviewMouseWheel="OnEditorPreviewMouseWheel"
+             PreviewKeyDown="OnEditorPreviewKeyChanged"
+             PreviewKeyUp="OnEditorPreviewKeyChanged">
 
     <UserControl.Resources>
         <converters:FileSizeConverter x:Key="FileSize" />
@@ -119,6 +121,8 @@
                              LostFocus="OnRichTextLostFocus"
                              TextChanged="OnRichTextChanged"
                              PreviewMouseLeftButtonDown="OnLinkPreviewMouseLeftButtonDown"
+                             PreviewMouseMove="OnLinkHostMouseMove"
+                             MouseLeave="OnLinkHostMouseLeave"
                              PreviewMouseWheel="OnRichTextBoxPreviewMouseWheel">
                     <RichTextBox.Resources>
                         <!-- The document stays disabled (IsDocumentEnabled is false) so a plain click
@@ -175,14 +179,18 @@
                     <TextBox Text="{Binding LinkUrlText, UpdateSourceTrigger=PropertyChanged}"
                              materialDesign:HintAssist.Hint="https://example.com"
                              Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                             PreviewMouseLeftButtonDown="OnLinkPreviewMouseLeftButtonDown" />
+                             PreviewMouseLeftButtonDown="OnLinkPreviewMouseLeftButtonDown"
+                             PreviewMouseMove="OnLinkHostMouseMove"
+                             MouseLeave="OnLinkHostMouseLeave" />
                 </DockPanel>
                 <TextBox Text="{Binding LinkDescription, UpdateSourceTrigger=PropertyChanged}"
                          materialDesign:HintAssist.Hint="Description (optional)"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}"
                          TextWrapping="Wrap" AcceptsReturn="True"
                          MinHeight="60" VerticalScrollBarVisibility="Auto"
-                         PreviewMouseLeftButtonDown="OnLinkPreviewMouseLeftButtonDown" />
+                         PreviewMouseLeftButtonDown="OnLinkPreviewMouseLeftButtonDown"
+                         PreviewMouseMove="OnLinkHostMouseMove"
+                         MouseLeave="OnLinkHostMouseLeave" />
             </StackPanel>
         </DataTemplate>
 
@@ -240,6 +248,8 @@
                                          Tag="{Binding}"
                                          KeyDown="OnChecklistItemKeyDown"
                                          PreviewMouseLeftButtonDown="OnLinkPreviewMouseLeftButtonDown"
+                                         PreviewMouseMove="OnLinkHostMouseMove"
+                                         MouseLeave="OnLinkHostMouseLeave"
                                          materialDesign:HintAssist.Hint="List item"
                                          BorderThickness="0" VerticalAlignment="Center" Padding="0,4">
                                     <TextBox.Style>

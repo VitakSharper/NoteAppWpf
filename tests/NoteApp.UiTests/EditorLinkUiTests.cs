@@ -196,6 +196,40 @@ public class EditorLinkUiTests
         Assert.False(button.IsEnabled);
     });
 
+    // What a Ctrl+Click would open shows as a hand, and only while Ctrl is down.
+    [Fact]
+    public void Ctrl_over_a_link_shows_the_hand() => Wpf.Run(() =>
+    {
+        using var editor = new OpenEditor(With(Text("ab https://old.example.com cd"), Checklist("read https://mid.example.com later")));
+        var box = editor.RichText();
+        var run = (Run)Assert.Single(Hyperlinks(box.Document)).Inlines.FirstInline;
+        var onLink = CenterOf(run, 2);
+        var before = CenterOf((Run)((Paragraph)box.Document.Blocks.FirstBlock).Inlines.FirstInline, 0);
+
+        NoteEditorView.UpdateLinkCursor(box, onLink, ctrl: true);
+        Assert.Equal(System.Windows.Input.Cursors.Hand, box.Cursor);
+        Assert.True(box.ForceCursor);
+
+        NoteEditorView.UpdateLinkCursor(box, onLink, ctrl: false);
+        Assert.False(box.ForceCursor);
+        Assert.NotEqual(System.Windows.Input.Cursors.Hand, box.Cursor);
+
+        NoteEditorView.UpdateLinkCursor(box, before, ctrl: true);
+        Assert.False(box.ForceCursor);
+
+        var item = editor.Find<TextBox>().Single(t => t.Tag is ChecklistItemViewModel);
+        var rect = item.GetRectFromCharacterIndex(item.Text.IndexOf("mid", StringComparison.Ordinal));
+        NoteEditorView.UpdateLinkCursor(item, new Point(rect.X + 2, rect.Y + rect.Height / 2), ctrl: true);
+        Assert.Equal(System.Windows.Input.Cursors.Hand, item.Cursor);
+    });
+
+    private static Point CenterOf(Run run, int charIndex)
+    {
+        var left = run.ContentStart.GetPositionAtOffset(charIndex)!.GetCharacterRect(LogicalDirection.Forward);
+        var right = run.ContentStart.GetPositionAtOffset(charIndex + 1)!.GetCharacterRect(LogicalDirection.Backward);
+        return new Point((left.X + right.X) / 2, left.Y + left.Height / 2);
+    }
+
     private static string Resolve(RichTextBox box, Run run, int charIndex)
     {
         var left = run.ContentStart.GetPositionAtOffset(charIndex)!.GetCharacterRect(LogicalDirection.Forward);

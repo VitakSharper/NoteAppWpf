@@ -370,21 +370,69 @@ public partial class NoteEditorView : UserControl
         if (Keyboard.Modifiers != ModifierKeys.Control)
             return;
 
-        if (LinkUnderPointer(sender, e) is Option<LinkUrl>.Some { Value: var url })
+        if (sender is IInputElement host && LinkAt(sender, e.GetPosition(host)) is Option<LinkUrl>.Some { Value: var url })
         {
             OpenLink(url);
             e.Handled = true;
         }
     }
 
-    private static Option<LinkUrl> LinkUnderPointer(object sender, MouseEventArgs e) => sender switch
+    private static Option<LinkUrl> LinkAt(object host, Point point) => host switch
     {
-        RichTextBox rtb when rtb.GetPositionFromPoint(e.GetPosition(rtb), snapToText: false) is { } position =>
+        RichTextBox rtb when rtb.GetPositionFromPoint(point, snapToText: false) is { } position =>
             RichTextLinks.LinkAt(position),
-        TextBox box when box.GetCharacterIndexFromPoint(e.GetPosition(box), snapToText: false) is >= 0 and var index =>
+        TextBox box when box.GetCharacterIndexFromPoint(point, snapToText: false) is >= 0 and var index =>
             TextLinks.At(box.Text, index),
         _ => Option<LinkUrl>.Empty()
     };
+
+    // --- The hand over a link while Ctrl is down: what a Ctrl+Click would open ---
+
+    private FrameworkElement? _linkHost;
+
+    private void OnLinkHostMouseMove(object sender, MouseEventArgs e)
+    {
+        if (sender is not FrameworkElement host)
+            return;
+
+        _linkHost = host;
+        UpdateLinkCursor(host, e.GetPosition(host), Keyboard.Modifiers == ModifierKeys.Control);
+    }
+
+    private void OnLinkHostMouseLeave(object sender, MouseEventArgs e)
+    {
+        if (sender is FrameworkElement host)
+            UpdateLinkCursor(host, default, ctrl: false);
+        _linkHost = null;
+    }
+
+    // Pressing or releasing Ctrl with the mouse still: no move comes to say so.
+    private void OnEditorPreviewKeyChanged(object sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.LeftCtrl or Key.RightCtrl && _linkHost is { } host)
+            UpdateLinkCursor(host, Mouse.GetPosition(host), Keyboard.Modifiers == ModifierKeys.Control);
+    }
+
+    // ForceCursor: the RichTextBox's own cursor logic would otherwise put its I-beam back.
+    internal static void UpdateLinkCursor(FrameworkElement host, Point point, bool ctrl)
+    {
+        var overLink = ctrl && LinkAt(host, point).IsSome;
+        if (overLink == (host.ForceCursor && host.Cursor == Cursors.Hand))
+            return;
+
+        if (overLink)
+        {
+            host.Cursor = Cursors.Hand;
+            host.ForceCursor = true;
+        }
+        else
+        {
+            host.ClearValue(CursorProperty);
+            host.ClearValue(ForceCursorProperty);
+        }
+
+        Mouse.UpdateCursor();
+    }
 
     private void OnOpenChecklistLink(object sender, RoutedEventArgs e)
     {
