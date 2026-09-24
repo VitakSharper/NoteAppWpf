@@ -9,7 +9,8 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **Rich text editing** — Bold, italic, underline, bullet and numbered lists via a toolbar
 - **Clickable links** — Web addresses (`http://`, `https://`, `www.`) in text blocks become links as soon as a space or a new line follows them, and `Ctrl+Click` opens them in the browser — in checklist items and link blocks too, which also get an open button
 - **File attachments** — Browse and attach files stored directly in the database
-- **Block ordering** — Drag-free move up/down to reorder content blocks within a note
+- **Block ordering** — Drag a block by its grip, or use the up/down arrows, to reorder the blocks of a note
+- **Drop files** — Drop files from Explorer onto an open note to attach them as file blocks
 - **Tagging system** — Create, rename, delete tags and assign them to notes
 - **Search & filter** — Search by title/content, filter by tags or note type
 - **Full CRUD** — Create, read, update, delete notes and tags

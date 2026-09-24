@@ -297,20 +297,48 @@ public partial class NoteEditorViewModel : ObservableObject
         };
 
         if (dialog.ShowDialog() == true)
+            AddFileBlocks([dialog.FileName]);
+    }
+
+    // The File button and a drop from Explorer: one File block per file, in the order
+    // given. Folders and files that cannot be read are skipped and reported.
+    public void AddFileBlocks(IEnumerable<string> paths)
+    {
+        var skipped = new List<string>();
+        foreach (var path in paths)
         {
-            var data = File.ReadAllBytes(dialog.FileName);
-            var block = new BlockViewModel
+            try
             {
-                BlockType = BlockType.File,
-                FileData = data,
-                FileName = Path.GetFileName(dialog.FileName),
-                FileExtension = Path.GetExtension(dialog.FileName),
-                FileSize = data.LongLength
-            };
-            Blocks.Add(block);
-            SelectedBlock = block;
-            BlockAdded?.Invoke(block);
+                var data = File.ReadAllBytes(path);
+                var block = new BlockViewModel
+                {
+                    BlockType = BlockType.File,
+                    FileData = data,
+                    FileName = Path.GetFileName(path),
+                    FileExtension = Path.GetExtension(path),
+                    FileSize = data.LongLength
+                };
+                Blocks.Add(block);
+                SelectedBlock = block;
+                BlockAdded?.Invoke(block);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                skipped.Add(Path.GetFileName(path));
+            }
         }
+
+        if (skipped.Count > 0)
+            ErrorMessage = $"Not attached (a folder, or unreadable): {string.Join(", ", skipped)}";
+    }
+
+    // A block dragged by its grip: newIndex is where it lands in the list as it is now.
+    public void MoveBlock(BlockViewModel block, int newIndex)
+    {
+        var index = Blocks.IndexOf(block);
+        newIndex = Math.Clamp(newIndex, 0, Blocks.Count - 1);
+        if (index >= 0 && index != newIndex)
+            Blocks.Move(index, newIndex);
     }
 
     [RelayCommand]

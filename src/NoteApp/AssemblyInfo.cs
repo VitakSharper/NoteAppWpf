@@ -1,4 +1,8 @@
+using System.Runtime.CompilerServices;
 using System.Windows;
+
+// The UI tests call the view's drop entry points: a DragEventArgs cannot be built outside WPF.
+[assembly: InternalsVisibleTo("NoteApp.UiTests")]
 
 [assembly:ThemeInfo(
     ResourceDictionaryLocation.None,            //where theme specific resource dictionaries are located

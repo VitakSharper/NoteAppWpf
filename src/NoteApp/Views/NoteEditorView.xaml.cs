@@ -889,6 +889,115 @@ public partial class NoteEditorView : UserControl
         return null;
     }
 
+    // --- Drag and drop: files from Explorer, blocks by their grip ---
+
+    // Tunnelling, from the root: a file dropped on a text block must not land in its
+    // RichTextBox as a file path or an embedded object.
+    private void OnEditorPreviewDragOver(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+            return;
+
+        e.Effects = DragDropEffects.Copy;
+        e.Handled = true;
+    }
+
+    private void OnEditorPreviewDrop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths)
+            return;
+
+        e.Handled = true;
+        DropFiles(paths);
+    }
+
+    internal void DropFiles(IReadOnlyList<string> paths)
+    {
+        if (DataContext is NoteEditorViewModel vm)
+            vm.AddFileBlocks(paths);
+    }
+
+    private Point _gripDownAt;
+
+    private void OnBlockGripMouseDown(object sender, MouseButtonEventArgs e) => _gripDownAt = e.GetPosition(this);
+
+    private void OnBlockGripMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || sender is not FrameworkElement { DataContext: BlockViewModel block } grip)
+            return;
+
+        var moved = e.GetPosition(this) - _gripDownAt;
+        if (Math.Abs(moved.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(moved.Y) < SystemParameters.MinimumVerticalDragDistance)
+            return;
+
+        DragDrop.DoDragDrop(grip, new DataObject(typeof(BlockViewModel), block), DragDropEffects.Move);
+    }
+
+    private void OnBlockPreviewDragOver(object sender, DragEventArgs e)
+    {
+        if (sender is not Border { DataContext: BlockViewModel target } card || e.Data.GetData(typeof(BlockViewModel)) is not BlockViewModel dragged)
+            return;
+
+        e.Handled = true;
+        if (ReferenceEquals(dragged, target))
+        {
+            e.Effects = DragDropEffects.None;
+            HideDropMarker(card);
+            return;
+        }
+
+        e.Effects = DragDropEffects.Move;
+        ShowDropMarker(card, below: IsLowerHalf(card, e));
+    }
+
+    private void OnBlockDragLeave(object sender, DragEventArgs e)
+    {
+        if (sender is Border card)
+            HideDropMarker(card);
+    }
+
+    private void OnBlockPreviewDrop(object sender, DragEventArgs e)
+    {
+        if (sender is not Border { DataContext: BlockViewModel target } card || e.Data.GetData(typeof(BlockViewModel)) is not BlockViewModel dragged)
+            return;
+
+        e.Handled = true;
+        HideDropMarker(card);
+        DropBlock(dragged, target, below: IsLowerHalf(card, e));
+    }
+
+    // Moving a block rebuilds its card, and a RichTextBox reloads from its block: whatever
+    // was typed since the last sync would be lost, so every text block is synced first.
+    internal void DropBlock(BlockViewModel dragged, BlockViewModel target, bool below)
+    {
+        if (DataContext is not NoteEditorViewModel vm || ReferenceEquals(dragged, target))
+            return;
+
+        var from = vm.Blocks.IndexOf(dragged);
+        var to = vm.Blocks.IndexOf(target) + (below ? 1 : 0);
+        if (from < to)
+            to--; // the dragged block leaves its place first
+
+        SyncAllRichTextBoxes();
+        vm.MoveBlock(dragged, to);
+    }
+
+    private static bool IsLowerHalf(FrameworkElement card, DragEventArgs e) =>
+        e.GetPosition(card).Y > card.ActualHeight / 2;
+
+    private static void ShowDropMarker(Border card, bool below)
+    {
+        card.BorderBrush = (Brush)card.FindResource("AccentBrush");
+        card.BorderThickness = below ? new Thickness(1, 1, 1, 4) : new Thickness(1, 4, 1, 1);
+    }
+
+    private static void HideDropMarker(Border card)
+    {
+        card.ClearValue(Border.BorderBrushProperty);
+        card.BorderThickness = new Thickness(1);
+    }
+
     // --- Export ---
 
     private void OnExportToPdf(object sender, RoutedEventArgs e) =>

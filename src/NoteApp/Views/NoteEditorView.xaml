@@ -5,7 +5,10 @@
              xmlns:converters="clr-namespace:NoteApp.Converters"
              xmlns:vm="clr-namespace:NoteApp.ViewModels"
              xmlns:views="clr-namespace:NoteApp.Views"
-             Loaded="OnLoaded">
+             Loaded="OnLoaded"
+             AllowDrop="True"
+             PreviewDragOver="OnEditorPreviewDragOver"
+             PreviewDrop="OnEditorPreviewDrop">
 
     <UserControl.Resources>
         <converters:FileSizeConverter x:Key="FileSize" />
@@ -371,10 +374,15 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:BlockViewModel}">
                         <!-- Outlined card; the outline turns accent while the block has keyboard focus -->
+                        <!-- A drop target for blocks dragged by their grip (above or below this one). -->
                         <Border Margin="0,0,0,12" Padding="12"
                                 CornerRadius="{StaticResource CardCornerRadius}"
                                 Background="{DynamicResource MaterialDesignCardBackground}"
-                                BorderThickness="1" SnapsToDevicePixels="True">
+                                BorderThickness="1" SnapsToDevicePixels="True"
+                                AllowDrop="True"
+                                PreviewDragOver="OnBlockPreviewDragOver"
+                                DragLeave="OnBlockDragLeave"
+                                PreviewDrop="OnBlockPreviewDrop">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesignDivider}" />
@@ -418,6 +426,14 @@
                                         </Button>
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <!-- Grip: drag the block elsewhere in the note. Transparent so all of it takes the mouse. -->
+                                        <Border Background="Transparent" Cursor="SizeAll" Margin="-4,0,4,0" Padding="2"
+                                                ToolTip="Drag to move this block"
+                                                PreviewMouseLeftButtonDown="OnBlockGripMouseDown"
+                                                MouseMove="OnBlockGripMouseMove">
+                                            <materialDesign:PackIcon Kind="DragVertical" Width="16" Height="16"
+                                                                     Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                                        </Border>
                                         <materialDesign:PackIcon Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0"
                                                                  Foreground="{StaticResource AccentBrush}">
                                             <materialDesign:PackIcon.Style>
