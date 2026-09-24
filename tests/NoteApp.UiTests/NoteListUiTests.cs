@@ -73,8 +73,8 @@ public class NoteListUiTests
 
     private sealed class Rows((string Title, DateTime UpdatedUtc, bool Pinned)[] notes) : UnusedNoteRepository
     {
-        public override Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false) =>
-            Task.FromResult(Result<IReadOnlyList<NoteSummaryRow>, AppError>.Ok(deletedOnly ? [] : notes.Select(n => new NoteSummaryRow
+        public override Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(NoteQuery query) =>
+            Task.FromResult(Result<IReadOnlyList<NoteSummaryRow>, AppError>.Ok(query.Shelf == NoteShelf.Trash ? [] : notes.Select(n => new NoteSummaryRow
             {
                 Id = Guid.NewGuid(),
                 Title = n.Title,
@@ -95,4 +95,19 @@ public class NoteListUiTests
         public Task<Result<Tag, AppError>> UpdateAsync(Tag tag) => throw new NotSupportedException();
         public Task<Result<Unit, AppError>> DeleteAsync(Guid id) => throw new NotSupportedException();
     }
+}
+
+public class HighlightingUiTests
+{
+    [Fact]
+    public void The_list_marks_the_search_terms_in_its_text() => Wpf.Run(() =>
+    {
+        var block = new System.Windows.Controls.TextBlock();
+        NoteApp.Views.Highlighting.SetTerms(block, ["milk"]);
+        NoteApp.Views.Highlighting.SetText(block, "Buy milk today");
+
+        var runs = block.Inlines.OfType<System.Windows.Documents.Run>().ToList();
+        Assert.Equal(["Buy ", "milk", " today"], runs.Select(r => r.Text));
+        Assert.Equal([false, true, false], runs.Select(r => r.Background is not null));
+    });
 }

@@ -107,8 +107,7 @@ public class TemplatesAndCopiesTests
             return Task.FromResult(Result<Unit, AppError>.Ok(Unit.Value));
         }
 
-        public override Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(
-            string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false) =>
+        public override Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(NoteQuery query) =>
             Task.FromResult(Result<IReadOnlyList<NoteSummaryRow>, AppError>.Ok([]));
     }
 

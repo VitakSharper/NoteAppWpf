@@ -19,6 +19,9 @@ public class NoteEntity
     // A template: a note kept to start new ones from. Hidden from every ordinary query by the
     // global filter in NoteDbContext, like the trash; only the template operations see them.
     public bool IsTemplate { get; set; }
+    // Archived: kept out of the list without going to the trash. Like the pin, a list
+    // preference: setting it leaves UpdatedAt alone.
+    public DateTime? ArchivedAt { get; set; }
 
     public ICollection<NoteBlockEntity> Blocks { get; set; } = [];
     public ICollection<NoteTagEntity> NoteTags { get; set; } = [];

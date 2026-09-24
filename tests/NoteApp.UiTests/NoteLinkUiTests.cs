@@ -115,8 +115,7 @@ public class NoteLinkUiTests
     {
         private static readonly Guid PlanId = Guid.NewGuid();
 
-        public override Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(
-            string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false) =>
+        public override Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(NoteQuery query) =>
             Task.FromResult(Result<IReadOnlyList<NoteSummaryRow>, AppError>.Ok(
             [
                 new NoteSummaryRow { Id = PlanId, Title = "Plan", HasText = true },

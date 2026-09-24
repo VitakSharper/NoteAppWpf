@@ -329,7 +329,8 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        await OpenEditorAsync(note, password, NoteListViewModel.SearchText);
+        // The first word or phrase searched for, not the operators around it.
+        await OpenEditorAsync(note, password, NoteListViewModel.HighlightTerms.FirstOrDefault());
     }
 
     private static string? AskPassword()

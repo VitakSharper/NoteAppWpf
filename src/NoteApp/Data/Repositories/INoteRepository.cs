@@ -17,11 +17,9 @@ public interface INoteRepository
     // Permanent. Trash only: a live note has to be deleted (trashed) first.
     Task<Result<Unit, AppError>> PurgeAsync(NoteId id);
     Task<Result<int, AppError>> PurgeAllDeletedAsync();
-    Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(
-        string? searchText,
-        IReadOnlyList<Guid>? tagIds,
-        BlockType? blockType,
-        bool deletedOnly = false);
+    Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(NoteQuery query);
+    // Only the flag, like the pin: UpdatedAt stays.
+    Task<Result<Unit, AppError>> SetArchivedAsync(NoteId id, bool isArchived);
     Task<Result<byte[]?, AppError>> GetEncryptedContentAsync(NoteId id);
     // The live notes whose text links to this one, by title. Encrypted notes store no blocks,
     // so their links do not count.

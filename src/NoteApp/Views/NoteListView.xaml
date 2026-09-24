@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:converters="clr-namespace:NoteApp.Converters"
+             xmlns:views="clr-namespace:NoteApp.Views"
              Loaded="OnLoaded">
 
     <UserControl.Resources>
@@ -64,7 +65,8 @@
                     Visibility="{Binding HasActiveFilters, Converter={StaticResource BoolToVis}}">
                 <materialDesign:PackIcon Kind="FilterRemoveOutline" Width="20" Height="20" />
             </Button>
-            <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Search notes (Ctrl+F)"
+            <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="Search notes (Ctrl+F). Every word must match; &quot;an exact phrase&quot;, tag:work, has:file / link / checklist / code / secret, is:pinned, is:encrypted narrow it further"
                      Style="{StaticResource MaterialDesignOutlinedTextBox}"
                      materialDesign:HintAssist.Hint="Search notes…"
                      materialDesign:HintAssist.IsFloating="False"
@@ -108,8 +110,9 @@
                 </ComboBox.ItemTemplate>
             </ComboBox>
 
-            <!-- Trash view toggle: same list, over the soft-deleted notes. Icon only —
-                 at the pane's default 340 px a labelled button squeezed "Tags" out. -->
+            <!-- Archive and Trash toggles: the same list, over the archived or the soft-deleted
+                 notes (one at a time). Icons only — at the pane's default 340 px labelled buttons
+                 squeezed "Tags" out. -->
             <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding IsTrashView}"
                           Width="32" Height="32" Padding="0" Cursor="Hand" Margin="4,0,0,0"
                           ToolTip="Trash — restore or permanently delete notes">
@@ -123,6 +126,21 @@
                     </Style>
                 </ToggleButton.Style>
                 <materialDesign:PackIcon Kind="TrashCanOutline" Width="20" Height="20"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </ToggleButton>
+            <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding IsArchiveView}"
+                          Width="32" Height="32" Padding="0" Cursor="Hand" Margin="4,0,0,0"
+                          ToolTip="Archive — notes kept out of the list">
+                <ToggleButton.Style>
+                    <Style TargetType="ToggleButton" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                        <Style.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource MaterialDesignSelection}" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ToggleButton.Style>
+                <materialDesign:PackIcon Kind="ArchiveOutline" Width="20" Height="20"
                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
             </ToggleButton>
 
@@ -195,6 +213,19 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+        </Border>
+
+        <!-- Archive banner -->
+        <Border Grid.Row="4" Margin="16,0,16,8" Padding="12,8"
+                CornerRadius="{StaticResource ControlCornerRadius}"
+                Background="{DynamicResource MaterialDesignSelection}"
+                Visibility="{Binding IsArchiveView, Converter={StaticResource BoolToVis}}">
+            <DockPanel>
+                <materialDesign:PackIcon Kind="ArchiveOutline" Width="18" Height="18"
+                                         VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock VerticalAlignment="Center" FontSize="12" TextWrapping="Wrap"
+                           Text="Archive — notes kept out of the list. Open and edit them as usual; right-click › Unarchive brings one back." />
+            </DockPanel>
         </Border>
 
         <!-- Trash banner: what this view is, and the one gesture that is permanent -->
@@ -277,6 +308,21 @@
                                         </Style>
                                     </MenuItem.Style>
                                     <MenuItem.Icon><materialDesign:PackIcon Kind="PinOutline" /></MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Visibility="{Binding PlacementTarget.Tag.IsTrashView, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource InverseBoolToVis}}"
+                                          Command="{Binding PlacementTarget.Tag.ToggleArchiveCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                    <MenuItem.Style>
+                                        <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                                            <Setter Property="Header" Value="Archive" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsArchived}" Value="True">
+                                                    <Setter Property="Header" Value="Unarchive" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </MenuItem.Style>
+                                    <MenuItem.Icon><materialDesign:PackIcon Kind="ArchiveOutline" /></MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="Duplicate"
                                           Visibility="{Binding PlacementTarget.Tag.IsTrashView, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource InverseBoolToVis}}"
@@ -363,13 +409,16 @@
                                                              Visibility="{Binding HasCode, Converter={StaticResource BoolToVis}}" />
                                 </StackPanel>
 
-                                <TextBlock Text="{Binding Title.Value}" FontWeight="Medium" FontSize="14"
+                                <TextBlock views:Highlighting.Text="{Binding Title.Value}"
+                                           views:Highlighting.Terms="{Binding DataContext.HighlightTerms, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                           FontWeight="Medium" FontSize="14"
                                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                             </DockPanel>
 
                             <!-- Preview snippet (hidden when there is none, e.g. encrypted notes) -->
                             <TextBlock Grid.Row="1" Margin="26,3,0,0"
-                                       Text="{Binding Preview}"
+                                       views:Highlighting.Text="{Binding Preview}"
+                                       views:Highlighting.Terms="{Binding DataContext.HighlightTerms, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                        FontSize="12" TextTrimming="CharacterEllipsis" MaxHeight="18"
                                        Foreground="{DynamicResource MaterialDesignBodyLight}">
                                 <TextBlock.Style>
@@ -455,6 +504,9 @@
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsTrashView}" Value="True">
                                 <Setter Property="Text" Value="Trash is empty" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsArchiveView}" Value="True">
+                                <Setter Property="Text" Value="Nothing archived" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>

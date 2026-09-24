@@ -54,6 +54,13 @@ public partial class NoteListViewModel : ObservableObject
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(EmptyTrashCommand))]
     private bool _isTrashView;
+    // Archive view: the same, over the archived notes. One shelf at a time.
+    [ObservableProperty] private bool _isArchiveView;
+
+    // The words and phrases of the last search, which the rows highlight.
+    [ObservableProperty] private IReadOnlyList<string> _highlightTerms = [];
+
+    public NoteShelf Shelf => IsTrashView ? NoteShelf.Trash : IsArchiveView ? NoteShelf.Archived : NoteShelf.Active;
 
     public IReadOnlyList<NoteTypeFilter> TypeFilters => NoteTypeFilter.AllFilters;
     public IReadOnlyList<SortOption> SortOptions => SortOption.All;
@@ -94,6 +101,24 @@ public partial class NoteListViewModel : ObservableObject
 
     partial void OnIsTrashViewChanged(bool value)
     {
+        if (value && IsArchiveView)
+        {
+            IsArchiveView = false; // reloads
+            return;
+        }
+
+        SelectedNote = null;
+        LoadNotesCommand.Execute(null);
+    }
+
+    partial void OnIsArchiveViewChanged(bool value)
+    {
+        if (value && IsTrashView)
+        {
+            IsTrashView = false; // reloads
+            return;
+        }
+
         SelectedNote = null;
         LoadNotesCommand.Execute(null);
     }
@@ -127,13 +152,17 @@ public partial class NoteListViewModel : ObservableObject
         try
         {
             var selectedIds = AllTags.Where(t => t.IsSelected).Select(t => t.Tag.Id).ToList();
-            var tagIds = selectedIds.Count > 0 ? selectedIds : null;
+            var search = SearchQuery.Parse(SearchText);
+            HighlightTerms = search.Terms;
 
-            var result = await _noteService.SearchAsync(
-                string.IsNullOrWhiteSpace(SearchText) ? null : SearchText,
-                tagIds,
-                SelectedTypeFilter.Value,
-                deletedOnly: IsTrashView);
+            var result = await _noteService.SearchAsync(new NoteQuery(
+                Shelf,
+                search.Terms,
+                search.TagNames,
+                selectedIds,
+                [.. search.Has, .. SelectedTypeFilter.Value is { } type ? [type] : Array.Empty<BlockType>()],
+                search.PinnedOnly,
+                search.EncryptedOnly));
 
             result.Match(
                 success: notes => Notes = new ObservableCollection<NoteSummary>(notes),
@@ -268,6 +297,31 @@ public partial class NoteListViewModel : ObservableObject
         await LoadNotes();
         ShowMessage?.Invoke($"Note '{note.Title}' duplicated.");
         NoteDuplicated?.Invoke(copy);
+    }
+
+    // The row menu. Out of this shelf it goes, with UNDO, like a delete; the editor stays open.
+    [RelayCommand]
+    private async Task ToggleArchive(NoteSummary note)
+    {
+        var archive = !note.IsArchived;
+        if (!(await _noteService.SetArchivedAsync(note.Id, archive)).TryGet(out _, out var error))
+        {
+            ShowMessage?.Invoke(error.Message);
+            return;
+        }
+
+        Notes.Remove(note);
+        ShowUndoableMessage?.Invoke(
+            archive ? $"Note '{note.Title}' archived." : $"Note '{note.Title}' back in the list.",
+            () => _ = UndoArchive(note));
+    }
+
+    private async Task UndoArchive(NoteSummary note)
+    {
+        if ((await _noteService.SetArchivedAsync(note.Id, note.IsArchived)).TryGet(out _, out var error))
+            await LoadNotes();
+        else
+            ShowMessage?.Invoke(error.Message);
     }
 
     // UNDO and the trash row menu. Reloads rather than re-inserting the row: the

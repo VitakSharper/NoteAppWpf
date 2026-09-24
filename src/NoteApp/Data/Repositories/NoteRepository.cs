@@ -386,27 +386,46 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
         }
     }
 
-    public async Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(
-        string? searchText,
-        IReadOnlyList<Guid>? tagIds,
-        BlockType? blockType,
-        bool deletedOnly = false)
+    public async Task<Result<Unit, AppError>> SetArchivedAsync(NoteId id, bool isArchived)
+    {
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            DateTime? archivedAt = isArchived ? DateTime.UtcNow : null;
+            var count = await context.Notes
+                .Where(n => n.Id == id.Value)
+                .ExecuteUpdateAsync(s => s.SetProperty(n => n.ArchivedAt, archivedAt));
+
+            return count == 0
+                ? Result<Unit, AppError>.Fail(AppError.NotFound($"Note with ID {id} not found."))
+                : Result<Unit, AppError>.Ok(Unit.Value);
+        }
+        catch (Exception ex)
+        {
+            return Result<Unit, AppError>.Fail(AppError.Database(ex.Message));
+        }
+    }
+
+    public async Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(NoteQuery noteQuery)
     {
         try
         {
             await using var context = await contextFactory.CreateDbContextAsync();
             // The trash is the one place that wants the filtered-out rows, and only them.
-            var query = deletedOnly
-                ? context.Notes.IgnoreQueryFilters().AsNoTracking().Where(n => n.DeletedAt != null)
-                : context.Notes.AsNoTracking();
-
-            if (!string.IsNullOrWhiteSpace(searchText))
+            var query = noteQuery.Shelf switch
             {
-                // No ToLower(): SQL Server's default collation is already
-                // case-insensitive and lower-casing both sides defeats indexes.
-                // Text blocks match on PlainText; rows saved before that column
-                // existed fall back to the raw rich payload.
-                var term = searchText.Trim();
+                NoteShelf.Trash => context.Notes.IgnoreQueryFilters().AsNoTracking().Where(n => n.DeletedAt != null && !n.IsTemplate),
+                NoteShelf.Archived => context.Notes.AsNoTracking().Where(n => n.ArchivedAt != null),
+                NoteShelf.AllLive => context.Notes.AsNoTracking(),
+                _ => context.Notes.AsNoTracking().Where(n => n.ArchivedAt == null)
+            };
+
+            // Every term has to match somewhere. No ToLower(): SQL Server's default collation
+            // is already case-insensitive and lower-casing both sides defeats indexes. Text
+            // blocks match on PlainText; rows saved before that column existed fall back to
+            // the raw rich payload.
+            foreach (var term in noteQuery.AllTerms.Select(t => t.Trim()).Where(t => t.Length > 0))
+            {
                 query = query.Where(n =>
                     n.Title.Contains(term) ||
                     n.Blocks.Any(b =>
@@ -415,11 +434,21 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
                         (b.FileName != null && b.FileName.Contains(term))));
             }
 
-            if (tagIds is { Count: > 0 })
-                query = query.Where(n => n.NoteTags.Any(nt => tagIds.Contains(nt.TagId)));
+            foreach (var name in noteQuery.AllTagNames)
+                query = query.Where(n => n.NoteTags.Any(nt => nt.Tag.Name == name));
 
-            if (blockType.HasValue)
-                query = query.Where(n => n.Blocks.Any(b => b.BlockType == blockType.Value));
+            var anyOfTags = noteQuery.AllAnyOfTagIds;
+            if (anyOfTags.Count > 0)
+                query = query.Where(n => n.NoteTags.Any(nt => anyOfTags.Contains(nt.TagId)));
+
+            foreach (var type in noteQuery.AllMustHave.Distinct())
+                query = query.Where(n => n.Blocks.Any(b => b.BlockType == type));
+
+            if (noteQuery.PinnedOnly)
+                query = query.Where(n => n.IsPinned);
+
+            if (noteQuery.EncryptedOnly)
+                query = query.Where(n => n.IsEncrypted);
 
             var rows = await query
                 .OrderByDescending(n => n.UpdatedAt)
@@ -431,6 +460,7 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
                     CreatedAt = n.CreatedAt,
                     UpdatedAt = n.UpdatedAt,
                     DeletedAt = n.DeletedAt,
+                    ArchivedAt = n.ArchivedAt,
                     IsPinned = n.IsPinned,
                     HasText = n.Blocks.Any(b => b.BlockType == BlockType.Text),
                     HasFiles = n.Blocks.Any(b => b.BlockType == BlockType.File),

@@ -18,7 +18,8 @@ internal class ThrowingNoteRepository : INoteRepository
     public virtual Task<Result<Unit, AppError>> SetPinnedAsync(NoteId id, bool isPinned) => throw new NotSupportedException();
     public virtual Task<Result<Unit, AppError>> PurgeAsync(NoteId id) => throw new NotSupportedException();
     public virtual Task<Result<int, AppError>> PurgeAllDeletedAsync() => throw new NotSupportedException();
-    public virtual Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false) => throw new NotSupportedException();
+    public virtual Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(NoteQuery query) => throw new NotSupportedException();
+    public virtual Task<Result<Unit, AppError>> SetArchivedAsync(NoteId id, bool isArchived) => throw new NotSupportedException();
     public virtual Task<Result<byte[]?, AppError>> GetEncryptedContentAsync(NoteId id) => throw new NotSupportedException();
     public virtual Task<Result<IReadOnlyList<NoteRow>, AppError>> LinkedFromAsync(NoteId id) => throw new NotSupportedException();
     public virtual Task<Result<NoteId, AppError>> DuplicateAsync(NoteId id, string title) => throw new NotSupportedException();

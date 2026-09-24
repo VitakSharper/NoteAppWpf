@@ -21,7 +21,8 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **Pinned notes** — Right-click a note › Pin to top: it stays first in the list whatever the sort
 - **Tagging system** — Create, rename, colour and delete tags and assign them to notes; each tag's chip shows its colour in the list and the filters
 - **Date headings** — Under a date sort the list is grouped: Pinned, Today, Yesterday, Previous 7 / 30 days, then by month
-- **Search & filter** — Search by title/content, filter by tags or note type
+- **Search & filter** — Search by title/content (every word must match; `"exact phrase"`, `tag:work`, `has:file` / `link` / `checklist` / `code` / `secret`, `is:pinned`, `is:encrypted`), filter by tags or note type; the matches are highlighted in the list, whose preview moves to show them
+- **Archive** — Right-click › Archive keeps a note out of the list without trashing it; the archive toggle next to the sort shows them (open and edit as usual, Unarchive brings one back, UNDO in the snackbar)
 - **Full CRUD** — Create, read, update, delete notes and tags
 - **Trash with undo** — Deleting a note moves it to the trash and the snackbar offers UNDO; the Trash view restores or deletes forever, and only the permanent gestures ask for confirmation
 - **Draft recovery** — While a note has unsaved changes a draft is kept every 20 s (never for encrypted notes, nor for notes holding a secret); after a crash NoteApp offers to restore it at the next start

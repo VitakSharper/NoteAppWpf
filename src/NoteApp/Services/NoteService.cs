@@ -122,18 +122,22 @@ public sealed class NoteService(INoteRepository noteRepository)
     public Task<Result<int, AppError>> EmptyTrashAsync() =>
         noteRepository.PurgeAllDeletedAsync();
 
+    public Task<Result<Unit, AppError>> SetArchivedAsync(NoteId id, bool isArchived) =>
+        noteRepository.SetArchivedAsync(id, isArchived);
+
     // The list never needs full notes: rows come back without block payloads,
-    // and the preview is derived once here rather than per row at render time.
-    public async Task<Result<IReadOnlyList<NoteSummary>, AppError>> SearchAsync(
-        string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false)
+    // and the preview is derived once here rather than per row at render time — around the
+    // first search term when the note's opening text does not show it.
+    public async Task<Result<IReadOnlyList<NoteSummary>, AppError>> SearchAsync(NoteQuery query)
     {
-        if (!(await noteRepository.SearchSummariesAsync(searchText, tagIds, blockType, deletedOnly)).TryGet(out var rows, out var error))
+        if (!(await noteRepository.SearchSummariesAsync(query)).TryGet(out var rows, out var error))
             return Result<IReadOnlyList<NoteSummary>, AppError>.Fail(error);
 
+        var around = query.AllTerms.FirstOrDefault();
         var summaries = new List<NoteSummary>(rows.Count);
         foreach (var row in rows)
         {
-            var preview = row.IsEncrypted ? string.Empty : RichTextPreview.Snippet(row.FirstTextPlain, row.FirstTextRich);
+            var preview = row.IsEncrypted ? string.Empty : RichTextPreview.Snippet(row.FirstTextPlain, row.FirstTextRich, around);
             if (!NoteMapper.ToSummary(row, preview).TryGet(out var summary, out var mapError))
                 return Result<IReadOnlyList<NoteSummary>, AppError>.Fail(mapError);
             summaries.Add(summary);

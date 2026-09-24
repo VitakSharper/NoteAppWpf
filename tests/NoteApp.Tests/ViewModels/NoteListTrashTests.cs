@@ -208,9 +208,9 @@ public class NoteListTrashTests
             return Task.FromResult(Result<Unit, AppError>.Ok(Unit.Value));
         }
 
-        public override Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(
-            string? searchText, IReadOnlyList<Guid>? tagIds, BlockType? blockType, bool deletedOnly = false)
+        public override Task<Result<IReadOnlyList<NoteSummaryRow>, AppError>> SearchSummariesAsync(NoteQuery query)
         {
+            var deletedOnly = query.Shelf == NoteShelf.Trash;
             var rows = _titles
                 .Where(kv => _trashed.ContainsKey(kv.Key) == deletedOnly)
                 .Select(kv => new NoteSummaryRow

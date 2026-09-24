@@ -174,7 +174,7 @@ public partial class NoteEditorViewModel : ObservableObject
     // What "[[" offers: every other live note, by title.
     public async Task<IReadOnlyList<NoteRef>> LinkableNotesAsync()
     {
-        if (!(await _noteService.SearchAsync(null, null, null)).TryGet(out var summaries, out _))
+        if (!(await _noteService.SearchAsync(new NoteQuery(NoteShelf.AllLive))).TryGet(out var summaries, out _))
             return [];
 
         return summaries

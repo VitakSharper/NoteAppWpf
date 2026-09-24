@@ -12,11 +12,23 @@ namespace NoteApp.Services;
 public static partial class RichTextPreview
 {
     private const int MaxLength = 120;
+    private const int LeadIn = 30;
 
-    public static string Snippet(string? plainText, string? richText)
+    // around: a search term. When it only shows up past the start, the snippet starts a little
+    // before it, so the list can show (and highlight) why the note matched.
+    public static string Snippet(string? plainText, string? richText, string? around = null)
     {
         var plain = plainText ?? (string.IsNullOrEmpty(richText) ? string.Empty : ExtractPlainText(richText));
         plain = WhitespaceRun().Replace(plain, " ").Trim();
+
+        var at = string.IsNullOrEmpty(around) ? -1 : plain.IndexOf(around, StringComparison.CurrentCultureIgnoreCase);
+        if (at + around?.Length > MaxLength)
+        {
+            var start = plain.LastIndexOf(' ', Math.Max(0, at - LeadIn)) + 1;
+            var rest = plain[start..];
+            return "…" + (rest.Length > MaxLength ? rest[..MaxLength] + "…" : rest);
+        }
+
         return plain.Length > MaxLength ? plain[..MaxLength] + "…" : plain;
     }
 
