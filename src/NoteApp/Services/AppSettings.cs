@@ -20,7 +20,9 @@ public sealed record AppSettings(
     // Backups kept when an automatic one runs; 0 = keep them all.
     int KeepBackups = 10,
     // Scale of the editor's blocks (Ctrl+wheel), 1 = 100 %.
-    double EditorZoom = 1.0)
+    double EditorZoom = 1.0,
+    // Close an open encrypted note at once when Windows locks or the computer sleeps.
+    bool LockEncryptedNotesWhenWindowsLocks = true)
 {
     public const double MinEditorZoom = 0.5;
     public const double MaxEditorZoom = 2.5;
@@ -38,5 +40,6 @@ public sealed record AppSettings(
         LockEncryptedNotesAfterMinutes: 5,
         AutoBackup: AutoBackupInterval.Off,
         KeepBackups: 10,
-        EditorZoom: 1.0);
+        EditorZoom: 1.0,
+        LockEncryptedNotesWhenWindowsLocks: true);
 }

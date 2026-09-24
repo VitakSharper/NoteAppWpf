@@ -15,6 +15,7 @@
 
     <UserControl.Resources>
         <converters:FileSizeConverter x:Key="FileSize" />
+        <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
 
         <!-- Formatting toolbar: flat tool buttons on the card surface, separated by hairlines,
              instead of the stock WPF ToolBar band. -->
@@ -311,11 +312,66 @@
             </StackPanel>
         </DataTemplate>
 
+        <!-- Secret Block Template: a login. The password is masked (the eye reveals it), both
+             copy buttons go through SensitiveClipboard, and a note that is not encrypted says
+             plainly that the password is then stored as plain text. -->
+        <DataTemplate x:Key="SecretBlockTemplate" DataType="{x:Type vm:BlockViewModel}">
+            <StackPanel>
+                <Border Margin="0,0,0,10" Padding="10,6" CornerRadius="{StaticResource ControlCornerRadius}"
+                        Background="{DynamicResource MaterialDesignSelection}"
+                        Visibility="{Binding DataContext.IsEncrypted, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource InverseBoolToVis}}">
+                    <DockPanel>
+                        <materialDesign:PackIcon Kind="LockOpenAlertOutline" Width="18" Height="18" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                 Foreground="{DynamicResource MaterialDesignValidationErrorBrush}" />
+                        <TextBlock TextWrapping="Wrap" FontSize="12" VerticalAlignment="Center"
+                                   Text="This note is not encrypted: the password is stored as plain text. Tick “Encrypt with password” under Tags &amp; Settings." />
+                    </DockPanel>
+                </Border>
+                <TextBox Text="{Binding SecretLabel, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding}"
+                         materialDesign:HintAssist.Hint="What it is for (e.g. the support site)"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8" />
+                <DockPanel Margin="0,0,0,8">
+                    <Button DockPanel.Dock="Right" ToolTip="Open in the browser (or Ctrl+Click the address)"
+                            Style="{StaticResource MaterialDesignIconButton}" Width="36" Height="36" Margin="6,0,0,0"
+                            IsEnabled="{Binding CanOpenSecretUrl}" Tag="{Binding}" Click="OnOpenSecretUrl">
+                        <materialDesign:PackIcon Kind="OpenInNew" Width="20" Height="20" />
+                    </Button>
+                    <TextBox Text="{Binding SecretUrl, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding}"
+                             materialDesign:HintAssist.Hint="Address (optional)"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             PreviewMouseLeftButtonDown="OnLinkPreviewMouseLeftButtonDown"
+                             PreviewMouseMove="OnLinkHostMouseMove"
+                             MouseLeave="OnLinkHostMouseLeave" />
+                </DockPanel>
+                <DockPanel Margin="0,0,0,8">
+                    <Button DockPanel.Dock="Right" ToolTip="Copy the user name"
+                            Style="{StaticResource MaterialDesignIconButton}" Width="36" Height="36" Margin="6,0,0,0"
+                            Tag="{Binding}" Click="OnCopySecretUserName">
+                        <materialDesign:PackIcon Kind="ContentCopy" Width="18" Height="18" />
+                    </Button>
+                    <TextBox Text="{Binding SecretUserName, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding}"
+                             materialDesign:HintAssist.Hint="User name"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+                </DockPanel>
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" ToolTip="Copy the password (wiped from the clipboard after 30 seconds, kept out of its history)"
+                            Style="{StaticResource MaterialDesignIconButton}" Width="36" Height="36" Margin="6,0,0,0"
+                            Tag="{Binding}" Click="OnCopySecretPassword">
+                        <materialDesign:PackIcon Kind="KeyChain" Width="18" Height="18" />
+                    </Button>
+                    <PasswordBox materialDesign:PasswordBoxAssist.Password="{Binding SecretPassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="Password" Tag="{Binding}"
+                                 Style="{StaticResource MaterialDesignOutlinedRevealPasswordBox}" />
+                </DockPanel>
+            </StackPanel>
+        </DataTemplate>
+
         <views:BlockTemplateSelector x:Key="BlockSelector"
                                      TextBlockTemplate="{StaticResource TextBlockTemplate}"
                                      FileBlockTemplate="{StaticResource FileBlockTemplate}"
                                      LinkBlockTemplate="{StaticResource LinkBlockTemplate}"
-                                     ChecklistBlockTemplate="{StaticResource ChecklistBlockTemplate}" />
+                                     ChecklistBlockTemplate="{StaticResource ChecklistBlockTemplate}"
+                                     SecretBlockTemplate="{StaticResource SecretBlockTemplate}" />
     </UserControl.Resources>
 
     <!-- The pane itself is Paper (set in MainWindow) so the block cards stand out. -->
@@ -433,6 +489,12 @@
                         <TextBlock Text="Checklist" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
+                <Button Command="{Binding AddSecretBlockCommand}" ToolTip="A login: user name, password and address">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="KeyVariant" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Secret" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </DockPanel>
 
@@ -518,6 +580,12 @@
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding BlockType}" Value="Link">
                                                             <Setter Property="Kind" Value="Link" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding BlockType}" Value="Checklist">
+                                                            <Setter Property="Kind" Value="FormatListChecks" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding BlockType}" Value="Secret">
+                                                            <Setter Property="Kind" Value="KeyVariant" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>

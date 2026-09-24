@@ -70,6 +70,18 @@ public class MarkdownExportServiceTests
         Assert.Contains("x![](My%20note_files/image2.png)", document.Text);
     }
 
+    // The fields on their own lines; the password only as a placeholder.
+    [Fact]
+    public void A_secret_is_written_without_its_password()
+    {
+        var document = MarkdownExportService.Render("N",
+            [new DocSecret("Support *site*", "vbanard", "https://support.example.com/")], "f");
+
+        Assert.Equal(
+            "# N\n\n**Support \\*site\\***\\\nUser name: vbanard\\\nPassword: *(not exported)*\\\nAddress: <https://support.example.com/>\n",
+            document.Text);
+    }
+
     // Text that looks like Markdown stays text.
     [Theory]
     [InlineData("a *b* [c] <d>", @"a \*b\* \[c\] \<d\>")]

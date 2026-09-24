@@ -26,7 +26,8 @@ public class PdfExportServiceTests
                 new DocChecklistItem("read https://mid.example.com/a later", IsDone: true),
                 new DocChecklistItem("buy milk", IsDone: false)]),
             new DocLink("https://example.com/page", "Example"),
-            new DocAttachment("report.pdf", 2048)
+            new DocAttachment("report.pdf", 2048),
+            new DocSecret("Support site", "vbanard", "https://support.example.com/")
         ];
         using var stream = new MemoryStream();
 
@@ -39,5 +40,6 @@ public class PdfExportServiceTests
         var raw = Encoding.Latin1.GetString(bytes);
         Assert.Contains("https://docs.example.com/", raw);
         Assert.Contains("https://mid.example.com/a", raw);
+        Assert.Contains("https://support.example.com/", raw);
     }
 }

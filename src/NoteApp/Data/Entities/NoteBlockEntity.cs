@@ -28,5 +28,9 @@ public class NoteBlockEntity
     // Checklist block — see Services/ChecklistJson.cs for the shape
     public string? ChecklistJson { get; set; }
 
+    // Secret block — see Services/SecretJson.cs. PlainText holds its label, user name and
+    // address (what search reads), never the password.
+    public string? SecretJson { get; set; }
+
     public NoteEntity Note { get; set; } = null!;
 }

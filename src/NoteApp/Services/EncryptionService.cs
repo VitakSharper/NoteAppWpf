@@ -104,6 +104,12 @@ public static class EncryptionService
             {
                 Type = "checklist", Id = b.Id, SortOrder = b.SortOrder,
                 ChecklistJson = ChecklistJson.Serialize(c.Items)
+            },
+            // Same string as the NoteBlocks.SecretJson column, as for checklists.
+            secret: s => new BlockDto
+            {
+                Type = "secret", Id = b.Id, SortOrder = b.SortOrder,
+                SecretJson = SecretJson.Serialize(s)
             }
         )).ToList();
 
@@ -130,6 +136,7 @@ public static class EncryptionService
                 "link" => CreateLinkBlock(dto),
                 "checklist" => new NoteBlock.Checklist(ChecklistJson.Deserialize(dto.ChecklistJson))
                     { Id = dto.Id, SortOrder = dto.SortOrder },
+                "secret" => SecretJson.Deserialize(dto.SecretJson) with { Id = dto.Id, SortOrder = dto.SortOrder },
                 _ => throw new InvalidOperationException($"Unknown block type: {dto.Type}")
             };
             blocks.Add(block);
@@ -163,5 +170,6 @@ public static class EncryptionService
         public string? LinkUrl { get; init; }
         public string? LinkDescription { get; init; }
         public string? ChecklistJson { get; init; }
+        public string? SecretJson { get; init; }
     }
 }

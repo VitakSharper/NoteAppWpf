@@ -66,6 +66,19 @@ public static class MarkdownExportService
                 case DocAttachment attachment:
                     markdown.Append($"*Attachment: {Escape(attachment.FileName)} ({DocAttachment.Size(attachment.SizeBytes)})*\n\n");
                     break;
+
+                // One paragraph, hard line breaks between the fields.
+                case DocSecret secret:
+                    markdown.Append("**").Append(Escape(secret.Heading)).Append("**");
+                    foreach (var (name, value, link) in secret.Fields)
+                    {
+                        var shown = link is not null ? $"<{link}>"
+                            : value == DocSecret.PasswordPlaceholder ? $"*{Escape(value)}*"
+                            : Escape(value);
+                        markdown.Append("\\\n").Append(name).Append(": ").Append(shown);
+                    }
+                    markdown.Append("\n\n");
+                    break;
             }
         }
 

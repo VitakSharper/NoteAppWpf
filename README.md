@@ -6,9 +6,10 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 
 ## Features
 
-- **Multi-block notes** — Each note can contain multiple content blocks: rich text, files, links and checklists — all in one note
+- **Multi-block notes** — Each note can contain multiple content blocks: rich text, files, links, checklists and secrets — all in one note
 - **Checklists** — Tickable items inside a note: Enter adds the next one, `Alt+Up/Down` move one, done items are struck through (or hidden with Hide done), the block counts progress, and item texts are searchable
 - **Rich text editing** — Bold, italic, underline, bullet and numbered lists via a toolbar
+- **Secret blocks** — A login inside a note: what it is for, the user name, the password (masked; the eye reveals it) and an address. The copy buttons put the user name or the password on the clipboard kept out of Windows' clipboard history and cloud clipboard, and wipe it after 30 s. The password is never searched, previewed, exported or kept in a draft, and a secret in a note that is not encrypted says that its password is stored as plain text
 - **Clickable links** — Web addresses (`http://`, `https://`, `www.`) in text blocks become links as soon as a space or a new line follows them; a click opens them in the browser (`Alt+Click` edits the link text). In checklist items and link blocks, where a click edits, `Ctrl+Click` or the open button does
 - **File attachments** — Browse and attach files stored directly in the database
 - **Block ordering** — Drag a block by its grip, or use the up/down arrows, to reorder the blocks of a note
@@ -19,13 +20,13 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **Search & filter** — Search by title/content, filter by tags or note type
 - **Full CRUD** — Create, read, update, delete notes and tags
 - **Trash with undo** — Deleting a note moves it to the trash and the snackbar offers UNDO; the Trash view restores or deletes forever, and only the permanent gestures ask for confirmation
-- **Draft recovery** — While a note has unsaved changes a draft is kept every 20 s (never for encrypted notes); after a crash NoteApp offers to restore it at the next start
+- **Draft recovery** — While a note has unsaved changes a draft is kept every 20 s (never for encrypted notes, nor for notes holding a secret); after a crash NoteApp offers to restore it at the next start
 - **Unsaved-changes guard** — Leaving a modified note (opening another one, New note, Cancel, closing the window) offers to save, discard, or stay in the editor
 - **Keyboard shortcuts** — `Ctrl+N` new note, `Ctrl+S` save, `Esc` close the editor (or the Settings dialog), `Ctrl+F` search the text block under the cursor or, from anywhere else, the note list; `Ctrl+B/I/U` are native to the rich text box; a click (text blocks) or `Ctrl+Click` (anywhere) opens a link; `F11` focus mode (the editor takes the whole window); `Ctrl+wheel`, `Ctrl+Plus/Minus` zoom the blocks, `Ctrl+0` resets
 - **In-app help** — `F1` or the `?` in the rail opens a non-modal help window: getting started, the shortcut table, blocks, search and tags, encryption, backup, and where settings and logs live
-- **Encrypted notes** — Optional per-note password; blocks are stored AES-GCM encrypted (PBKDF2 key derivation)
-- **Automatic lock** — An open encrypted note closes itself after a configurable idle period (default 5 minutes, `Never` to disable), saving unsaved changes first and forgetting the password
-- **PDF, Word & Markdown export** — Export a note to PDF (QuestPDF), `.docx` (Open XML SDK) or `.md` (CommonMark, images in a folder beside it): text with formatting and images, checklists as ticked boxes, clickable links (link blocks, and addresses in text and checklist items) and attachments listed by name and size
+- **Encrypted notes** — Optional per-note password; blocks are stored AES-GCM encrypted (PBKDF2 key derivation). Text copied out of an encrypted note stays out of the clipboard history and is wiped after 30 s
+- **Automatic lock** — An open encrypted note closes itself after a configurable idle period (default 5 minutes, `Never` to disable), and at once when Windows locks (`Win+L`), the remote session disconnects or the computer goes to sleep (a setting too) — saving unsaved changes first and forgetting the password
+- **PDF, Word & Markdown export** — Export a note to PDF (QuestPDF), `.docx` (Open XML SDK) or `.md` (CommonMark, images in a folder beside it): text with formatting and images, checklists as ticked boxes, clickable links (link blocks, and addresses in text and checklist items), attachments listed by name and size, and secrets without their password
 - **Encrypted backups** — BACPAC export of the database packed into an AES-256 zip, by hand or automatically (daily or weekly, checked at startup and hourly, keeping the last N)
 - **Material Design UI** — Three-pane layout (icon rail · note list / tags · editor), cards, chips, snackbar, light/dark theme
 
@@ -143,7 +144,7 @@ This project follows **functional programming patterns** inspired by [Zoran Horv
 ```
 noteDb
 ├── Notes        — Id, Title, IsEncrypted, EncryptedContent, CreatedAt, UpdatedAt, DeletedAt (soft delete)
-├── NoteBlocks   — Id, NoteId (FK), BlockType (Text/File/Link/Checklist), SortOrder,
+├── NoteBlocks   — Id, NoteId (FK), BlockType (Text/File/Link/Checklist/Secret), SortOrder,
 │                  TextContent (rich), PlainText (searchable), FileData, FileName,
 │                  FileExtension, FileSizeBytes, LinkUrl, LinkDescription
 ├── Tags         — Id, Name (unique)

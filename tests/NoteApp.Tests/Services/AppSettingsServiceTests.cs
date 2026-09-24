@@ -82,6 +82,18 @@ public class AppSettingsServiceTests : IDisposable
 
         Assert.Equal(AutoBackupInterval.Off, settings.AutoBackup);
         Assert.Equal(10, settings.KeepBackups);
+        // Locking on Win+L is on unless someone turned it off.
+        Assert.True(settings.LockEncryptedNotesWhenWindowsLocks);
+    }
+
+    [Fact]
+    public void Turning_off_the_lock_on_windows_lock_survives_a_save_and_reload()
+    {
+        var service = new AppSettingsService(_path);
+
+        service.Save(service.Current with { LockEncryptedNotesWhenWindowsLocks = false });
+
+        Assert.False(new AppSettingsService(_path).Current.LockEncryptedNotesWhenWindowsLocks);
     }
 
     [Fact]

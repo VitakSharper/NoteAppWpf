@@ -18,6 +18,7 @@ public sealed class NoteSummaryRow
     public bool HasFiles { get; init; }
     public bool HasLinks { get; init; }
     public bool HasChecklists { get; init; }
+    public bool HasSecrets { get; init; }
     public string? FirstTextPlain { get; init; }
     public string? FirstTextRich { get; init; }
     public List<TagEntity> Tags { get; init; } = [];

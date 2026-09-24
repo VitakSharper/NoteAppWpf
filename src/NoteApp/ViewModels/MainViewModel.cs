@@ -423,16 +423,27 @@ public partial class MainViewModel : ObservableObject
 
     private async void OnLockTimerTick(object? sender, EventArgs e)
     {
-        if (!_encryptedNoteLock.HasExpired(DateTime.UtcNow))
-            return;
+        if (_encryptedNoteLock.HasExpired(DateTime.UtcNow))
+            await LockEncryptedNoteAsync($"after {_encryptedNoteLock.Timeout.TotalMinutes:0} minute(s) of inactivity");
+    }
 
+    // Windows locked (Win+L), the session disconnected, the computer going to sleep: nobody
+    // is in front of the screen any more, so the open encrypted note is locked now rather
+    // than when the idle delay runs out. App.xaml.cs wires SystemEvents to this.
+    public async Task LockForAbsenceAsync(string why)
+    {
+        if (_settingsService.Current.LockEncryptedNotesWhenWindowsLocks)
+            await LockEncryptedNoteAsync(why);
+    }
+
+    private async Task LockEncryptedNoteAsync(string why)
+    {
         if (CurrentEditor is not NoteEditorViewModel { EditedNote.IsEncrypted: true } editor)
         {
             RearmEncryptedNoteLock();
             return;
         }
 
-        var minutes = _encryptedNoteLock.Timeout.TotalMinutes;
         var title = editor.Title;
 
         // The password is still in memory, so a modified note is saved — still
@@ -454,7 +465,7 @@ public partial class MainViewModel : ObservableObject
         CurrentEditor = null;
         NoteListViewModel.SelectedNote = null;
         RearmEncryptedNoteLock();
-        MessageQueue.Enqueue($"'{title}' locked after {minutes:0} minute(s) of inactivity.");
+        MessageQueue.Enqueue($"'{title}' locked {why}.");
     }
 
     // --- Drafts of unsaved changes (DraftStore) ---

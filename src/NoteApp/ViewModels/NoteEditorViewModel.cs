@@ -43,6 +43,17 @@ public partial class BlockViewModel : ObservableObject
     [ObservableProperty] private byte[] _fileData = [];
     [ObservableProperty] private string _fileExtension = string.Empty;
 
+    // Secret block. The password is only ever shown masked (or revealed on demand) and
+    // copied through SensitiveClipboard.
+    [ObservableProperty] private string _secretLabel = string.Empty;
+    [ObservableProperty] private string _secretUserName = string.Empty;
+    [ObservableProperty] private string _secretPassword = string.Empty;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanOpenSecretUrl))]
+    private string _secretUrl = string.Empty;
+
+    public bool CanOpenSecretUrl => LinkUrl.From(SecretUrl).IsSuccess;
+
     public Guid Id { get; init; } = Guid.NewGuid();
 
     public ObservableCollection<ChecklistItemViewModel> ChecklistItems { get; } = [];
@@ -91,6 +102,7 @@ public partial class BlockViewModel : ObservableObject
         BlockType.File => "File",
         BlockType.Link => "Link",
         BlockType.Checklist => "Checklist",
+        BlockType.Secret => "Secret",
         _ => "Block"
     };
 }
@@ -133,8 +145,10 @@ public partial class NoteEditorViewModel : ObservableObject
     public Guid NewNoteDraftKey => _newNoteDraftKey;
     public Guid DraftKey => EditedNoteId?.Value ?? _newNoteDraftKey;
 
-    // Never for an encrypted note, stored or about to be: the draft is plain JSON on disk.
-    public bool CanKeepDraft => !IsEncrypted && _existingNote?.IsEncrypted != true;
+    // Never for an encrypted note, stored or about to be, nor for one holding a secret: the
+    // draft is plain JSON on disk, and a password has no business there.
+    public bool CanKeepDraft => !IsEncrypted && _existingNote?.IsEncrypted != true
+        && Blocks.All(b => b.BlockType != BlockType.Secret);
 
     // The view pushes the rich text into the blocks without turning addresses into links:
     // a snapshot can land in the middle of an address being typed.
@@ -149,6 +163,8 @@ public partial class NoteEditorViewModel : ObservableObject
             BlockType.Text => new DraftBlock(BlockType.Text, RichText: b.RichTextContent, PlainText: b.PlainTextContent),
             BlockType.Link => new DraftBlock(BlockType.Link, LinkUrl: b.LinkUrlText, LinkDescription: b.LinkDescription),
             BlockType.File => new DraftBlock(BlockType.File, FileName: b.FileName, FileExtension: b.FileExtension, FileData: b.FileData),
+            // Never reached while CanKeepDraft holds, and even then: never the password.
+            BlockType.Secret => new DraftBlock(BlockType.Secret, SecretLabel: b.SecretLabel, SecretUserName: b.SecretUserName, SecretUrl: b.SecretUrl),
             _ => new DraftBlock(BlockType.Checklist,
                 Items: b.ChecklistItems.Select(i => new DraftChecklistItem(i.Text, i.IsDone)).ToList())
         }).ToList();
@@ -180,7 +196,10 @@ public partial class NoteEditorViewModel : ObservableObject
                 FileName = block.FileName ?? string.Empty,
                 FileExtension = block.FileExtension ?? string.Empty,
                 FileData = block.FileData ?? [],
-                FileSize = block.FileData?.LongLength ?? 0
+                FileSize = block.FileData?.LongLength ?? 0,
+                SecretLabel = block.SecretLabel ?? string.Empty,
+                SecretUserName = block.SecretUserName ?? string.Empty,
+                SecretUrl = block.SecretUrl ?? string.Empty
             };
             foreach (var item in block.Items ?? [])
                 vm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, IsDone = item.IsDone });
@@ -352,6 +371,15 @@ public partial class NoteEditorViewModel : ObservableObject
                     foreach (var item in c.Items)
                         blockVm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, IsDone = item.IsDone });
                     return blockVm;
+                },
+                secret: s => new BlockViewModel
+                {
+                    Id = block.Id,
+                    BlockType = BlockType.Secret,
+                    SecretLabel = s.Label,
+                    SecretUserName = s.UserName,
+                    SecretPassword = s.Password,
+                    SecretUrl = s.Url
                 });
             Blocks.Add(vm);
         }
@@ -439,6 +467,15 @@ public partial class NoteEditorViewModel : ObservableObject
     {
         var block = new BlockViewModel { BlockType = BlockType.Checklist };
         block.ChecklistItems.Add(new ChecklistItemViewModel());
+        Blocks.Add(block);
+        SelectedBlock = block;
+        BlockAdded?.Invoke(block);
+    }
+
+    [RelayCommand]
+    private void AddSecretBlock()
+    {
+        var block = new BlockViewModel { BlockType = BlockType.Secret };
         Blocks.Add(block);
         SelectedBlock = block;
         BlockAdded?.Invoke(block);
@@ -712,6 +749,23 @@ public partial class NoteEditorViewModel : ObservableObject
                             AppError.Validation($"Checklist block #{i + 1} has no items."));
 
                     noteBlocks.Add(new NoteBlock.Checklist(items) { Id = vm.Id, SortOrder = i });
+                    break;
+
+                // The address is optional, but one that is there has to be a real one. The
+                // password is kept exactly as typed: its spaces may be part of it.
+                case BlockType.Secret:
+                    var secretUrl = vm.SecretUrl.Trim();
+                    if (secretUrl.Length > 0 && !LinkUrl.From(secretUrl).TryGet(out _, out var secretUrlError))
+                        return Result<IReadOnlyList<NoteBlock>, AppError>.Fail(
+                            AppError.Validation($"Secret block #{i + 1}: {secretUrlError.Message}"));
+
+                    var secret = new NoteBlock.Secret(vm.SecretLabel.Trim(), vm.SecretUserName.Trim(), vm.SecretPassword, secretUrl)
+                        { Id = vm.Id, SortOrder = i };
+                    if (secret.PlainText.Length == 0 && secret.Password.Length == 0)
+                        return Result<IReadOnlyList<NoteBlock>, AppError>.Fail(
+                            AppError.Validation($"Secret block #{i + 1} is empty."));
+
+                    noteBlocks.Add(secret);
                     break;
             }
         }

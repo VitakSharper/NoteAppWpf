@@ -52,6 +52,7 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _backupFolderPath = AppSettings.DefaultBackupFolderPath;
     [ObservableProperty] private bool _isBackingUp;
     [ObservableProperty] private LockTimeoutOption _lockTimeout = LockTimeoutOption.For(AppSettings.Default.LockEncryptedNotesAfterMinutes);
+    [ObservableProperty] private bool _lockWhenWindowsLocks = AppSettings.Default.LockEncryptedNotesWhenWindowsLocks;
     [ObservableProperty] private AutoBackupInterval _autoBackup;
     [ObservableProperty] private KeepBackupsOption _keepBackups = KeepBackupsOption.For(AppSettings.Default.KeepBackups);
 
@@ -104,6 +105,7 @@ public partial class SettingsViewModel : ObservableObject
             BackupPassword = BackupPassword,
             BackupFolderPath = BackupFolderPath,
             LockEncryptedNotesAfterMinutes = LockTimeout.Minutes,
+            LockEncryptedNotesWhenWindowsLocks = LockWhenWindowsLocks,
             AutoBackup = AutoBackup,
             KeepBackups = KeepBackups.Count
         });
@@ -191,6 +193,7 @@ public partial class SettingsViewModel : ObservableObject
         BackupPassword = settings.BackupPassword;
         BackupFolderPath = settings.BackupFolderPath;
         LockTimeout = LockTimeoutOption.For(settings.LockEncryptedNotesAfterMinutes);
+        LockWhenWindowsLocks = settings.LockEncryptedNotesWhenWindowsLocks;
         AutoBackup = settings.AutoBackup;
         KeepBackups = KeepBackupsOption.For(settings.KeepBackups);
     }

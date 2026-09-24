@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Win32;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.CommandLine;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
@@ -18,6 +19,7 @@ public partial class App : Application
     private static string CrashLogPath => AppPaths.CrashLog;
 
     private ServiceProvider? _serviceProvider;
+    private MainViewModel? _mainViewModel;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -83,10 +85,15 @@ public partial class App : Application
         var settingsService = _serviceProvider.GetRequiredService<AppSettingsService>();
         SettingsViewModel.ApplyTheme(settingsService.Current.IsDarkMode);
 
+        _mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
         var mainWindow = new MainWindow
         {
-            DataContext = _serviceProvider.GetRequiredService<MainViewModel>()
+            DataContext = _mainViewModel
         };
+
+        // Raised on a thread of their own; static, so unhooked again in OnExit.
+        SystemEvents.SessionSwitch += OnSessionSwitch;
+        SystemEvents.PowerModeChanged += OnPowerModeChanged;
 
         // A test instance says so in its title bar: two windows that look the same but
         // write to different databases are an accident waiting to happen.
@@ -104,8 +111,27 @@ public partial class App : Application
         configuration.Providers.Reverse().FirstOrDefault(p => p.TryGet(key, out _))
             is EnvironmentVariablesConfigurationProvider or CommandLineConfigurationProvider;
 
+    private void OnSessionSwitch(object sender, SessionSwitchEventArgs e)
+    {
+        if (e.Reason is SessionSwitchReason.SessionLock or SessionSwitchReason.ConsoleDisconnect or SessionSwitchReason.RemoteDisconnect)
+            LockForAbsence("when Windows was locked");
+    }
+
+    private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
+    {
+        if (e.Mode == PowerModes.Suspend)
+            LockForAbsence("before the computer went to sleep");
+    }
+
+    private void LockForAbsence(string why) =>
+        Dispatcher.BeginInvoke(new Func<Task>(() => _mainViewModel?.LockForAbsenceAsync(why) ?? Task.CompletedTask));
+
     protected override void OnExit(ExitEventArgs e)
     {
+        SystemEvents.SessionSwitch -= OnSessionSwitch;
+        SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+        // A password copied in the last 30 s does not stay on the clipboard after NoteApp.
+        SensitiveClipboard.ClearIfStillOurs();
         _serviceProvider?.Dispose();
         base.OnExit(e);
     }

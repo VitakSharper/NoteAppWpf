@@ -78,6 +78,10 @@ public static class PdfExportService
                     RenderChecklist(column, checklist);
                     break;
 
+                case DocSecret secret:
+                    RenderSecret(column, secret);
+                    break;
+
                 case DocLink link:
                     RenderLink(column, link);
                     break;
@@ -102,6 +106,22 @@ public static class PdfExportService
 
                 foreach (var (piece, link) in DocTextLinks.Split(item.Text))
                     Done(link is null ? text.Span(piece) : LinkSpan(text, piece, link), item.IsDone);
+            });
+        }
+    }
+
+    private static void RenderSecret(ColumnDescriptor column, DocSecret secret)
+    {
+        column.Item().Text(secret.Heading).SemiBold();
+        foreach (var (name, value, link) in secret.Fields)
+        {
+            column.Item().PaddingLeft(12).Text(text =>
+            {
+                text.Span($"{name}: ").FontColor(Colors.Grey.Darken1);
+                if (link is null)
+                    text.Span(value);
+                else
+                    LinkSpan(text, value, link);
             });
         }
     }

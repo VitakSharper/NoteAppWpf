@@ -280,6 +280,7 @@ public sealed class NoteRepository(IDbContextFactory<NoteDbContext> contextFacto
                     HasFiles = n.Blocks.Any(b => b.BlockType == BlockType.File),
                     HasLinks = n.Blocks.Any(b => b.BlockType == BlockType.Link),
                     HasChecklists = n.Blocks.Any(b => b.BlockType == BlockType.Checklist),
+                    HasSecrets = n.Blocks.Any(b => b.BlockType == BlockType.Secret),
                     // Both kinds of block fill PlainText, so a note that opens with a
                     // checklist previews its items. Same Where on both sub-queries, or
                     // the two would not describe the same "first" block.

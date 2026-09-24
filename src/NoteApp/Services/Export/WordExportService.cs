@@ -69,6 +69,12 @@ public static class WordExportService
                     foreach (var item in checklist.Items)
                         body.Append(ChecklistParagraph(item, main));
                     break;
+
+                case DocSecret secret:
+                    body.Append(new Paragraph(new Run(new RunProperties(new Bold()), PreservedText(secret.Heading))));
+                    foreach (var field in secret.Fields)
+                        body.Append(SecretFieldParagraph(field, main));
+                    break;
             }
         }
 
@@ -195,6 +201,19 @@ public static class WordExportService
                 paragraph.Append(ChecklistRun(text, item.IsDone));
             }
         }
+
+        return paragraph;
+    }
+
+    private static Paragraph SecretFieldParagraph((string Name, string Value, string? Link) field, MainDocumentPart main)
+    {
+        var paragraph = new Paragraph(new ParagraphProperties(new Indentation { Left = "360" }));
+        paragraph.Append(new Run(new RunProperties(new Color { Val = "595959" }), PreservedText($"{field.Name}: ")));
+
+        if (field.Link is not null && Uri.TryCreate(field.Link, UriKind.Absolute, out var uri))
+            paragraph.Append(Hyperlinked(new Run(LinkProperties(), PreservedText(field.Value)), uri, main));
+        else
+            paragraph.Append(new Run(PreservedText(field.Value)));
 
         return paragraph;
     }

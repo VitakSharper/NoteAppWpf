@@ -36,6 +36,20 @@ public partial class NoteEditorView : UserControl
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
         Unloaded += OnUnloaded;
+        DataObject.AddCopyingHandler(this, OnCopying);
+    }
+
+    // Ctrl+C / Ctrl+X anywhere in an encrypted note, or in a field of a secret block: the
+    // copy is kept out of the clipboard history and wiped after a while (SensitiveClipboard),
+    // the way the copy buttons of a secret do it. After the copy has landed, hence deferred.
+    private void OnCopying(object sender, DataObjectCopyingEventArgs e)
+    {
+        var fromSecret = e.OriginalSource is FrameworkElement { Tag: BlockViewModel { BlockType: BlockType.Secret } };
+        if (e.IsDragDrop || DataContext is not NoteEditorViewModel vm || !(vm.IsEncrypted || fromSecret))
+            return;
+
+        SensitiveClipboard.MarkPrivate(e.DataObject);
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(SensitiveClipboard.ClearLater));
     }
 
     // The editor pane reuses this view instance across notes, so the view model
@@ -495,6 +509,39 @@ public partial class NoteEditorView : UserControl
         if (sender is Button { Tag: BlockViewModel block } && LinkUrl.From(block.LinkUrlText).TryGet(out var url, out _))
             OpenLink(url);
     }
+
+    private void OnOpenSecretUrl(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: BlockViewModel block } && LinkUrl.From(block.SecretUrl).TryGet(out var url, out _))
+            OpenLink(url);
+    }
+
+    private void OnCopySecretUserName(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: BlockViewModel block })
+            CopySecret(block.SecretUserName, "User name");
+    }
+
+    private void OnCopySecretPassword(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: BlockViewModel block })
+            CopySecret(block.SecretPassword, "Password");
+    }
+
+    private void CopySecret(string value, string what)
+    {
+        if (value.Length == 0)
+            return;
+
+        var seconds = SensitiveClipboard.ClearAfter.TotalSeconds;
+        Notify(SensitiveClipboard.Copy(value)
+            ? $"{what} copied — wiped from the clipboard in {seconds:0} s."
+            : "The clipboard is busy (another program has it open). Try again.");
+    }
+
+    // The shell's snackbar, when there is one (not in the view's tests).
+    private void Notify(string message) =>
+        (Window.GetWindow(this)?.DataContext as MainViewModel)?.MessageQueue.Enqueue(message);
 
     private void OpenLink(LinkUrl url) =>
         LinkLauncher.Open(url).Match(
@@ -1177,6 +1224,8 @@ public partial class NoteEditorView : UserControl
                     .Where(i => !string.IsNullOrWhiteSpace(i.Text))
                     .Select(i => new DocChecklistItem(i.Text.Trim(), i.IsDone))
                     .ToList()),
+            // Never the password: it does not even reach the exporter.
+            BlockType.Secret => new SecretExportBlock(b.SecretLabel.Trim(), b.SecretUserName.Trim(), b.SecretUrl.Trim()),
             _ => new FileExportBlock(b.FileName, b.FileSize)
         }).ToList();
 

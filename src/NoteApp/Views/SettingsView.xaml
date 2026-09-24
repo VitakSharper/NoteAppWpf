@@ -107,6 +107,13 @@
                                    TextWrapping="Wrap"
                                    Margin="0,8,0,0"
                                    Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                        <CheckBox IsChecked="{Binding LockWhenWindowsLocks}" Margin="0,12,0,0"
+                                  Content="Also when Windows locks or the computer goes to sleep"
+                                  FontSize="14" />
+                        <TextBlock Text="Win+L, a closed laptop lid or a disconnected remote session closes the open encrypted note at once, whatever the delay above."
+                                   TextWrapping="Wrap"
+                                   Margin="28,4,0,0"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}" />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal"

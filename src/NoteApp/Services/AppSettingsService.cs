@@ -70,7 +70,8 @@ public sealed class AppSettingsService
         int? LockEncryptedNotesAfterMinutes,
         AutoBackupInterval? AutoBackup = null,
         int? KeepBackups = null,
-        double? EditorZoom = null)
+        double? EditorZoom = null,
+        bool? LockEncryptedNotesWhenWindowsLocks = null)
     {
         public static PersistedSettings From(AppSettings settings) => new(
             settings.ConfirmNoteDeletion,
@@ -83,7 +84,8 @@ public sealed class AppSettingsService
             settings.LockEncryptedNotesAfterMinutes,
             settings.AutoBackup,
             settings.KeepBackups,
-            settings.EditorZoom);
+            settings.EditorZoom,
+            settings.LockEncryptedNotesWhenWindowsLocks);
 
         public AppSettings ToSettings() => new(
             ConfirmNoteDeletion,
@@ -95,7 +97,8 @@ public sealed class AppSettingsService
             LockEncryptedNotesAfterMinutes ?? AppSettings.Default.LockEncryptedNotesAfterMinutes,
             AutoBackup ?? AppSettings.Default.AutoBackup,
             KeepBackups ?? AppSettings.Default.KeepBackups,
-            Math.Clamp(EditorZoom ?? AppSettings.Default.EditorZoom, AppSettings.MinEditorZoom, AppSettings.MaxEditorZoom));
+            Math.Clamp(EditorZoom ?? AppSettings.Default.EditorZoom, AppSettings.MinEditorZoom, AppSettings.MaxEditorZoom),
+            LockEncryptedNotesWhenWindowsLocks ?? AppSettings.Default.LockEncryptedNotesWhenWindowsLocks);
 
         private static string? Protect(string value) =>
             string.IsNullOrEmpty(value)

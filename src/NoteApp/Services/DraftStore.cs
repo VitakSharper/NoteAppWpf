@@ -16,7 +16,12 @@ public sealed record DraftBlock(
     string? FileName = null,
     string? FileExtension = null,
     byte[]? FileData = null,
-    IReadOnlyList<DraftChecklistItem>? Items = null);
+    IReadOnlyList<DraftChecklistItem>? Items = null,
+    // A secret never reaches a draft (NoteEditorViewModel.CanKeepDraft); should it, its
+    // password stays out.
+    string? SecretLabel = null,
+    string? SecretUserName = null,
+    string? SecretUrl = null);
 
 // The unsaved state of the open editor. Key is the note's id, or an id of its own for a
 // note never saved; NoteId is null for the latter.

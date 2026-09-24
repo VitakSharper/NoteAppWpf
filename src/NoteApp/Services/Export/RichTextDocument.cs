@@ -33,6 +33,10 @@ public static class RichTextDocument
                 case ChecklistExportBlock checklist:
                     elements.Add(new DocChecklist(checklist.Items));
                     break;
+
+                case SecretExportBlock secret:
+                    elements.Add(new DocSecret(secret.Label, secret.UserName, secret.Url));
+                    break;
             }
         }
 

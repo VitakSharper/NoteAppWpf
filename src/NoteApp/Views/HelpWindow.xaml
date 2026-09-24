@@ -105,6 +105,8 @@
                 <TextBlock Style="{StaticResource Body}"
                            Text="Checklist blocks hold tickable items: press Enter in an item to add the next one, tick one to strike it through, and the block counts what is done. Alt+Up / Alt+Down move an item; Hide done tucks the ticked items away for as long as the note is open. Empty items are dropped when the note is saved, and the item texts are searchable like any other text. An item that holds a web address gets an open button, and an item that is nothing but an address reads as a link." />
                 <TextBlock Style="{StaticResource Body}"
+                           Text="Secret blocks hold a login: what it is for, the user name, the password and, if you like, the address it is used at. The password stays masked until you click the eye. The copy buttons put the user name or the password on the clipboard without it going into the clipboard history (Win+V) or the cloud clipboard, and NoteApp wipes it again after 30 seconds unless you have copied something else since. The password is never searched, shown in the list, exported or written to a draft. Keep such notes encrypted: in a note that is not, the block reminds you that its password is stored as plain text." />
+                <TextBlock Style="{StaticResource Body}"
                            Text="The PDF, Word and Markdown buttons in the editor header export the whole open note (Markdown puts the images in a folder next to the .md file): text with its formatting and images, checklists as ticked boxes, links — clickable in both, including the addresses in text and checklist items — and the attached files listed by name — their bytes stay in the database." />
 
                 <TextBlock Style="{StaticResource Section}" Text="Search, tags and filters" />
@@ -125,7 +127,9 @@
                 <TextBlock Style="{StaticResource Body}" FontWeight="SemiBold"
                            Text="The password is asked every time the note is opened and is stored nowhere. A forgotten password means the content cannot be recovered." />
                 <TextBlock Style="{StaticResource Body}"
-                           Text="An open encrypted note also closes itself after a while without a keystroke or a click — five minutes by default, changeable in Settings (Never turns it off). Unsaved changes are saved first, so nothing is lost, and the password is forgotten: reopening the note asks for it again. It keeps a decrypted note off an unattended screen; it is not protection against someone inspecting the computer's memory." />
+                           Text="An open encrypted note also closes itself after a while without a keystroke or a click — five minutes by default, changeable in Settings (Never turns it off) — and at once when Windows locks (Win+L), the remote session disconnects or the computer goes to sleep. Unsaved changes are saved first, so nothing is lost, and the password is forgotten: reopening the note asks for it again. It keeps a decrypted note off an unattended screen; it is not protection against someone inspecting the computer's memory." />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="Text copied (Ctrl+C) out of an encrypted note is kept out of the clipboard history and the cloud clipboard, and wiped after 30 seconds — as are the user names and passwords copied from a secret block. Closing NoteApp wipes it too." />
 
                 <TextBlock Style="{StaticResource Section}" Text="Backup" />
                 <TextBlock Style="{StaticResource Body}"

@@ -97,6 +97,22 @@ public class WordExportServiceTests
     }
 
     [Fact]
+    public void A_secret_lists_its_fields_and_never_a_password()
+    {
+        using var stream = new MemoryStream();
+
+        WordExportService.Render("Note", [new DocSecret("", "vbanard", "https://support.example.com/")], stream);
+
+        stream.Position = 0;
+        using var doc = WordprocessingDocument.Open(stream, isEditable: false);
+        var body = doc.MainDocumentPart!.Document!.Body!;
+        Assert.Equal(
+            ["Note", "Secret", "User name: vbanard", "Password: (not exported)", "Address: https://support.example.com/"],
+            body.Elements<Paragraph>().Select(p => p.InnerText));
+        Assert.Equal("https://support.example.com/", Assert.Single(body.Descendants<Hyperlink>()).InnerText);
+    }
+
+    [Fact]
     public void Checklist_items_are_cut_around_their_addresses()
     {
         var pieces = DocTextLinks.Split("a https://x.com/, b www.y.com");

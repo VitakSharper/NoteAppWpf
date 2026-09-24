@@ -22,7 +22,7 @@ public class NoteMapperTests
 
         Assert.Equal(note.Id, mapped.Id);
         Assert.Equal("Sample", mapped.Title.Value);
-        Assert.Equal(4, mapped.Blocks.Count);
+        Assert.Equal(5, mapped.Blocks.Count);
 
         var text = Assert.IsType<NoteBlock.Text>(mapped.Blocks[0]);
         Assert.Equal("<rich/>", text.RichText);
@@ -40,7 +40,26 @@ public class NoteMapperTests
         Assert.Equal(["buy milk", "call the bank"], checklist.Items.Select(i => i.Text));
         Assert.Equal([true, false], checklist.Items.Select(i => i.IsDone));
 
+        var secret = Assert.IsType<NoteBlock.Secret>(mapped.Blocks[4]);
+        Assert.Equal(("Support site", "vbanard", " p@ss word ", "https://support.example.com/"),
+            (secret.Label, secret.UserName, secret.Password, secret.Url));
+
         Assert.Equal("work", Assert.Single(mapped.Tags).Name.Value);
+    }
+
+    // Search and the list read PlainText: a secret is found by its label, its user name and
+    // its address, never by its password — which only the JSON column holds.
+    [Fact]
+    public void ToBlockEntities_KeepsTheSecretPasswordOutOfPlainText()
+    {
+        var note = SampleNote(new NoteBlock.Secret("Support site", "vbanard", "hunter2", "https://support.example.com/"));
+
+        var entity = Assert.Single(NoteMapper.ToBlockEntities(note));
+
+        Assert.Equal(BlockType.Secret, entity.BlockType);
+        Assert.Equal("Support site\nvbanard\nhttps://support.example.com/", entity.PlainText);
+        Assert.DoesNotContain("hunter2", entity.PlainText);
+        Assert.Contains("hunter2", entity.SecretJson);
     }
 
     // The checklist's searchable form has to reach the column search reads, or a

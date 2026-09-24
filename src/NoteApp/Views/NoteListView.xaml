@@ -349,6 +349,9 @@
                                     <materialDesign:PackIcon Kind="FormatListChecks" Width="13" Height="13" Margin="3,0,0,0"
                                                              Foreground="{DynamicResource MaterialDesignBodyLight}"
                                                              Visibility="{Binding HasChecklists, Converter={StaticResource BoolToVis}}" />
+                                    <materialDesign:PackIcon Kind="KeyVariant" Width="13" Height="13" Margin="3,0,0,0"
+                                                             Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                             Visibility="{Binding HasSecrets, Converter={StaticResource BoolToVis}}" />
                                 </StackPanel>
 
                                 <TextBlock Text="{Binding Title.Value}" FontWeight="Medium" FontSize="14"
