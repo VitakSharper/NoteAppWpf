@@ -39,6 +39,7 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **Encrypted notes** — Optional per-note password; blocks are stored AES-GCM encrypted (PBKDF2 key derivation). Text copied out of an encrypted note stays out of the clipboard history and is wiped after 30 s
 - **Automatic lock** — An open encrypted note closes itself after a configurable idle period (default 5 minutes, `Never` to disable), and at once when Windows locks (`Win+L`), the remote session disconnects or the computer goes to sleep (a setting too) — saving unsaved changes first and forgetting the password
 - **PDF, Word & Markdown export** — Export a note to PDF (QuestPDF), `.docx` (Open XML SDK) or `.md` (CommonMark, images in a folder beside it): text with formatting and images, checklists as ticked boxes, clickable links (link blocks, and addresses in text and checklist items), attachments listed by name and size, and secrets without their password
+- **Markdown import** — Drop `.md` / `.txt` files on the note list (or the rail's import button): one note per file, the reverse of the Markdown export — headings, emphasis, strikethrough, `<mark>`, inline code, lists and links in text blocks, task lists as checklists, fenced code as code blocks, local images embedded, a leading `# Title` as the title
 - **Encrypted backups** — BACPAC export of the database packed into an AES-256 zip, by hand or automatically (daily or weekly, checked at startup and hourly, keeping the last N)
 - **Material Design UI** — Three-pane layout (icon rail · note list / tags · editor), cards, chips, snackbar, light/dark theme
 
@@ -51,6 +52,7 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 | MVVM | [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) |
 | ORM | Entity Framework Core 10 |
 | Database | SQL Server |
+| Markdown import | [Markdig](https://github.com/xoofx/markdig) |
 | Coding Style | Functional programming (Zoran Horvat style) |
 
 ## Prerequisites

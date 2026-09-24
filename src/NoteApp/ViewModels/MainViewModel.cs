@@ -33,7 +33,7 @@ public partial class MainViewModel : ObservableObject
     // Settings modal (hosted in RootDialog). The keyboard shortcuts stay inert while
     // it is open: Ctrl+N would otherwise create a note underneath the overlay.
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(CreateNoteCommand), nameof(SaveCurrentEditorCommand), nameof(DismissCommand), nameof(DeleteOpenNoteCommand), nameof(DuplicateOpenNoteCommand), nameof(NewFromTemplateCommand), nameof(ToggleFocusModeCommand), nameof(GoBackCommand), nameof(GoForwardCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CreateNoteCommand), nameof(SaveCurrentEditorCommand), nameof(DismissCommand), nameof(DeleteOpenNoteCommand), nameof(DuplicateOpenNoteCommand), nameof(NewFromTemplateCommand), nameof(ToggleFocusModeCommand), nameof(GoBackCommand), nameof(GoForwardCommand), nameof(ImportFilesCommand))]
     private bool _isSettingsOpen;
 
     public NoteListViewModel NoteListViewModel { get; }
@@ -509,6 +509,8 @@ public partial class MainViewModel : ObservableObject
         entries.Add(new CommandEntry("Show the archive", () => ShowShelf(archive: true, trash: false)));
         entries.Add(new CommandEntry("Show the trash", () => ShowShelf(archive: false, trash: true)));
         entries.Add(new CommandEntry("Tags", () => Run(NavigateToTagsCommand)));
+        entries.Add(new CommandEntry("Reminders", () => Run(NavigateToRemindersCommand)));
+        entries.Add(new CommandEntry("Import Markdown or text files…", () => ImportFilesCommand.ExecuteAsync(null)));
         entries.Add(new CommandEntry("Settings", () => Run(OpenSettingsCommand)));
         entries.Add(new CommandEntry("Help", () => Run(ShowHelpCommand)));
         if (CurrentEditor is NoteEditorViewModel)
@@ -748,6 +750,54 @@ public partial class MainViewModel : ObservableObject
     public Task LockEncryptedNoteNowAsync(string why) => LockEncryptedNoteAsync(why);
 
     public bool KeepsRunningInTray => _settingsService.Current.CloseToTray;
+
+    // --- Import (Markdown / text files: the rail button, a drop on the list) ---
+
+    [RelayCommand(CanExecute = nameof(CanActOnShell))]
+    private async Task ImportFiles()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Import notes",
+            Filter = "Markdown and text (*.md;*.markdown;*.txt)|*.md;*.markdown;*.txt|All files (*.*)|*.*",
+            Multiselect = true
+        };
+        if (dialog.ShowDialog(Application.Current.MainWindow) == true)
+            await ImportFilesAsync(dialog.FileNames);
+    }
+
+    // One note per file; the others still go in when one cannot be read. Returns how many.
+    public async Task<int> ImportFilesAsync(IEnumerable<string> paths)
+    {
+        var imported = 0;
+        var failed = new List<string>();
+        foreach (var path in paths.Where(Services.Import.MarkdownImport.CanImport))
+        {
+            try
+            {
+                var note = Services.Import.MarkdownImport.FromFile(path);
+                if ((await _noteService.CreateNoteAsync(note.Title, note.Blocks, [])).TryGet(out _, out var error))
+                    imported++;
+                else
+                    failed.Add($"{Path.GetFileName(path)} ({error.Message})");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                failed.Add($"{Path.GetFileName(path)} ({ex.Message})");
+            }
+        }
+
+        if (imported > 0)
+        {
+            MiddlePaneContent = NoteListViewModel;
+            await NoteListViewModel.LoadNotes();
+        }
+
+        MessageQueue.Enqueue(failed.Count == 0
+            ? imported == 1 ? "1 note imported." : $"{imported} notes imported."
+            : $"{imported} imported; not imported: {string.Join(", ", failed)}");
+        return imported;
+    }
 
     // --- Quick notes (Ctrl+Alt+N, the tray icon) ---
 

@@ -114,6 +114,8 @@
                 <TextBlock Style="{StaticResource Body}"
                            Text="Secret blocks hold a login: what it is for, the user name, the password and, if you like, the address it is used at. The password stays masked until you click the eye. The copy buttons put the user name or the password on the clipboard without it going into the clipboard history (Win+V) or the cloud clipboard, and NoteApp wipes it again after 30 seconds unless you have copied something else since. The password is never searched, shown in the list, exported or written to a draft. Keep such notes encrypted: in a note that is not, the block reminds you that its password is stored as plain text." />
                 <TextBlock Style="{StaticResource Body}"
+                           Text="Markdown (.md) and text (.txt) files dropped on the note list — or picked with the import button in the rail — become notes, one per file: what the Markdown export writes comes back as it was (headings, bold, italic, strikethrough, highlight, code, lists, links, task lists as checklists, code as code blocks, the images of its _files folder), and a first # line is the title." />
+                <TextBlock Style="{StaticResource Body}"
                            Text="The PDF, Word and Markdown buttons in the editor header export the whole open note (Markdown puts the images in a folder next to the .md file): text with its formatting and images, checklists as ticked boxes, links — clickable in both, including the addresses in text and checklist items — and the attached files listed by name — their bytes stay in the database." />
 
                 <TextBlock Style="{StaticResource Body}"

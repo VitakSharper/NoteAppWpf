@@ -111,6 +111,11 @@
                             Click="OnTemplateMenu" ToolTip="New from template">
                         <materialDesign:PackIcon Kind="FileDocumentPlusOutline" Width="24" Height="24" />
                     </Button>
+                    <Button DockPanel.Dock="Top" Style="{StaticResource MaterialDesignIconButton}"
+                            Foreground="{StaticResource RailForegroundBrush}" Height="48"
+                            Command="{Binding ImportFilesCommand}" ToolTip="Import Markdown or text files (or drop them on the note list)">
+                        <materialDesign:PackIcon Kind="FileImportOutline" Width="24" Height="24" />
+                    </Button>
 
                     <!-- Settings pinned at the bottom -->
                     <Button DockPanel.Dock="Bottom" Style="{StaticResource MaterialDesignIconButton}"
