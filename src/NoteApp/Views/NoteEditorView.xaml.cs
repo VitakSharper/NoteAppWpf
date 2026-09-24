@@ -859,9 +859,17 @@ public partial class NoteEditorView : UserControl
     // checklist behaves; the row itself only exists after the next layout pass.
     private void OnChecklistItemKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Enter || sender is not TextBox box || box.Tag is not ChecklistItemViewModel item)
+        if (sender is not TextBox box || box.Tag is not ChecklistItemViewModel item || DataContext is not NoteEditorViewModel vm)
             return;
-        if (DataContext is not NoteEditorViewModel vm)
+
+        if (ChecklistMoveOffset(e.Key == Key.System ? e.SystemKey : e.Key, Keyboard.Modifiers) is { } offset)
+        {
+            e.Handled = true;
+            MoveChecklistItem(vm, item, offset, box.CaretIndex);
+            return;
+        }
+
+        if (e.Key != Key.Enter)
             return;
 
         var block = vm.Blocks.FirstOrDefault(b => b.ChecklistItems.Contains(item));
@@ -873,6 +881,31 @@ public partial class NoteEditorView : UserControl
 
         _ = Dispatcher.BeginInvoke(DispatcherPriority.Loaded,
             new Action(() => FindChecklistTextBox(BlocksScrollViewer, added)?.Focus()));
+    }
+
+    // Alt turns the arrow keys into Key.System, with the real key in SystemKey.
+    internal static int? ChecklistMoveOffset(Key key, ModifierKeys modifiers) =>
+        modifiers != ModifierKeys.Alt ? null : key switch
+        {
+            Key.Up => -1,
+            Key.Down => 1,
+            _ => null
+        };
+
+    // The row is rebuilt by the move: the focus and the caret follow it to its new place.
+    internal void MoveChecklistItem(NoteEditorViewModel vm, ChecklistItemViewModel item, int offset, int caretIndex)
+    {
+        if (!vm.MoveChecklistItem(item, offset))
+            return;
+
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            if (FindChecklistTextBox(BlocksScrollViewer, item) is not { } box)
+                return;
+
+            box.Focus();
+            box.CaretIndex = Math.Min(caretIndex, box.Text.Length);
+        }));
     }
 
     private static TextBox? FindChecklistTextBox(DependencyObject root, ChecklistItemViewModel item)

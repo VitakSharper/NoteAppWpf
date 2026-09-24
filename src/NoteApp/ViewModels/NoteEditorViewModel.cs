@@ -49,6 +49,12 @@ public partial class BlockViewModel : ObservableObject
 
     public string ChecklistSummary => $"{ChecklistItems.Count(i => i.IsDone)}/{ChecklistItems.Count} done";
 
+    // View state, not content: hiding the ticked items is not an edit (OnBlockPropertyChanged
+    // skips it) and is not stored — every note opens with its whole checklist visible.
+    [ObservableProperty] private bool _hideDone;
+
+    public bool HasDone => ChecklistItems.Any(i => i.IsDone);
+
     // The same rule the save applies, so the open button never offers what cannot be stored.
     public bool CanOpenLink => LinkUrl.From(LinkUrlText).IsSuccess;
 
@@ -66,13 +72,17 @@ public partial class BlockViewModel : ObservableObject
                 item.PropertyChanged += OnItemChanged;
 
             OnPropertyChanged(nameof(ChecklistSummary));
+            OnPropertyChanged(nameof(HasDone));
         };
     }
 
     private void OnItemChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ChecklistItemViewModel.IsDone))
+        {
             OnPropertyChanged(nameof(ChecklistSummary));
+            OnPropertyChanged(nameof(HasDone));
+        }
     }
 
     public string BlockLabel => BlockType switch
@@ -223,7 +233,8 @@ public partial class NoteEditorViewModel : ObservableObject
     // the user: that write is a serialization artefact and must not look like an edit.
     private void OnBlockPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(BlockViewModel.RichTextContent) or nameof(BlockViewModel.PlainTextContent))
+        if (e.PropertyName is nameof(BlockViewModel.RichTextContent) or nameof(BlockViewModel.PlainTextContent)
+            or nameof(BlockViewModel.HideDone))
             return;
 
         MarkDirty();
@@ -379,6 +390,28 @@ public partial class NoteEditorViewModel : ObservableObject
         var index = block.ChecklistItems.IndexOf(after);
         block.ChecklistItems.Insert(index < 0 ? block.ChecklistItems.Count : index + 1, item);
         return item;
+    }
+
+    // Alt+Up / Alt+Down in an item: it swaps places with the next visible row that way, so
+    // with "Hide done" on it hops over the hidden ticked items instead of seeming stuck.
+    // false when it is already at that end of its list.
+    public bool MoveChecklistItem(ChecklistItemViewModel item, int offset)
+    {
+        var block = Blocks.FirstOrDefault(b => b.ChecklistItems.Contains(item));
+        if (block is null)
+            return false;
+
+        var items = block.ChecklistItems;
+        var index = items.IndexOf(item);
+        var target = index + offset;
+        while (target >= 0 && target < items.Count && block.HideDone && items[target].IsDone)
+            target += offset;
+
+        if (target < 0 || target >= items.Count)
+            return false;
+
+        items.Move(index, target);
+        return true;
     }
 
     [RelayCommand]

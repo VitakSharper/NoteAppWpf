@@ -192,6 +192,20 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:ChecklistItemViewModel}">
                             <DockPanel Margin="0,1">
+                                <!-- "Hide done" on the block collapses the ticked rows. -->
+                                <DockPanel.Style>
+                                    <Style TargetType="DockPanel">
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsDone}" Value="True" />
+                                                    <Condition Binding="{Binding DataContext.HideDone, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Value="True" />
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DockPanel.Style>
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding IsDone}"
                                           VerticalAlignment="Center" Margin="0,0,8,0"
                                           ToolTip="Mark as done" />
@@ -220,7 +234,7 @@
                                     <materialDesign:PackIcon Kind="OpenInNew" Width="14" Height="14" />
                                 </Button>
                                 <!-- Tag carries the item so the code-behind can find and focus
-                                     the row it just created (Enter adds one below). -->
+                                     the row it just created (Enter adds one below) or moved (Alt+Up/Down). -->
                                 <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
                                          Tag="{Binding}"
                                          KeyDown="OnChecklistItemKeyDown"
@@ -252,11 +266,30 @@
                     <TextBlock DockPanel.Dock="Right" Text="{Binding ChecklistSummary}"
                                VerticalAlignment="Center" FontSize="12"
                                Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                    <!-- Only offered once something is ticked. -->
+                    <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding HideDone}"
+                                  Height="28" Padding="8,0" Margin="0,0,8,0"
+                                  ToolTip="Hide or show the ticked items (not saved with the note)">
+                        <ToggleButton.Style>
+                            <Style TargetType="ToggleButton" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                                <Setter Property="Content" Value="Hide done" />
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasDone}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter Property="Content" Value="Show done" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ToggleButton.Style>
+                    </ToggleButton>
                     <Button HorizontalAlignment="Left" Height="28" Padding="8,0"
                             Style="{StaticResource MaterialDesignFlatButton}"
                             Command="{Binding DataContext.AddChecklistItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding}"
-                            ToolTip="Add an item (or press Enter in one)">
+                            ToolTip="Add an item (or press Enter in one; Alt+Up / Alt+Down move an item)">
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="Plus" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,4,0" />
                             <TextBlock Text="Add item" FontSize="12" VerticalAlignment="Center" />

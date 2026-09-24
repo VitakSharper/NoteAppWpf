@@ -46,3 +46,48 @@ public class EditorFormattingUiTests
         Wpf.Pump();
     }
 }
+
+public class ChecklistUiTests
+{
+    [Fact]
+    public void Hide_done_collapses_the_ticked_rows_only() => Wpf.Run(() =>
+    {
+        using var editor = new OpenEditor(Notes.With(new NoteApp.Domain.Models.NoteBlock.Checklist(
+            [new("a", true), new("b", false)])));
+        var rows = editor.Find<System.Windows.Controls.TextBox>().Where(t => t.Tag is NoteApp.ViewModels.ChecklistItemViewModel).ToList();
+        var toggle = editor.Find<System.Windows.Controls.Primitives.ToggleButton>().Single(t => t.DataContext is NoteApp.ViewModels.BlockViewModel && Equals(t.Content, "Hide done"));
+        Assert.True(toggle.IsVisible);
+
+        editor.ViewModel.Blocks[0].HideDone = true;
+        Wpf.Pump();
+
+        Assert.False(rows[0].IsVisible);
+        Assert.True(rows[1].IsVisible);
+        Assert.Equal("Show done", toggle.Content);
+        Assert.False(editor.ViewModel.IsDirty);
+    });
+
+    [Fact]
+    public void Only_alt_with_an_arrow_moves_an_item()
+    {
+        Assert.Equal(-1, NoteApp.Views.NoteEditorView.ChecklistMoveOffset(System.Windows.Input.Key.Up, System.Windows.Input.ModifierKeys.Alt));
+        Assert.Equal(1, NoteApp.Views.NoteEditorView.ChecklistMoveOffset(System.Windows.Input.Key.Down, System.Windows.Input.ModifierKeys.Alt));
+        Assert.Null(NoteApp.Views.NoteEditorView.ChecklistMoveOffset(System.Windows.Input.Key.Up, System.Windows.Input.ModifierKeys.None));
+        Assert.Null(NoteApp.Views.NoteEditorView.ChecklistMoveOffset(System.Windows.Input.Key.Left, System.Windows.Input.ModifierKeys.Alt));
+    }
+
+    [Fact]
+    public void A_moved_item_keeps_the_focus_and_the_caret() => Wpf.Run(() =>
+    {
+        using var editor = new OpenEditor(Notes.With(Notes.Checklist("first", "second")));
+        var second = editor.ViewModel.Blocks[0].ChecklistItems[1];
+
+        editor.View.MoveChecklistItem(editor.ViewModel, second, -1, caretIndex: 3);
+        Wpf.Pump();
+
+        var box = editor.Find<System.Windows.Controls.TextBox>().First(t => t.Tag is NoteApp.ViewModels.ChecklistItemViewModel);
+        Assert.Same(second, box.Tag);
+        Assert.True(box.IsKeyboardFocusWithin || box.IsFocused);
+        Assert.Equal(3, box.CaretIndex);
+    });
+}
