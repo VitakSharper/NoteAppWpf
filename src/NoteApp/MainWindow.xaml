@@ -23,6 +23,7 @@
         <KeyBinding Key="Escape" Command="{Binding DismissCommand}" />
         <KeyBinding Gesture="Ctrl+F" Command="{x:Static local:MainWindow.FocusSearchCommand}" />
         <KeyBinding Key="F1" Command="{Binding ShowHelpCommand}" />
+        <KeyBinding Key="F11" Command="{Binding ToggleFocusModeCommand}" />
     </Window.InputBindings>
     <Window.CommandBindings>
         <!-- Focus is a view concern, hence code-behind rather than a view-model command. -->
@@ -54,9 +55,10 @@
 
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="64" />                          <!-- icon rail -->
-                <ColumnDefinition Width="340" MinWidth="260" />          <!-- middle pane -->
-                <ColumnDefinition Width="Auto" />                        <!-- splitter -->
+                <!-- Named: focus mode collapses the first three and gives the splitter's width back after. -->
+                <ColumnDefinition x:Name="RailColumn" Width="64" />                          <!-- icon rail -->
+                <ColumnDefinition x:Name="MiddleColumn" Width="340" MinWidth="260" />        <!-- middle pane -->
+                <ColumnDefinition x:Name="SplitterColumn" Width="Auto" />                    <!-- splitter -->
                 <ColumnDefinition Width="*" MinWidth="360" />            <!-- editor pane -->
             </Grid.ColumnDefinitions>
 

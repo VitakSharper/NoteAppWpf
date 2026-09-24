@@ -343,6 +343,29 @@
                     Width="36" Height="36" Margin="0,0,4,0">
                 <materialDesign:PackIcon Kind="LanguageMarkdownOutline" Width="22" Height="22" />
             </Button>
+            <!-- Focus mode belongs to the shell too: it hides the rail and the note list. -->
+            <Button DockPanel.Dock="Right" ToolTip="Focus mode (F11)"
+                    Command="{Binding DataContext.ToggleFocusModeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    Width="36" Height="36" Margin="0,0,4,0">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignIconButton}">
+                        <Setter Property="Content">
+                            <Setter.Value>
+                                <materialDesign:PackIcon Kind="ArrowExpand" Width="22" Height="22" />
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding DataContext.IsFocusMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                <Setter Property="Content">
+                                    <Setter.Value>
+                                        <materialDesign:PackIcon Kind="ArrowCollapse" Width="22" Height="22" />
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
             <!-- Deletion belongs to the shell (it goes through the list's UNDO), hence the Window binding -->
             <Button DockPanel.Dock="Right" ToolTip="Move this note to the trash"
                     Style="{StaticResource MaterialDesignIconButton}"

@@ -27,6 +27,48 @@ public partial class MainWindow : Window
         AddHandler(PreviewKeyDownEvent, new KeyEventHandler(OnUserActivity), handledEventsToo: true);
         AddHandler(PreviewMouseDownEvent, new MouseButtonEventHandler(OnUserActivity), handledEventsToo: true);
         AddHandler(PreviewMouseWheelEvent, new MouseWheelEventHandler(OnUserActivity), handledEventsToo: true);
+
+        DataContextChanged += (_, e) =>
+        {
+            if (e.OldValue is MainViewModel old)
+                old.PropertyChanged -= OnViewModelPropertyChanged;
+            if (e.NewValue is MainViewModel vm)
+                vm.PropertyChanged += OnViewModelPropertyChanged;
+        };
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainViewModel.IsFocusMode) && sender is MainViewModel vm)
+            ApplyFocusMode(vm.IsFocusMode);
+    }
+
+    // --- Focus mode ---
+
+    // The widths are put back as they were: the splitter may have resized the list pane,
+    // and that width is the user's.
+    private GridLength _middleWidth;
+    private double _middleMinWidth;
+
+    internal void ApplyFocusMode(bool on)
+    {
+        if (on == (RailColumn.Width.Value == 0))
+            return;
+
+        if (on)
+        {
+            _middleWidth = MiddleColumn.Width;
+            _middleMinWidth = MiddleColumn.MinWidth;
+            MiddleColumn.MinWidth = 0;
+            RailColumn.Width = MiddleColumn.Width = SplitterColumn.Width = new GridLength(0);
+        }
+        else
+        {
+            RailColumn.Width = new GridLength(64);
+            MiddleColumn.MinWidth = _middleMinWidth;
+            MiddleColumn.Width = _middleWidth;
+            SplitterColumn.Width = GridLength.Auto;
+        }
     }
 
     private void OnUserActivity(object sender, RoutedEventArgs e) =>

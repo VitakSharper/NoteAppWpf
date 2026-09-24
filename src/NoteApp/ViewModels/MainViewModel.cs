@@ -24,12 +24,14 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private ObservableObject? _middlePaneContent;
     // Right pane: a NoteEditorViewModel, or null => empty-state placeholder
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SaveCurrentEditorCommand), nameof(DismissCommand), nameof(DeleteOpenNoteCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SaveCurrentEditorCommand), nameof(DismissCommand), nameof(DeleteOpenNoteCommand), nameof(ToggleFocusModeCommand))]
     private ObservableObject? _currentEditor;
+    // Rail and note list hidden, the editor gets the whole window (MainWindow collapses the columns).
+    [ObservableProperty] private bool _isFocusMode;
     // Settings modal (hosted in RootDialog). The keyboard shortcuts stay inert while
     // it is open: Ctrl+N would otherwise create a note underneath the overlay.
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(CreateNoteCommand), nameof(SaveCurrentEditorCommand), nameof(DismissCommand), nameof(DeleteOpenNoteCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CreateNoteCommand), nameof(SaveCurrentEditorCommand), nameof(DismissCommand), nameof(DeleteOpenNoteCommand), nameof(ToggleFocusModeCommand))]
     private bool _isSettingsOpen;
 
     public NoteListViewModel NoteListViewModel { get; }
@@ -162,7 +164,7 @@ public partial class MainViewModel : ObservableObject
         await NoteListViewModel.DeleteNoteCommand.ExecuteAsync(summary);
     }
 
-    // Escape closes whatever is on top: the Settings dialog, else the editor.
+    // Escape closes whatever is on top: the Settings dialog, then focus mode, else the editor.
     [RelayCommand(CanExecute = nameof(CanDismiss))]
     private async Task Dismiss()
     {
@@ -172,7 +174,24 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
+        if (IsFocusMode)
+        {
+            IsFocusMode = false;
+            return;
+        }
+
         await CloseEditorAsync();
+    }
+
+    // F11 and the editor header button. Only with a note open: focus on nothing is an empty window.
+    [RelayCommand(CanExecute = nameof(HasOpenEditor))]
+    private void ToggleFocusMode() => IsFocusMode = !IsFocusMode;
+
+    // The editor went away (closed, deleted, locked): so does focus mode.
+    partial void OnCurrentEditorChanged(ObservableObject? value)
+    {
+        if (value is null)
+            IsFocusMode = false;
     }
 
     // The list only carries summaries: the full note (blocks included) is
