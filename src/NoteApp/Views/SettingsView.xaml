@@ -136,6 +136,16 @@
                                    Foreground="{DynamicResource MaterialDesignBodyLight}" />
                     </StackPanel>
 
+                    <StackPanel Margin="0,0,0,16">
+                        <CheckBox IsChecked="{Binding CheckForUpdates}"
+                                  Content="Tell me when a new version of NoteApp is out"
+                                  FontSize="14" />
+                        <TextBlock Text="Looks at the latest release on GitHub at most once a day; nothing is downloaded or installed by itself."
+                                   TextWrapping="Wrap"
+                                   Margin="28,4,0,0"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                    </StackPanel>
+
                     <StackPanel Margin="0,0,0,20">
                         <TextBlock Text="Versions kept of each note"
                                    FontSize="14"

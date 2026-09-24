@@ -38,7 +38,7 @@ Three exporters are wired from the editor header: PDF (`Services/PdfExportServic
 
 ## Repository
 
-CI: `.github/workflows/ci.yml` (windows-latest) restores, builds Release and runs both test projects on every push/PR to `master` — no database or secret involved.
+CI: `.github/workflows/ci.yml` (windows-latest) restores, builds Release and runs both test projects on every push/PR to `master` — no database or secret involved. Releases: `.github/workflows/release.yml` — pushing a `vX.Y.Z` tag tests, publishes the single-file exe with `-p:Version=X.Y.Z` and runs `gh release create` with it (`contents: write`); run by hand (`workflow_dispatch`) it only keeps the exe as an artifact. `NoteApp.csproj`'s `<Version>` is what a local build reports. `Services/UpdateCheck` (pure parsing/comparison + `FetchAsync`, User-Agent required by the GitHub API, any failure = no answer; 404 until the first release) is called once, 30 s after startup, by `App.xaml.cs` → `MainViewModel.OfferUpdateAsync` (at most daily via `AppSettings.LastUpdateCheckUtc`, `CheckForUpdates` setting, a snackbar with DOWNLOAD opening the release page through `LinkLauncher`) — App-side so no test ever reaches the network.
 
 GitHub: https://github.com/VitakSharper/NoteAppWpf.git (remote `origin`, branch `master`).
 

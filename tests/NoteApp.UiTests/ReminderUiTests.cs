@@ -110,3 +110,29 @@ public class ReminderUiTests
         }
     }
 }
+
+public class UpdateOfferUiTests
+{
+    [Fact]
+    public void GitHub_is_asked_once_a_day_and_only_when_the_setting_is_on() => Wpf.Run(() =>
+    {
+        var shell = FocusModeUiTests.Shell();
+        var asked = 0;
+        Task<Option<LatestRelease>> Latest()
+        {
+            asked++;
+            return Task.FromResult<Option<LatestRelease>>(new Option<LatestRelease>.Some(
+                new LatestRelease(new Version(9, 0, 0), "v9.0.0", new Uri("https://github.com/VitakSharper/NoteAppWpf/releases/tag/v9.0.0"))));
+        }
+        var now = DateTime.UtcNow;
+
+        shell.OfferUpdateAsync(Latest, new Version(1, 1, 0), now).GetAwaiter().GetResult();
+        shell.OfferUpdateAsync(Latest, new Version(1, 1, 0), now.AddHours(2)).GetAwaiter().GetResult();
+        Assert.Equal(1, asked);
+
+        shell.SettingsViewModel.CheckForUpdates = false;
+        shell.SettingsViewModel.SaveCommand.Execute(null);
+        shell.OfferUpdateAsync(Latest, new Version(1, 1, 0), now.AddDays(2)).GetAwaiter().GetResult();
+        Assert.Equal(1, asked);
+    });
+}

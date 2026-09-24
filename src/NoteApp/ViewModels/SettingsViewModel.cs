@@ -68,6 +68,7 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private KeepVersionsOption _keepVersions = KeepVersionsOption.For(AppSettings.Default.KeepVersions);
     [ObservableProperty] private bool _closeToTray = AppSettings.Default.CloseToTray;
     [ObservableProperty] private bool _quickNoteHotKey = AppSettings.Default.QuickNoteHotKey;
+    [ObservableProperty] private bool _checkForUpdates = AppSettings.Default.CheckForUpdates;
 
     public IReadOnlyList<KeepVersionsOption> KeepVersionsOptions { get; } = KeepVersionsOption.All;
     [ObservableProperty] private AutoBackupInterval _autoBackup;
@@ -126,6 +127,7 @@ public partial class SettingsViewModel : ObservableObject
             KeepVersions = KeepVersions.Count,
             CloseToTray = CloseToTray,
             QuickNoteHotKey = QuickNoteHotKey,
+            CheckForUpdates = CheckForUpdates,
             AutoBackup = AutoBackup,
             KeepBackups = KeepBackups.Count
         });
@@ -217,6 +219,7 @@ public partial class SettingsViewModel : ObservableObject
         KeepVersions = KeepVersionsOption.For(settings.KeepVersions);
         CloseToTray = settings.CloseToTray;
         QuickNoteHotKey = settings.QuickNoteHotKey;
+        CheckForUpdates = settings.CheckForUpdates;
         AutoBackup = settings.AutoBackup;
         KeepBackups = KeepBackupsOption.For(settings.KeepBackups);
     }

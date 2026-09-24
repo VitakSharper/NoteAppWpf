@@ -158,6 +158,10 @@
                 <TextBlock Style="{StaticResource Body}"
                            Text="Restoring is manual for now: unzip the archive, then import the .bacpac with SqlPackage or SQL Server Management Studio." />
 
+                <TextBlock Style="{StaticResource Section}" Text="New versions" />
+                <TextBlock Style="{StaticResource Body}"
+                           Text="Once a day NoteApp looks at the latest release on GitHub and, when it is newer than this one (the version at the top of this window), says so with a DOWNLOAD button that opens the release page. Nothing is downloaded or installed by itself; Settings turns the check off." />
+
                 <TextBlock Style="{StaticResource Section}" Text="Where things live" />
                 <TextBlock Style="{StaticResource Body}" Text="Settings (settings.json) and the crash log (crash.log) are in:" />
                 <TextBlock x:Name="DataFolderText" Style="{StaticResource Body}" FontFamily="Consolas" />

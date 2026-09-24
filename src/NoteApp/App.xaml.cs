@@ -130,6 +130,17 @@ public partial class App : Application
         }
 
         mainWindow.Show();
+        _ = OfferUpdateLaterAsync(_mainViewModel);
+    }
+
+    private static readonly System.Net.Http.HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
+
+    // Not during startup: half a minute in, once.
+    private static async Task OfferUpdateLaterAsync(MainViewModel vm)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(30));
+        var current = typeof(App).Assembly.GetName().Version ?? new Version(0, 0, 0);
+        await vm.OfferUpdateAsync(() => UpdateCheck.FetchAsync(Http, CancellationToken.None), current, DateTime.UtcNow);
     }
 
     // One at a time: the shortcut again brings the open one to the front.

@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using MaterialDesignThemes.Wpf;
 using NoteApp.Data.Repositories;
 using System.IO;
+using NoteApp.Domain.Functional;
 using NoteApp.Domain.Models;
 using NoteApp.Domain.ValueObjects;
 using NoteApp.Services;
@@ -179,6 +180,30 @@ public partial class MainViewModel : ObservableObject
 
         if (MiddlePaneContent == RemindersViewModel)
             await RemindersViewModel.LoadCommand.ExecuteAsync(null);
+    }
+
+    // --- A newer release (Services/UpdateCheck) ---
+
+    // App.xaml.cs asks once, a while after startup. The check is recorded whatever the answer,
+    // so an offline machine does not ask GitHub again at every start of the day.
+    public async Task OfferUpdateAsync(Func<Task<Option<LatestRelease>>> fetchLatest, Version current, DateTime nowUtc)
+    {
+        var settings = _settingsService.Current;
+        if (!settings.CheckForUpdates || !UpdateCheck.IsDue(settings.LastUpdateCheckUtc, nowUtc))
+            return;
+
+        var latest = await fetchLatest();
+        _settingsService.Save(_settingsService.Current with { LastUpdateCheckUtc = nowUtc });
+        if (latest is not Option<LatestRelease>.Some { Value: var release } || !UpdateCheck.IsNewer(release.Version, current))
+            return;
+
+        MessageQueue.Enqueue($"NoteApp {release.Version.ToString(3)} is available (this is {current.ToString(3)}).", "DOWNLOAD",
+            clicked =>
+            {
+                if (LinkUrl.From(release.Page.AbsoluteUri).TryGet(out var page, out _))
+                    LinkLauncher.Open(page);
+            },
+            (object?)null, promote: false, neverConsiderToBeDuplicate: true, durationOverride: TimeSpan.FromSeconds(15));
     }
 
     // On exit, and after a reminder fired: where the next start picks up from.

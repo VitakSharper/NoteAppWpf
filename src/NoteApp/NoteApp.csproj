@@ -12,6 +12,9 @@
     <UseWindowsForms>true</UseWindowsForms>
     <UserSecretsId>8573b412-7954-40ff-8f8d-03c5018d4cd3</UserSecretsId>
     <ApplicationIcon>Resources\app.ico</ApplicationIcon>
+    <!-- The release workflow sets it from the tag (v1.2.0 -> 1.2.0); the update check compares
+         the latest GitHub Release with it. -->
+    <Version>1.1.0</Version>
     <!-- DacFx (BACPAC export) calls FileVersionInfo.GetVersionInfo(Assembly.Location),
          and Location is "" inside a single-file bundle, so "Backup Now" fails with
          ArgumentException "The path is empty. (Parameter 'path')" for every destination.

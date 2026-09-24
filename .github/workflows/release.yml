@@ -1,0 +1,58 @@
+# Pushing a version tag (git tag v1.2.0 && git push origin v1.2.0) builds the single-file exe
+# on a clean machine, after the tests, and attaches it to a GitHub Release of that name —
+# which is what NoteApp's update check looks at. Run by hand (Actions › Release › Run
+# workflow), it only builds the exe and keeps it as the run's artifact: a dry run.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # v1.2.0 -> 1.2.0; a manual run has no tag and builds 0.0.0-dev.
+      - name: Version from the tag
+        id: version
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $version = if ($tag -match '^v(\d+\.\d+\.\d+)$') { $Matches[1] } else { '0.0.0' }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Test
+        run: |
+          dotnet build NoteApp.slnx -c Release
+          dotnet test tests/NoteApp.Tests --no-build -c Release
+          dotnet test tests/NoteApp.UiTests --no-build -c Release
+
+      # The flags NoteApp.csproj relies on: self-contained, one file, everything extracted
+      # (DacFx needs real paths) and compressed.
+      - name: Publish the exe
+        run: dotnet publish src/NoteApp/NoteApp.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=${{ steps.version.outputs.version }} -o publish
+
+      - name: Keep the exe (manual run)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: NoteApp-exe
+          path: publish/NoteApp.exe
+
+      - name: GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" publish/NoteApp.exe --title "NoteApp ${{ github.ref_name }}" --generate-notes

@@ -41,6 +41,7 @@ A WPF desktop application for managing notes, built with .NET 10, SQL Server, an
 - **PDF, Word & Markdown export** — Export a note to PDF (QuestPDF), `.docx` (Open XML SDK) or `.md` (CommonMark, images in a folder beside it): text with formatting and images, checklists as ticked boxes, clickable links (link blocks, and addresses in text and checklist items), attachments listed by name and size, and secrets without their password
 - **Markdown import** — Drop `.md` / `.txt` files on the note list (or the rail's import button): one note per file, the reverse of the Markdown export — headings, emphasis, strikethrough, `<mark>`, inline code, lists and links in text blocks, task lists as checklists, fenced code as code blocks, local images embedded, a leading `# Title` as the title
 - **Encrypted backups** — BACPAC export of the database packed into an AES-256 zip, by hand or automatically (daily or weekly, checked at startup and hourly, keeping the last N)
+- **Releases and update check** — Pushing a `v1.2.0` tag builds the exe on GitHub Actions and attaches it to a GitHub Release; NoteApp looks at the latest release once a day (Settings can turn it off) and offers a DOWNLOAD link when it is newer — nothing installs itself
 - **Material Design UI** — Three-pane layout (icon rail · note list / tags · editor), cards, chips, snackbar, light/dark theme
 
 ## Tech Stack

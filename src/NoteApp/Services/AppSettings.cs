@@ -31,7 +31,10 @@ public sealed record AppSettings(
     bool QuickNoteHotKey = true,
     // The last time reminders were checked (UTC): the ones due since then fire at the next
     // check, so a reminder due while NoteApp was closed still comes.
-    DateTime? LastReminderCheckUtc = null)
+    DateTime? LastReminderCheckUtc = null,
+    // Look for a newer release on GitHub, at most once a day.
+    bool CheckForUpdates = true,
+    DateTime? LastUpdateCheckUtc = null)
 {
     public const double MinEditorZoom = 0.5;
     public const double MaxEditorZoom = 2.5;

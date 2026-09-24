@@ -75,7 +75,9 @@ public sealed class AppSettingsService
         int? KeepVersions = null,
         bool? CloseToTray = null,
         bool? QuickNoteHotKey = null,
-        DateTime? LastReminderCheckUtc = null)
+        DateTime? LastReminderCheckUtc = null,
+        bool? CheckForUpdates = null,
+        DateTime? LastUpdateCheckUtc = null)
     {
         public static PersistedSettings From(AppSettings settings) => new(
             settings.ConfirmNoteDeletion,
@@ -93,7 +95,9 @@ public sealed class AppSettingsService
             settings.KeepVersions,
             settings.CloseToTray,
             settings.QuickNoteHotKey,
-            settings.LastReminderCheckUtc);
+            settings.LastReminderCheckUtc,
+            settings.CheckForUpdates,
+            settings.LastUpdateCheckUtc);
 
         public AppSettings ToSettings() => new(
             ConfirmNoteDeletion,
@@ -110,7 +114,9 @@ public sealed class AppSettingsService
             Math.Max(0, KeepVersions ?? AppSettings.Default.KeepVersions),
             CloseToTray ?? AppSettings.Default.CloseToTray,
             QuickNoteHotKey ?? AppSettings.Default.QuickNoteHotKey,
-            LastReminderCheckUtc is { } check ? DateTime.SpecifyKind(check, DateTimeKind.Utc) : null);
+            LastReminderCheckUtc is { } check ? DateTime.SpecifyKind(check, DateTimeKind.Utc) : null,
+            CheckForUpdates ?? AppSettings.Default.CheckForUpdates,
+            LastUpdateCheckUtc is { } updateCheck ? DateTime.SpecifyKind(updateCheck, DateTimeKind.Utc) : null);
 
         private static string? Protect(string value) =>
             string.IsNullOrEmpty(value)
