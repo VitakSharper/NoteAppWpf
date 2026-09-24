@@ -111,6 +111,10 @@ public partial class NoteEditorViewModel : ObservableObject
     public NoteId? EditedNoteId => _existingNote?.Id;
     public Note? EditedNote => _existingNote;
 
+    // The note-list search that led here, if any: the view opens the find bar of the
+    // first text block that contains it, so the match is on screen straight away.
+    public string? SearchTerm { get; init; }
+
     private bool _isDirty;
 
     // Set at the source of every change rather than by comparing a snapshot on the way

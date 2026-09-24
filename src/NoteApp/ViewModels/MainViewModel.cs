@@ -203,7 +203,7 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        await OpenEditorAsync(note, password);
+        await OpenEditorAsync(note, password, NoteListViewModel.SearchText);
     }
 
     private void OnCreateNoteRequested() => CreateNoteCommand.Execute(null);
@@ -224,12 +224,15 @@ public partial class MainViewModel : ObservableObject
         RearmEncryptedNoteLock();
     }
 
-    private async Task OpenEditorAsync(Note? note, string? password)
+    private async Task OpenEditorAsync(Note? note, string? password, string? searchTerm = null)
     {
         var tags = await _tagRepository.GetAllAsync();
         var allTags = tags.Match(t => t, _ => (IReadOnlyList<Tag>)[]);
 
-        var editor = new NoteEditorViewModel(_noteService, _tagRepository, allTags, note, password);
+        var editor = new NoteEditorViewModel(_noteService, _tagRepository, allTags, note, password)
+        {
+            SearchTerm = string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm.Trim()
+        };
         editor.SaveCompleted += OnNoteSaved;
         editor.CancelRequested += OnEditorCancelled;
         CurrentEditor = editor;

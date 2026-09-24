@@ -22,9 +22,12 @@ public sealed class OpenEditor : IDisposable
     public NoteEditorView View { get; }
     public NoteEditorViewModel ViewModel { get; }
 
-    public OpenEditor(Note? note)
+    public OpenEditor(Note? note, string? searchTerm = null)
     {
-        ViewModel = new NoteEditorViewModel(new NoteService(new UnusedNoteRepository()), new UnusedTagRepository(), [], note);
+        ViewModel = new NoteEditorViewModel(new NoteService(new UnusedNoteRepository()), new UnusedTagRepository(), [], note)
+        {
+            SearchTerm = searchTerm
+        };
         View = new NoteEditorView { DataContext = ViewModel };
         Window = Wpf.Show(View);
     }

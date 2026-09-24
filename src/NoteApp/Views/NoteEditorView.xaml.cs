@@ -75,6 +75,8 @@ public partial class NoteEditorView : UserControl
     // another set of blocks: stale entries must not survive the swap.
     private void ResetBlockRegistrations()
     {
+        _searchTermShown = false;
+
         foreach (var rtb in _richTextBoxes.Values)
             CommandManager.RemovePreviewExecutedHandler(rtb, OnPreviewPasteExecuted);
 
@@ -238,7 +240,42 @@ public partial class NoteEditorView : UserControl
                     DeserializeIntoRichTextBox(rtb, block.RichTextContent);
                     RichTextLinks.Linkify(rtb.Document);
                 });
+
+            ShowSearchTermIfFound(block.Id, rtb);
         }
+    }
+
+    // --- The note-list search, carried into the note it opened ---
+
+    // Blocks load top to bottom, so the first one to contain the term gets the find bar.
+    private bool _searchTermShown;
+
+    private void ShowSearchTermIfFound(Guid blockId, RichTextBox rtb)
+    {
+        if (_searchTermShown || DataContext is not NoteEditorViewModel { SearchTerm: { } term })
+            return;
+
+        var text = new TextRange(rtb.Document.ContentStart, rtb.Document.ContentEnd).Text;
+        if (!text.Contains(term, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        _searchTermShown = true;
+
+        // After this pass: the find bar and its text box register on their own Loaded.
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => ShowSearch(blockId, term)));
+    }
+
+    // Opens the find bar on a term without taking the focus: the list keeps it, so the
+    // arrow keys still move from note to note.
+    private void ShowSearch(Guid blockId, string term)
+    {
+        if (!_searchBars.TryGetValue(blockId, out var bar) || !_searchTextBoxes.TryGetValue(blockId, out var box))
+            return;
+
+        bar.Visibility = Visibility.Visible;
+        box.Text = term;
+        _searchDebounceTimer?.Stop();
+        PerformSearch(blockId, term);
     }
 
     private void OnRichTextBoxUnloaded(object sender, RoutedEventArgs e)
