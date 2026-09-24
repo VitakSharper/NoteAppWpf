@@ -1,0 +1,42 @@
+# Build and test on every push and pull request to master.
+# Windows only: NoteApp is WPF. No database is involved — NoteApp.Tests covers the pure
+# layers, NoteApp.UiTests drives the real views off-screen on view models whose
+# repositories throw — so no connection string or secret is needed here.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore NoteApp.slnx
+
+      - name: Build
+        run: dotnet build NoteApp.slnx --no-restore -c Release
+
+      - name: Unit tests
+        run: dotnet test tests/NoteApp.Tests --no-build -c Release --logger "trx;LogFileName=unit.trx" --results-directory TestResults
+
+      - name: UI tests
+        run: dotnet test tests/NoteApp.UiTests --no-build -c Release --logger "trx;LogFileName=ui.trx" --results-directory TestResults
+
+      - name: Keep the test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/*.trx

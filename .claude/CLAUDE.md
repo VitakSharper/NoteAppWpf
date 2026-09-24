@@ -32,6 +32,8 @@ Three exporters are wired from the editor header: PDF (`Services/PdfExportServic
 
 ## Repository
 
+CI: `.github/workflows/ci.yml` (windows-latest) restores, builds Release and runs both test projects on every push/PR to `master` — no database or secret involved.
+
 GitHub: https://github.com/VitakSharper/NoteAppWpf.git (remote `origin`, branch `master`).
 
 ## Architecture

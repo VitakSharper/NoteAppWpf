@@ -1,5 +1,7 @@
 # NoteApp
 
+[![CI](https://github.com/VitakSharper/NoteAppWpf/actions/workflows/ci.yml/badge.svg)](https://github.com/VitakSharper/NoteAppWpf/actions/workflows/ci.yml)
+
 A WPF desktop application for managing notes, built with .NET 10, SQL Server, and Material Design.
 
 ## Features
