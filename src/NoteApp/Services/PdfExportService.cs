@@ -83,7 +83,7 @@ public static class PdfExportService
                     break;
 
                 case DocAttachment attachment:
-                    column.Item().Text($"Attachment: {attachment.FileName} ({FormatSize(attachment.SizeBytes)})")
+                    column.Item().Text($"Attachment: {attachment.FileName} ({DocAttachment.Size(attachment.SizeBytes)})")
                         .Italic().FontColor(Colors.Grey.Darken1);
                     break;
             }
@@ -124,13 +124,6 @@ public static class PdfExportService
         if (label != link.Url)
             column.Item().Text(link.Url).FontSize(9).FontColor(Colors.Grey.Darken1);
     }
-
-    private static string FormatSize(long bytes) => bytes switch
-    {
-        < 1024 => $"{bytes} B",
-        < 1024 * 1024 => $"{bytes / 1024.0:0.#} KB",
-        _ => $"{bytes / (1024.0 * 1024.0):0.#} MB"
-    };
 
     // Images break the text flow: a paragraph becomes text / image / text items.
     private static void RenderParagraphInlines(ColumnDescriptor column, IReadOnlyList<DocInline> inlines)

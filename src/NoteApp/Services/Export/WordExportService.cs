@@ -211,17 +211,10 @@ public static class WordExportService
     private static Paragraph AttachmentParagraph(DocAttachment attachment) =>
         new(new Run(
             new RunProperties(new Italic(), new Color { Val = "595959" }),
-            PreservedText($"Attachment: {attachment.FileName} ({FormatSize(attachment.SizeBytes)})")));
+            PreservedText($"Attachment: {attachment.FileName} ({DocAttachment.Size(attachment.SizeBytes)})")));
 
     // Leading and trailing spaces are dropped by Word unless the text says otherwise.
     private static Text PreservedText(string value) => new(value) { Space = SpaceProcessingModeValues.Preserve };
-
-    private static string FormatSize(long bytes) => bytes switch
-    {
-        < 1024 => $"{bytes} B",
-        < 1024 * 1024 => $"{bytes / 1024.0:0.#} KB",
-        _ => $"{bytes / (1024.0 * 1024.0):0.#} MB"
-    };
 
     // The inline-picture markup from the SDK documentation, sized from the PNG header.
     private static Drawing ImageDrawing(MainDocumentPart main, byte[] png, int index)

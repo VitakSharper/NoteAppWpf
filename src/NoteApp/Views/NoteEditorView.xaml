@@ -301,6 +301,12 @@
                     Width="36" Height="36" Margin="0,0,4,0">
                 <materialDesign:PackIcon Kind="FileWordBox" Width="22" Height="22" />
             </Button>
+            <Button DockPanel.Dock="Right" ToolTip="Export to Markdown (.md)"
+                    Style="{StaticResource MaterialDesignIconButton}"
+                    Click="OnExportToMarkdown"
+                    Width="36" Height="36" Margin="0,0,4,0">
+                <materialDesign:PackIcon Kind="LanguageMarkdownOutline" Width="22" Height="22" />
+            </Button>
             <!-- Deletion belongs to the shell (it goes through the list's UNDO), hence the Window binding -->
             <Button DockPanel.Dock="Right" ToolTip="Move this note to the trash"
                     Style="{StaticResource MaterialDesignIconButton}"

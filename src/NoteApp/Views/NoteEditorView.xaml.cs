@@ -860,8 +860,11 @@ public partial class NoteEditorView : UserControl
     private void OnExportToWord(object sender, RoutedEventArgs e) =>
         Export("Word", "docx", "Word documents (*.docx)|*.docx", WordExportService.Export);
 
-    // Both exporters take the same blocks, in note order, and differ only in what
-    // they can render: links are hyperlinks in Word and coloured text in the PDF.
+    private void OnExportToMarkdown(object sender, RoutedEventArgs e) =>
+        Export("Markdown", "md", "Markdown (*.md)|*.md", MarkdownExportService.Export);
+
+    // Every exporter takes the same blocks, in note order, and differs only in how it
+    // renders them (Markdown writes its images to a folder next to the file).
     private void Export(string format, string extension, string filter,
         Action<string, IReadOnlyList<ExportBlock>, string> export)
     {

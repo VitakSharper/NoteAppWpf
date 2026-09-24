@@ -14,7 +14,16 @@ public abstract record DocElement;
 public sealed record DocParagraph(IReadOnlyList<DocInline> Inlines) : DocElement;
 public sealed record DocList(DocListMarker Marker, IReadOnlyList<IReadOnlyList<DocInline>> Items) : DocElement;
 public sealed record DocLink(string Url, string Description) : DocElement;
-public sealed record DocAttachment(string FileName, long SizeBytes) : DocElement;
+public sealed record DocAttachment(string FileName, long SizeBytes) : DocElement
+{
+    // "2 KB": how every exporter writes the size of an attachment it lists by name.
+    public static string Size(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:0.#} KB",
+        _ => $"{bytes / (1024.0 * 1024.0):0.#} MB"
+    };
+}
 public sealed record DocChecklist(IReadOnlyList<DocChecklistItem> Items) : DocElement;
 
 public sealed record DocChecklistItem(string Text, bool IsDone);

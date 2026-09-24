@@ -28,7 +28,7 @@ dotnet user-secrets set "ConnectionStrings:NoteDb" "Server=YOUR_SERVER;Database=
 dotnet test NoteApp.slnx
 ```
 
-Two exporters are wired from the editor header: PDF (`Services/PdfExportService.cs`, QuestPDF, text blocks only) and Word (`Services/Export/WordExportService.cs`, Open XML SDK v3, every block in note order — links as hyperlinks, files by name). Both render from the WPF-free `DocElement` model in `Services/Export/DocumentModel.cs`, produced on the UI thread by `Services/Export/RichTextDocument.cs` (FlowDocument → elements). When the editor gains a formatting feature, extend the model and the extraction once, then each renderer; `WordExportService.Render` is unit-tested by reading the `.docx` back with the SDK; `PdfExportService.Render` (stream out) is smoke-tested the same way.
+Three exporters are wired from the editor header: PDF (`Services/PdfExportService.cs`, QuestPDF), Word (`Services/Export/WordExportService.cs`, Open XML SDK v3) and Markdown (`Services/Export/MarkdownExportService.cs`, CommonMark; images go to a `<name>_files` folder beside the `.md`, underline as `<u>`, lettered lists come out numbered) — every block in note order, links as hyperlinks, files by name. Both render from the WPF-free `DocElement` model in `Services/Export/DocumentModel.cs`, produced on the UI thread by `Services/Export/RichTextDocument.cs` (FlowDocument → elements). When the editor gains a formatting feature, extend the model and the extraction once, then each renderer (all three); `WordExportService.Render` is unit-tested by reading the `.docx` back with the SDK; `PdfExportService.Render` (stream out) is smoke-tested the same way.
 
 ## Repository
 
