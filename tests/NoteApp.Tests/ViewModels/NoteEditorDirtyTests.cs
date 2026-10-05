@@ -5,6 +5,7 @@ using NoteApp.Domain.Models;
 using NoteApp.Domain.ValueObjects;
 using NoteApp.Services;
 using NoteApp.ViewModels;
+using static NoteApp.Domain.Models.ChecklistItemState;
 
 namespace NoteApp.Tests.ViewModels;
 
@@ -124,7 +125,7 @@ public class NoteEditorDirtyTests
         var vm = Editor(SampleNote(SampleBlocks()));
         var checklist = vm.Blocks.Single(b => b.BlockType == BlockType.Checklist);
 
-        checklist.ChecklistItems[1].IsDone = true;
+        checklist.ChecklistItems[1].State = Done;
 
         Assert.True(vm.IsDirty);
     }
@@ -148,13 +149,13 @@ public class NoteEditorDirtyTests
 
         vm.AddChecklistItemCommand.Execute(checklist);
         Assert.True(vm.IsDirty);
-        Assert.Equal(3, checklist.ChecklistItems.Count);
+        Assert.Equal(4, checklist.ChecklistItems.Count);
 
         vm.RefreshAfterSave(SampleNote(SampleBlocks()));
-        vm.RemoveChecklistItemCommand.Execute(checklist.ChecklistItems[2]);
+        vm.RemoveChecklistItemCommand.Execute(checklist.ChecklistItems[3]);
 
         Assert.True(vm.IsDirty);
-        Assert.Equal(2, checklist.ChecklistItems.Count);
+        Assert.Equal(3, checklist.ChecklistItems.Count);
     }
 
     // Enter in an item: the new row lands right below the one being typed in, and
@@ -194,11 +195,14 @@ public class NoteEditorDirtyTests
         var vm = Editor(SampleNote(SampleBlocks()));
         var checklist = vm.Blocks.Single(b => b.BlockType == BlockType.Checklist);
 
-        Assert.Equal("1/2 done", checklist.ChecklistSummary);
+        Assert.Equal("1/3 done · 1 in progress", checklist.ChecklistSummary);
 
-        checklist.ChecklistItems[1].IsDone = true;
+        checklist.ChecklistItems[1].State = Done;
+        Assert.Equal("2/3 done · 1 in progress", checklist.ChecklistSummary);
 
-        Assert.Equal("2/2 done", checklist.ChecklistSummary);
+        // Finishing the started one: nothing left in progress, nothing said about it.
+        checklist.ChecklistItems[2].State = Done;
+        Assert.Equal("3/3 done", checklist.ChecklistSummary);
     }
 
     [Fact]

@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using NoteApp.Domain.Models;
 using NoteApp.Services;
+using static NoteApp.Domain.Models.ChecklistItemState;
 
 namespace NoteApp.Tests.Services;
 
@@ -29,8 +30,8 @@ public class EncryptionServiceTests
         Assert.Equal("https://example.com/page", link.Url.ToString());
 
         var checklist = Assert.IsType<NoteBlock.Checklist>(decrypted[3]);
-        Assert.Equal(["buy milk", "call the bank"], checklist.Items.Select(i => i.Text));
-        Assert.Equal(1, checklist.DoneCount);
+        Assert.Equal(["buy milk", "call the bank", "pay rent"], checklist.Items.Select(i => i.Text));
+        Assert.Equal([Done, Todo, InProgress], checklist.Items.Select(i => i.State));
 
         var secret = Assert.IsType<NoteBlock.Secret>(decrypted[4]);
         Assert.Equal(" p@ss word ", secret.Password);

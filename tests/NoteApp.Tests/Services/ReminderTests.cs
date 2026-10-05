@@ -66,7 +66,7 @@ public class ReminderTests
     {
         var due = new DateTime(2026, 9, 25, 7, 0, 0, DateTimeKind.Utc);
 
-        var json = ChecklistJson.Serialize([new ChecklistItem("call", false, due), new ChecklistItem("plain", false)]);
+        var json = ChecklistJson.Serialize([new ChecklistItem("call", ChecklistItemState.Todo, due), new ChecklistItem("plain", ChecklistItemState.Todo)]);
         var back = ChecklistJson.Deserialize(json);
 
         Assert.Contains(ChecklistJson.DueMarker, json);
@@ -99,9 +99,10 @@ public class ReminderTests
                     ChecklistJson =
                     [
                         ChecklistJson.Serialize([
-                            new ChecklistItem("call the bank", false, new DateTime(2026, 9, 25, 8, 0, 0, DateTimeKind.Utc)),
-                            new ChecklistItem("already done", true, new DateTime(2026, 9, 25, 6, 0, 0, DateTimeKind.Utc)),
-                            new ChecklistItem("no reminder", false)])
+                            // Started, not finished: still reminded.
+                            new ChecklistItem("call the bank", ChecklistItemState.InProgress, new DateTime(2026, 9, 25, 8, 0, 0, DateTimeKind.Utc)),
+                            new ChecklistItem("already done", ChecklistItemState.Done, new DateTime(2026, 9, 25, 6, 0, 0, DateTimeKind.Utc)),
+                            new ChecklistItem("no reminder", ChecklistItemState.Todo)])
                     ]
                 }
             ]));

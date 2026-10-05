@@ -31,6 +31,7 @@ public class MarkdownImportUiTests : IDisposable
             - two
 
             - [x] tests
+            - [/] review
             - [ ] release
 
             ```
@@ -56,9 +57,28 @@ public class MarkdownImportUiTests : IDisposable
         Assert.Equal(DocListMarker.Bullet, Assert.IsType<DocList>(first[2]).Marker);
 
         var checklist = (NoteBlock.Checklist)note.Blocks[1];
-        Assert.Equal([("tests", true), ("release", false)], checklist.Items.Select(i => (i.Text, i.IsDone)));
+        Assert.Equal(
+            [("tests", ChecklistItemState.Done), ("review", ChecklistItemState.InProgress), ("release", ChecklistItemState.Todo)],
+            checklist.Items.Select(i => (i.Text, i.State)));
         Assert.Equal("SELECT *\n\tFROM Notes", ((NoteBlock.Code)note.Blocks[2]).Content.ReplaceLineEndings("\n"));
         Assert.Equal("after the code", ((NoteBlock.Text)note.Blocks[3]).PlainText);
+    });
+
+    // Markdig knows only "[ ]" and "[x]": "[/]" (the export's in progress) is read by the import.
+    [Fact]
+    public void A_list_of_started_items_is_a_checklist() => Wpf.Run(() =>
+    {
+        var note = MarkdownImport.FromMarkdown("""
+            - [/] draft the plan
+            - [/]   ask [the team](https://team.example.com/)
+            - [/]no space, no task
+            """, "fallback");
+
+        Assert.Equal([BlockType.Checklist, BlockType.Text], note.Blocks.Select(b => b.Type));
+        Assert.Equal(
+            [("draft the plan", ChecklistItemState.InProgress), ("ask the team", ChecklistItemState.InProgress)],
+            ((NoteBlock.Checklist)note.Blocks[0]).Items.Select(i => (i.Text, i.State)));
+        Assert.Contains("[/]no space, no task", ((NoteBlock.Text)note.Blocks[1]).PlainText);
     });
 
     [Fact]

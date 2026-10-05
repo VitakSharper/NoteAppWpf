@@ -2,6 +2,7 @@ using System.IO;
 using System.Text;
 using NoteApp.Services;
 using NoteApp.Services.Export;
+using static NoteApp.Domain.Models.ChecklistItemState;
 
 namespace NoteApp.Tests.Services;
 
@@ -28,8 +29,9 @@ public class PdfExportServiceTests
                 new DocLineBreak()]),
             new DocList(DocListMarker.Decimal, [[new DocText("first", false, false, false)]]),
             new DocChecklist([
-                new DocChecklistItem("read https://mid.example.com/a later", IsDone: true),
-                new DocChecklistItem("buy milk", IsDone: false)]),
+                new DocChecklistItem("read https://mid.example.com/a later", Done),
+                new DocChecklistItem("call the bank", InProgress),
+                new DocChecklistItem("buy milk", Todo)]),
             new DocLink("https://example.com/page", "Example"),
             new DocAttachment("report.pdf", 2048),
             new DocSecret("Support site", "vbanard", "https://support.example.com/"),

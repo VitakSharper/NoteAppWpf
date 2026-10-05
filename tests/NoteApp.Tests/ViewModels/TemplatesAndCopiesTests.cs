@@ -39,7 +39,7 @@ public class TemplatesAndCopiesTests
     public async Task Saving_as_a_template_takes_what_the_editor_holds_under_new_block_ids()
     {
         var repo = new Recording();
-        var note = Note.Create(Title("Meeting"), [new NoteBlock.Checklist([new ChecklistItem("agenda", false)])], []).Unwrap();
+        var note = Note.Create(Title("Meeting"), [new NoteBlock.Checklist([new ChecklistItem("agenda", ChecklistItemState.Todo)])], []).Unwrap();
         var editor = new NoteEditorViewModel(new NoteService(repo), new NoTags(), [], note);
         editor.Blocks[0].ChecklistItems[0].Text = "agenda, then actions";
         string? message = null;

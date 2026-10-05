@@ -231,9 +231,11 @@
                                         </Style.Triggers>
                                     </Style>
                                 </DockPanel.Style>
-                                <CheckBox DockPanel.Dock="Left" IsChecked="{Binding IsDone}"
-                                          VerticalAlignment="Center" Margin="0,0,8,0"
-                                          ToolTip="Mark as done" />
+                                <!-- A click goes not started → in progress (the dash) → done → not started. -->
+                                <views:TriStateCheckBox DockPanel.Dock="Left" IsChecked="{Binding IsChecked}"
+                                                        Style="{StaticResource MaterialDesignCheckBox}"
+                                                        VerticalAlignment="Center" Margin="0,0,8,0"
+                                                        ToolTip="{Binding StateTip}" />
                                 <Button DockPanel.Dock="Right" ToolTip="Remove item"
                                         Style="{StaticResource MaterialDesignIconButton}"
                                         Width="26" Height="26" Margin="4,0,0,0"

@@ -167,7 +167,7 @@ public class EditorLinkUiTests
         Assert.Equal([Visibility.Visible, Visibility.Visible, Visibility.Collapsed], openButtons.Select(b => b.Visibility));
 
         // Done wins over the link styling.
-        ((ChecklistItemViewModel)boxes[0].Tag).IsDone = true;
+        ((ChecklistItemViewModel)boxes[0].Tag).State = ChecklistItemState.Done;
         Wpf.Pump();
         Assert.Equal(TextDecorationLocation.Strikethrough, Assert.Single(boxes[0].TextDecorations).Location);
     });

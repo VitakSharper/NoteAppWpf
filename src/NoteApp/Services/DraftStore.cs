@@ -1,10 +1,21 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using NoteApp.Domain.Models;
 
 namespace NoteApp.Services;
 
-public sealed record DraftChecklistItem(string Text, bool IsDone, DateTime? Due = null);
+// Two flags rather than the state: a draft left behind by a release that knew only "done"
+// still reads as it was written.
+public sealed record DraftChecklistItem(string Text, bool IsDone, DateTime? Due = null, bool InProgress = false)
+{
+    public static DraftChecklistItem From(string text, ChecklistItemState state, DateTime? due) =>
+        new(text, state == ChecklistItemState.Done, due, state == ChecklistItemState.InProgress);
+
+    [JsonIgnore]
+    public ChecklistItemState State =>
+        IsDone ? ChecklistItemState.Done : InProgress ? ChecklistItemState.InProgress : ChecklistItemState.Todo;
+}
 
 // One block as the editor holds it, valid or not: a draft keeps a half-typed link too.
 public sealed record DraftBlock(

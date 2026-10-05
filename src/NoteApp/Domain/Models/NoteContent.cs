@@ -3,7 +3,18 @@ using NoteApp.Domain.ValueObjects;
 namespace NoteApp.Domain.Models;
 
 // Due: when to be reminded of the item (UTC), if ever.
-public sealed record ChecklistItem(string Text, bool IsDone, DateTime? Due = null);
+public sealed record ChecklistItem(string Text, ChecklistItemState State, DateTime? Due = null)
+{
+    public bool IsDone => State == ChecklistItemState.Done;
+}
+
+// One state rather than two flags: an item cannot be both started and done.
+public enum ChecklistItemState
+{
+    Todo,
+    InProgress,
+    Done
+}
 
 public abstract record NoteBlock
 {

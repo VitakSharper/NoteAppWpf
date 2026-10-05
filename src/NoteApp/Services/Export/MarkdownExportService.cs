@@ -59,7 +59,7 @@ public static class MarkdownExportService
 
                 case DocChecklist checklist:
                     foreach (var item in checklist.Items)
-                        markdown.Append(item.IsDone ? "- [x] " : "- [ ] ").Append(TextWithLinks(item.Text)).Append('\n');
+                        markdown.Append($"- {item.Marker} ").Append(TextWithLinks(item.Text)).Append('\n');
                     markdown.Append('\n');
                     break;
 

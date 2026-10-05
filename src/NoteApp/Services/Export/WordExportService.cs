@@ -233,12 +233,12 @@ public static class WordExportService
 
     // Real Word checkboxes are content controls (or a legacy form field): a ballot-box
     // character reads the same everywhere and survives a copy-paste into any editor.
-    // A ticked item is struck through, the way the editor shows it, and an address in an
-    // item is a hyperlink, as it is in a text block.
+    // A ticked item is struck through, the way the editor shows it, a started one gets a
+    // half-filled circle, and an address in an item is a hyperlink, as it is in a text block.
     private static Paragraph ChecklistParagraph(DocChecklistItem item, MainDocumentPart main)
     {
         var paragraph = new Paragraph(new ParagraphProperties(new Indentation { Left = "360" }));
-        paragraph.Append(ChecklistRun($"{(item.IsDone ? "☑" : "☐")} ", item.IsDone));
+        paragraph.Append(ChecklistRun($"{DocChecklistItem.Box(item.State)} ", item.IsDone));
 
         foreach (var (text, link) in DocTextLinks.Split(item.Text))
         {

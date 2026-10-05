@@ -56,7 +56,7 @@ public class NoteTests
     public void Checklist_ExposesItsItemsAsPlainTextAndCountsWhatIsDone()
     {
         var checklist = new NoteBlock.Checklist(
-            [new ChecklistItem("buy milk", true), new ChecklistItem("call the bank", false)]);
+            [new ChecklistItem("buy milk", ChecklistItemState.Done), new ChecklistItem("call the bank", ChecklistItemState.InProgress)]);
 
         Assert.Equal("buy milk\ncall the bank", checklist.PlainText);
         Assert.Equal(1, checklist.DoneCount);

@@ -1800,7 +1800,7 @@ public partial class NoteEditorView : UserControl
             BlockType.Checklist => new ChecklistExportBlock(
                 b.ChecklistItems
                     .Where(i => !string.IsNullOrWhiteSpace(i.Text))
-                    .Select(i => new DocChecklistItem(i.Text.Trim(), i.IsDone))
+                    .Select(i => new DocChecklistItem(i.Text.Trim(), i.State))
                     .ToList()),
             // Never the password: it does not even reach the exporter.
             BlockType.Secret => new SecretExportBlock(b.SecretLabel.Trim(), b.SecretUserName.Trim(), b.SecretUrl.Trim()),

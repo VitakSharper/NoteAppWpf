@@ -89,10 +89,10 @@ public static class MarkdownImport
                 // Markdown joins "- a" and "- [ ] b" into one list when they share a marker (as the
                 // export writes a bullet list followed by a checklist): each run of task items
                 // becomes a checklist, the runs between them stay a list in the text.
-                case ListBlock list when list.OfType<ListItemBlock>().Any(item => TaskOf(item) is not null):
+                case ListBlock list when list.OfType<ListItemBlock>().Any(item => StateOf(item) is not null):
                     foreach (var run in Runs(list.OfType<ListItemBlock>()))
                     {
-                        if (TaskOf(run[0]) is not null)
+                        if (StateOf(run[0]) is not null)
                         {
                             FlushText();
                             _blocks.Add(new NoteBlock.Checklist(run.Select(ToItem).ToList()));
@@ -139,7 +139,7 @@ public static class MarkdownImport
             var run = new List<ListItemBlock>();
             foreach (var item in items)
             {
-                if (run.Count > 0 && TaskOf(run[0]) is null != TaskOf(item) is null)
+                if (run.Count > 0 && StateOf(run[0]) is null != StateOf(item) is null)
                 {
                     yield return run;
                     run = [];
@@ -154,8 +154,28 @@ public static class MarkdownImport
         private static TaskList? TaskOf(ListItemBlock item) =>
             (item.FirstOrDefault() as ParagraphBlock)?.Inline?.FirstChild as TaskList;
 
-        private static ChecklistItem ToItem(ListItemBlock item) =>
-            new(string.Join(" ", item.OfType<LeafBlock>().Select(b => PlainText(b.Inline).Trim())).Trim(), TaskOf(item)?.Checked == true);
+        // A task item's state, or null for a plain list item. Markdig's task lists know only
+        // "[ ]" and "[x]": the export's "[/] " (in progress) is still text to it.
+        private static ChecklistItemState? StateOf(ListItemBlock item) =>
+            TaskOf(item) is { } task ? (task.Checked ? ChecklistItemState.Done : ChecklistItemState.Todo)
+            : StartsInProgress(item) ? ChecklistItemState.InProgress
+            : null;
+
+        private const string InProgressMarker = "[/]";
+
+        private static bool StartsInProgress(ListItemBlock item) =>
+            (item.FirstOrDefault() as ParagraphBlock)?.Inline is { } inline
+            && PlainText(inline) is var text
+            && text.StartsWith(InProgressMarker, StringComparison.Ordinal)
+            && text.Length > InProgressMarker.Length
+            && char.IsWhiteSpace(text[InProgressMarker.Length]);
+
+        private static ChecklistItem ToItem(ListItemBlock item)
+        {
+            var text = string.Join(" ", item.OfType<LeafBlock>().Select(b => PlainText(b.Inline).Trim())).Trim();
+            var state = StateOf(item) ?? ChecklistItemState.Todo;
+            return new(state == ChecklistItemState.InProgress ? text[InProgressMarker.Length..].TrimStart() : text, state);
+        }
 
         private IEnumerable<WpfBlock> ToWpf(Markdig.Syntax.Block block)
         {

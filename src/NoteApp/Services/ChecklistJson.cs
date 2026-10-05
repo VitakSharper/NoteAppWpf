@@ -12,13 +12,19 @@ public static class ChecklistJson
 {
     private static readonly JsonSerializerOptions Options = new()
     {
-        // Unchecked items are the common case; leaving "d": false out keeps the
-        // column small on long lists.
+        // Unchecked items are the common case; leaving "d": false (and "p": false) out
+        // keeps the column small on long lists.
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault
     };
 
     public static string Serialize(IReadOnlyList<ChecklistItem> items) =>
-        JsonSerializer.Serialize(items.Select(i => new ItemDto { Text = i.Text, IsDone = i.IsDone, Due = i.Due }), Options);
+        JsonSerializer.Serialize(items.Select(i => new ItemDto
+        {
+            Text = i.Text,
+            IsDone = i.State == ChecklistItemState.Done,
+            InProgress = i.State == ChecklistItemState.InProgress,
+            Due = i.Due
+        }), Options);
 
     // Anything unreadable — a hand-edited row, a truncated column — yields an empty
     // checklist rather than breaking the whole note.
@@ -30,7 +36,7 @@ public static class ChecklistJson
         try
         {
             var dtos = JsonSerializer.Deserialize<List<ItemDto>>(json, Options) ?? [];
-            return dtos.Select(d => new ChecklistItem(d.Text ?? string.Empty, d.IsDone, d.Due is { } due ? DateTime.SpecifyKind(due, DateTimeKind.Utc) : null)).ToList();
+            return dtos.Select(d => new ChecklistItem(d.Text ?? string.Empty, StateOf(d), d.Due is { } due ? DateTime.SpecifyKind(due, DateTimeKind.Utc) : null)).ToList();
         }
         catch (JsonException)
         {
@@ -38,10 +44,17 @@ public static class ChecklistJson
         }
     }
 
+    // Done wins should a hand-edited row claim both.
+    private static ChecklistItemState StateOf(ItemDto dto) =>
+        dto.IsDone ? ChecklistItemState.Done : dto.InProgress ? ChecklistItemState.InProgress : ChecklistItemState.Todo;
+
     private sealed class ItemDto
     {
         [JsonPropertyName("t")] public string? Text { get; init; }
         [JsonPropertyName("d")] public bool IsDone { get; init; }
+        // Started, not finished. A key of its own rather than a state number, so the rows
+        // written before it read unchanged — and an older release reads it as not done.
+        [JsonPropertyName("p")] public bool InProgress { get; init; }
         // A reminder, UTC; left out when there is none.
         [JsonPropertyName("r")] public DateTime? Due { get; init; }
     }

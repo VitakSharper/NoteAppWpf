@@ -114,7 +114,7 @@ public static class PdfExportService
         {
             column.Item().PaddingLeft(12).Text(text =>
             {
-                Done(text.Span(item.IsDone ? "[x] " : "[ ] "), item.IsDone);
+                Done(text.Span($"{item.Marker} "), item.IsDone);
 
                 foreach (var (piece, link) in DocTextLinks.Split(item.Text))
                     Done(link is null ? text.Span(piece) : LinkSpan(text, piece, link), item.IsDone);

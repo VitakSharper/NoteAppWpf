@@ -25,7 +25,8 @@ internal static class TestHelpers
         new NoteBlock.Text("<rich/>", "plain text") { SortOrder = 0 },
         new NoteBlock.File([1, 2, 3], "a.bin", ".bin", 3) { SortOrder = 1 },
         new NoteBlock.Link(Url("https://example.com/page"), "example") { SortOrder = 2 },
-        new NoteBlock.Checklist([new ChecklistItem("buy milk", true), new ChecklistItem("call the bank", false)])
+        new NoteBlock.Checklist(
+            [new ChecklistItem("buy milk", ChecklistItemState.Done), new ChecklistItem("call the bank", ChecklistItemState.Todo), new ChecklistItem("pay rent", ChecklistItemState.InProgress)])
             { SortOrder = 3 },
         new NoteBlock.Secret("Support site", "vbanard", " p@ss word ", "https://support.example.com/") { SortOrder = 4 },
         new NoteBlock.Code("SELECT *\n\tFROM Notes  ") { SortOrder = 5 }

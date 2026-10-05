@@ -79,7 +79,7 @@ public static class Notes
     }
 
     public static NoteBlock.Checklist Checklist(params string[] items) =>
-        new(items.Select(i => new ChecklistItem(i, false)).ToList());
+        new(items.Select(i => new ChecklistItem(i, ChecklistItemState.Todo)).ToList());
 
     public static NoteBlock.Link Link(string url) =>
         new(LinkUrl.From(url).Match(u => u, e => throw new InvalidOperationException(e.Message)), "");

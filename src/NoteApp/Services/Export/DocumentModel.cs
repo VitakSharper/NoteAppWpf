@@ -1,3 +1,5 @@
+using NoteApp.Domain.Models;
+
 namespace NoteApp.Services.Export;
 
 // What the editor hands an exporter, in note order. Text blocks carry the stored
@@ -53,7 +55,27 @@ public sealed record DocSecret(string Label, string UserName, string Url) : DocE
     ];
 }
 
-public sealed record DocChecklistItem(string Text, bool IsDone);
+public sealed record DocChecklistItem(string Text, ChecklistItemState State)
+{
+    public bool IsDone => State == ChecklistItemState.Done;
+
+    // "[x]" / "[/]" / "[ ]": the Markdown task markers ("[/]" is the in-progress one other
+    // editors read), which the PDF prints too — its font has no ballot boxes.
+    public string Marker => State switch
+    {
+        ChecklistItemState.Done => "[x]",
+        ChecklistItemState.InProgress => "[/]",
+        _ => "[ ]"
+    };
+
+    // ☑ / ◐ / ☐ wherever the font has them: Word, the version history.
+    public static string Box(ChecklistItemState state) => state switch
+    {
+        ChecklistItemState.Done => "☑",
+        ChecklistItemState.InProgress => "◐",
+        _ => "☐"
+    };
+}
 
 public enum DocListMarker
 {

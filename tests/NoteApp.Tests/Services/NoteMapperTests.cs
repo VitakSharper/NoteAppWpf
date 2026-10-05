@@ -3,6 +3,7 @@ using NoteApp.Data.Queries;
 using NoteApp.Domain.Models;
 using NoteApp.Domain.ValueObjects;
 using NoteApp.Services.Mapping;
+using static NoteApp.Domain.Models.ChecklistItemState;
 
 namespace NoteApp.Tests.Services;
 
@@ -38,8 +39,8 @@ public class NoteMapperTests
         Assert.Equal("example", link.Description);
 
         var checklist = Assert.IsType<NoteBlock.Checklist>(mapped.Blocks[3]);
-        Assert.Equal(["buy milk", "call the bank"], checklist.Items.Select(i => i.Text));
-        Assert.Equal([true, false], checklist.Items.Select(i => i.IsDone));
+        Assert.Equal(["buy milk", "call the bank", "pay rent"], checklist.Items.Select(i => i.Text));
+        Assert.Equal([Done, Todo, InProgress], checklist.Items.Select(i => i.State));
 
         var secret = Assert.IsType<NoteBlock.Secret>(mapped.Blocks[4]);
         Assert.Equal(("Support site", "vbanard", " p@ss word ", "https://support.example.com/"),
@@ -86,7 +87,7 @@ public class NoteMapperTests
     public void ToBlockEntities_WritesChecklistItemsAsJsonAndFillsPlainText()
     {
         var note = SampleNote(
-            new NoteBlock.Checklist([new ChecklistItem("buy milk", true), new ChecklistItem("call the bank", false)]));
+            new NoteBlock.Checklist([new ChecklistItem("buy milk", Done), new ChecklistItem("call the bank", Todo)]));
 
         var entity = Assert.Single(NoteMapper.ToBlockEntities(note));
 

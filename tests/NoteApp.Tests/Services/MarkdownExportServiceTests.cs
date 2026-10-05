@@ -1,4 +1,5 @@
 using NoteApp.Services.Export;
+using static NoteApp.Domain.Models.ChecklistItemState;
 
 namespace NoteApp.Tests.Services;
 
@@ -24,7 +25,7 @@ public class MarkdownExportServiceTests
                 new DocText("https://auto.example.com", false, false, true, Link: "https://auto.example.com/")]),
             new DocList(DocListMarker.Bullet, [[new DocText("one", false, false, false)], [new DocText("two", false, false, false)]]),
             new DocList(DocListMarker.LowerLatin, [[new DocText("first", false, false, false)]]),
-            new DocChecklist([new DocChecklistItem("buy milk", true), new DocChecklistItem("read www.x.com", false)]),
+            new DocChecklist([new DocChecklistItem("buy milk", Done), new DocChecklistItem("call the bank", InProgress), new DocChecklistItem("read www.x.com", Todo)]),
             new DocLink("https://example.com/page", "Example"),
             new DocLink("https://example.com/bare", ""),
             new DocAttachment("report.pdf", 2048)
@@ -45,6 +46,7 @@ public class MarkdownExportServiceTests
             1. first
 
             - [x] buy milk
+            - [/] call the bank
             - [ ] read [www.x.com](https://www.x.com/)
 
             [Example](https://example.com/page)

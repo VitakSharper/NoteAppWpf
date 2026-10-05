@@ -1,7 +1,11 @@
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
+using NoteApp.Domain.Models;
 using NoteApp.Services.Export;
+using NoteApp.Views;
 using static NoteApp.UiTests.Notes;
 
 namespace NoteApp.UiTests;
@@ -54,7 +58,7 @@ public class ChecklistUiTests
     public void Hide_done_collapses_the_ticked_rows_only() => Wpf.Run(() =>
     {
         using var editor = new OpenEditor(Notes.With(new NoteApp.Domain.Models.NoteBlock.Checklist(
-            [new("a", true), new("b", false)])));
+            [new("a", ChecklistItemState.Done), new("b", ChecklistItemState.Todo), new("c", ChecklistItemState.InProgress)])));
         var rows = editor.Find<System.Windows.Controls.TextBox>().Where(t => t.Tag is NoteApp.ViewModels.ChecklistItemViewModel).ToList();
         var toggle = editor.Find<System.Windows.Controls.Primitives.ToggleButton>().Single(t => t.DataContext is NoteApp.ViewModels.BlockViewModel && Equals(t.Content, "Hide done"));
         Assert.True(toggle.IsVisible);
@@ -64,8 +68,44 @@ public class ChecklistUiTests
 
         Assert.False(rows[0].IsVisible);
         Assert.True(rows[1].IsVisible);
+        Assert.True(rows[2].IsVisible); // started is not done
         Assert.Equal("Show done", toggle.Content);
         Assert.False(editor.ViewModel.IsDirty);
+    });
+
+    // Through the automation peer, so it is the box's own toggle that runs, as on a click.
+    [Fact]
+    public void Clicking_the_box_goes_from_not_started_to_in_progress_to_done_and_back() => Wpf.Run(() =>
+    {
+        using var editor = new OpenEditor(Notes.With(Notes.Checklist("draft the plan")));
+        var item = editor.ViewModel.Blocks[0].ChecklistItems[0];
+        var box = editor.Find<TriStateCheckBox>().Single();
+        var toggle = (IToggleProvider)new CheckBoxAutomationPeer(box);
+
+        var seen = new List<(ChecklistItemState, bool?)>();
+        for (var i = 0; i < 3; i++)
+        {
+            toggle.Toggle();
+            Wpf.Pump();
+            seen.Add((item.State, box.IsChecked));
+        }
+
+        Assert.Equal(
+            [(ChecklistItemState.InProgress, null), (ChecklistItemState.Done, true), (ChecklistItemState.Todo, false)],
+            seen);
+        Assert.True(editor.ViewModel.IsDirty);
+        Assert.Equal("0/1 done", editor.ViewModel.Blocks[0].ChecklistSummary);
+    });
+
+    // A state set from the model (a restored draft, a loaded note) shows in the box.
+    [Fact]
+    public void The_box_shows_the_items_state() => Wpf.Run(() =>
+    {
+        using var editor = new OpenEditor(Notes.With(new NoteApp.Domain.Models.NoteBlock.Checklist(
+            [new("a", ChecklistItemState.Done), new("b", ChecklistItemState.Todo), new("c", ChecklistItemState.InProgress)])));
+
+        Assert.Equal([true, false, null], editor.Find<TriStateCheckBox>().Select(b => b.IsChecked));
+        Assert.Equal("1/3 done · 1 in progress", editor.ViewModel.Blocks[0].ChecklistSummary);
     });
 
     [Fact]

@@ -18,7 +18,7 @@ public class DraftStoreTests : IDisposable
             new DraftBlock(BlockType.Text, RichText: "rich", PlainText: "plain"),
             new DraftBlock(BlockType.Link, LinkUrl: "https://half", LinkDescription: "d"),
             new DraftBlock(BlockType.File, FileName: "a.bin", FileExtension: ".bin", FileData: [1, 2]),
-            new DraftBlock(BlockType.Checklist, Items: [new DraftChecklistItem("milk", true)])
+            new DraftBlock(BlockType.Checklist, Items: [new DraftChecklistItem("milk", true), new DraftChecklistItem("bread", false, InProgress: true)])
         ], [Guid.NewGuid()], new DateTime(2026, 9, 24, 10, 0, 0));
 
         store.Save(draft);
@@ -30,7 +30,21 @@ public class DraftStoreTests : IDisposable
         Assert.Equal([BlockType.Text, BlockType.Link, BlockType.File, BlockType.Checklist], loaded.Blocks.Select(b => b.Type));
         Assert.Equal("https://half", loaded.Blocks[1].LinkUrl);
         Assert.Equal(new byte[] { 1, 2 }, loaded.Blocks[2].FileData);
-        Assert.Equal("milk", Assert.Single(loaded.Blocks[3].Items!).Text);
+        Assert.Equal([("milk", ChecklistItemState.Done), ("bread", ChecklistItemState.InProgress)], loaded.Blocks[3].Items!.Select(i => (i.Text, i.State)));
+    }
+
+    // A draft left behind by a release that knew only "done" is still offered as it was.
+    [Fact]
+    public void A_draft_written_before_items_could_be_in_progress_still_reads()
+    {
+        Directory.CreateDirectory(_folder);
+        File.WriteAllText(Path.Combine(_folder, $"{Guid.NewGuid()}.json"), $$"""
+            {"Key":"{{Guid.NewGuid()}}","NoteId":null,"Title":"Old","Blocks":[{"Type":3,"Items":[{"Text":"milk","IsDone":true,"Due":null},{"Text":"bread","IsDone":false,"Due":null}]}],"TagIds":[],"SavedAt":"2026-09-24T10:00:00"}
+            """);
+
+        var items = Assert.Single(Assert.Single(new DraftStore(_folder).LoadAll()).Blocks).Items!;
+
+        Assert.Equal([ChecklistItemState.Done, ChecklistItemState.Todo], items.Select(i => i.State));
     }
 
     [Fact]
@@ -69,6 +83,7 @@ public class DraftStoreTests : IDisposable
         source.Title = "Draft title";
         source.AddChecklistBlockCommand.Execute(null);
         source.Blocks[0].ChecklistItems[0].Text = "call the bank";
+        source.Blocks[0].ChecklistItems[0].State = ChecklistItemState.InProgress;
         source.AddLinkBlockCommand.Execute(null);
         source.Blocks[1].LinkUrlText = "https://not-finished";
         source.ToggleTagCommand.Execute(work);
@@ -82,6 +97,7 @@ public class DraftStoreTests : IDisposable
 
         Assert.Equal("Draft title", target.Title);
         Assert.Equal("call the bank", target.Blocks[0].ChecklistItems[0].Text);
+        Assert.Equal(ChecklistItemState.InProgress, target.Blocks[0].ChecklistItems[0].State);
         Assert.Equal("https://not-finished", target.Blocks[1].LinkUrlText);
         Assert.Equal([work.Id], target.SelectedTags.Select(t => t.Id));
         Assert.True(target.IsDirty);

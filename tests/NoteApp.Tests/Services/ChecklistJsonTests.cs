@@ -1,5 +1,6 @@
 using NoteApp.Domain.Models;
 using NoteApp.Services;
+using static NoteApp.Domain.Models.ChecklistItemState;
 
 namespace NoteApp.Tests.Services;
 
@@ -11,20 +12,39 @@ public class ChecklistJsonTests
     public void Round_trips_items_in_order()
     {
         IReadOnlyList<ChecklistItem> items =
-            [new ChecklistItem("buy milk", true), new ChecklistItem("call the bank", false)];
+            [new ChecklistItem("buy milk", Done), new ChecklistItem("call the bank", InProgress), new ChecklistItem("pay rent", Todo)];
 
         var restored = ChecklistJson.Deserialize(ChecklistJson.Serialize(items));
 
         Assert.Equal(items, restored);
     }
 
-    // Short keys, and "d" left out when false: the column carries whole lists.
+    // Short keys, and "d" / "p" left out when false: the column carries whole lists.
     [Fact]
     public void Writes_short_keys_and_omits_unchecked_items()
     {
-        var json = ChecklistJson.Serialize([new ChecklistItem("buy milk", true), new ChecklistItem("call the bank", false)]);
+        var json = ChecklistJson.Serialize(
+            [new ChecklistItem("buy milk", Done), new ChecklistItem("call the bank", InProgress), new ChecklistItem("pay rent", Todo)]);
 
-        Assert.Equal("""[{"t":"buy milk","d":true},{"t":"call the bank"}]""", json);
+        Assert.Equal("""[{"t":"buy milk","d":true},{"t":"call the bank","p":true},{"t":"pay rent"}]""", json);
+    }
+
+    // Columns written before "p" existed hold only "d": they read as they always did.
+    [Fact]
+    public void A_list_without_progress_reads_as_done_or_todo()
+    {
+        var items = ChecklistJson.Deserialize("""[{"t":"a","d":true},{"t":"b"}]""");
+
+        Assert.Equal([Done, Todo], items.Select(i => i.State));
+    }
+
+    // A hand-edited row may carry both; done is the stronger claim.
+    [Fact]
+    public void Done_wins_over_in_progress()
+    {
+        var item = Assert.Single(ChecklistJson.Deserialize("""[{"t":"a","d":true,"p":true}]"""));
+
+        Assert.Equal(Done, item.State);
     }
 
     [Fact]

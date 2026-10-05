@@ -4,6 +4,7 @@ using DocumentFormat.OpenXml.Validation;
 using DocumentFormat.OpenXml.Wordprocessing;
 using NoteApp.Services.Export;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
+using static NoteApp.Domain.Models.ChecklistItemState;
 
 namespace NoteApp.Tests.Services;
 
@@ -73,7 +74,7 @@ public class WordExportServiceTests
                 new DocText("see ", false, false, false),
                 new DocText("the docs", true, false, true, Link: "https://docs.example.com/"),
                 new DocText(" today", false, false, false)]),
-            new DocChecklist([new DocChecklistItem("read https://mid.example.com/a later", IsDone: true)])
+            new DocChecklist([new DocChecklistItem("read https://mid.example.com/a later", Done)])
         ];
         using var stream = new MemoryStream();
 
@@ -139,7 +140,7 @@ public class WordExportServiceTests
                 new DocLineBreak(),
                 new DocImage(TinyPng)]),
             new DocList(DocListMarker.Bullet, [[new DocText("item", false, false, false)]]),
-            new DocChecklist([new DocChecklistItem("read https://mid.example.com/a later", IsDone: true), new DocChecklistItem("todo", false)]),
+            new DocChecklist([new DocChecklistItem("read https://mid.example.com/a later", Done), new DocChecklistItem("started", InProgress), new DocChecklistItem("todo", Todo)]),
             new DocLink("https://example.com/page", "Example"),
             new DocLink("not a url", ""),
             new DocAttachment("report.pdf", 2048),
@@ -240,18 +241,20 @@ public class WordExportServiceTests
         using var stream = new MemoryStream();
 
         WordExportService.Render("Note",
-            [new DocChecklist([new DocChecklistItem("buy milk", true), new DocChecklistItem("call the bank", false)])],
+            [new DocChecklist([new DocChecklistItem("buy milk", Done), new DocChecklistItem("call the bank", Todo), new DocChecklistItem("pay rent", InProgress)])],
             stream);
 
         stream.Position = 0;
         using var doc = WordprocessingDocument.Open(stream, isEditable: false);
         var paragraphs = doc.MainDocumentPart!.Document!.Body!.Elements<Paragraph>().ToList();
 
-        Assert.Equal(3, paragraphs.Count); // title + one per item
+        Assert.Equal(4, paragraphs.Count); // title + one per item
         Assert.Equal("☑ buy milk", paragraphs[1].InnerText);
         Assert.Equal("☐ call the bank", paragraphs[2].InnerText);
+        Assert.Equal("◐ pay rent", paragraphs[3].InnerText);
         Assert.All(paragraphs[1].Descendants<Run>(), r => Assert.NotNull(r.RunProperties?.Strike));
         Assert.All(paragraphs[2].Descendants<Run>(), r => Assert.Null(r.RunProperties?.Strike));
+        Assert.All(paragraphs[3].Descendants<Run>(), r => Assert.Null(r.RunProperties?.Strike));
     }
 
     [Fact]

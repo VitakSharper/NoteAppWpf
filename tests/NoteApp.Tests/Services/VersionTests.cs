@@ -52,11 +52,11 @@ public class VersionTests
     {
         var lines = VersionPreview.Lines([
             new NoteBlock.Text("x", "first line\r\n\r\nsecond"),
-            new NoteBlock.Checklist([new ChecklistItem("done", true), new ChecklistItem("todo", false)]),
+            new NoteBlock.Checklist([new ChecklistItem("done", ChecklistItemState.Done), new ChecklistItem("started", ChecklistItemState.InProgress), new ChecklistItem("todo", ChecklistItemState.Todo)]),
             new NoteBlock.Secret("Wifi", "me", "hunter2"),
             new NoteBlock.Code("ls\n  -la")]);
 
-        Assert.Equal(["first line", "second", "☑ done", "☐ todo", "🔑 Wifi · me · password hidden", "  ls", "    -la"], lines);
+        Assert.Equal(["first line", "second", "☑ done", "◐ started", "☐ todo", "🔑 Wifi · me · password hidden", "  ls", "    -la"], lines);
         Assert.DoesNotContain(lines, l => l.Contains("hunter2"));
     }
 
@@ -68,7 +68,7 @@ public class VersionTests
                 ? new NoteVersionRow
                 {
                     Id = PlainId, SavedAt = DateTime.UtcNow, Title = "Old title",
-                    Content = Encoding.UTF8.GetBytes(EncryptionService.BlocksToJson([new NoteBlock.Checklist([new ChecklistItem("buy milk", false)])]))
+                    Content = Encoding.UTF8.GetBytes(EncryptionService.BlocksToJson([new NoteBlock.Checklist([new ChecklistItem("buy milk", ChecklistItemState.Todo)])]))
                 }
                 : new NoteVersionRow
                 {

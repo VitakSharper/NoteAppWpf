@@ -24,7 +24,10 @@ public class ChecklistExtrasTests
         block.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
 
         Assert.False(block.HasDone);
-        block.ChecklistItems[0].IsDone = true;
+        block.ChecklistItems[0].State = ChecklistItemState.InProgress;
+        Assert.False(block.HasDone);
+
+        block.ChecklistItems[0].State = ChecklistItemState.Done;
 
         Assert.True(block.HasDone);
         Assert.Contains(nameof(BlockViewModel.HasDone), raised);
@@ -67,7 +70,7 @@ public class ChecklistExtrasTests
     }
 
     private static NoteBlock.Checklist Checklist(params (string Text, bool Done)[] items) =>
-        new(items.Select(i => new ChecklistItem(i.Text, i.Done)).ToList());
+        new(items.Select(i => new ChecklistItem(i.Text, i.Done ? ChecklistItemState.Done : ChecklistItemState.Todo)).ToList());
 
     private static NoteEditorViewModel Editor(NoteBlock block) =>
         new(new NoteApp.Services.NoteService(null!), null!, [], SampleNote(block));

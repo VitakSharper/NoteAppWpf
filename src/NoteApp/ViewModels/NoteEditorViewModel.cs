@@ -21,8 +21,35 @@ public partial class ChecklistItemViewModel : ObservableObject
     private string _text = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DueLabel), nameof(HasDue), nameof(IsOverdue))]
-    private bool _isDone;
+    [NotifyPropertyChangedFor(nameof(IsDone), nameof(IsChecked), nameof(StateTip), nameof(IsOverdue))]
+    private ChecklistItemState _state;
+
+    public bool IsDone => State == ChecklistItemState.Done;
+
+    // The three-state box (TriStateCheckBox): unticked, the indeterminate mark, ticked.
+    public bool? IsChecked
+    {
+        get => State switch
+        {
+            ChecklistItemState.Done => true,
+            ChecklistItemState.InProgress => null,
+            _ => false
+        };
+        set => State = value switch
+        {
+            true => ChecklistItemState.Done,
+            null => ChecklistItemState.InProgress,
+            false => ChecklistItemState.Todo
+        };
+    }
+
+    // What the item is, then what the next click makes it.
+    public string StateTip => State switch
+    {
+        ChecklistItemState.Todo => "Not started — click to mark as in progress",
+        ChecklistItemState.InProgress => "In progress — click to mark as done",
+        _ => "Done — click to mark as not started"
+    };
 
     // A reminder for the item (UTC), saved with the checklist.
     [ObservableProperty]
@@ -76,7 +103,16 @@ public partial class BlockViewModel : ObservableObject
 
     public ObservableCollection<ChecklistItemViewModel> ChecklistItems { get; } = [];
 
-    public string ChecklistSummary => $"{ChecklistItems.Count(i => i.IsDone)}/{ChecklistItems.Count} done";
+    // "2/5 done", and "· 1 in progress" only while something is.
+    public string ChecklistSummary
+    {
+        get
+        {
+            var done = $"{ChecklistItems.Count(i => i.IsDone)}/{ChecklistItems.Count} done";
+            var started = ChecklistItems.Count(i => i.State == ChecklistItemState.InProgress);
+            return started > 0 ? $"{done} · {started} in progress" : done;
+        }
+    }
 
     // View state, not content: hiding the ticked items is not an edit (OnBlockPropertyChanged
     // skips it) and is not stored — every note opens with its whole checklist visible.
@@ -107,7 +143,7 @@ public partial class BlockViewModel : ObservableObject
 
     private void OnItemChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ChecklistItemViewModel.IsDone))
+        if (e.PropertyName == nameof(ChecklistItemViewModel.State))
         {
             OnPropertyChanged(nameof(ChecklistSummary));
             OnPropertyChanged(nameof(HasDone));
@@ -225,7 +261,7 @@ public partial class NoteEditorViewModel : ObservableObject
             BlockType.Secret => new DraftBlock(BlockType.Secret, SecretLabel: b.SecretLabel, SecretUserName: b.SecretUserName, SecretUrl: b.SecretUrl),
             BlockType.Code => new DraftBlock(BlockType.Code, PlainText: b.CodeText),
             _ => new DraftBlock(BlockType.Checklist,
-                Items: b.ChecklistItems.Select(i => new DraftChecklistItem(i.Text, i.IsDone, i.Due)).ToList())
+                Items: b.ChecklistItems.Select(i => DraftChecklistItem.From(i.Text, i.State, i.Due)).ToList())
         }).ToList();
 
         return new NoteDraft(DraftKey, EditedNoteId?.Value, Title, blocks, SelectedTags.Select(t => t.Id).ToList(), DateTime.Now);
@@ -262,7 +298,7 @@ public partial class NoteEditorViewModel : ObservableObject
                 CodeText = block.Type == BlockType.Code ? block.PlainText ?? string.Empty : string.Empty
             };
             foreach (var item in block.Items ?? [])
-                vm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, IsDone = item.IsDone, Due = item.Due });
+                vm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, State = item.State, Due = item.Due });
             Blocks.Add(vm);
         }
 
@@ -502,7 +538,7 @@ public partial class NoteEditorViewModel : ObservableObject
                 {
                     var blockVm = new BlockViewModel { Id = id, BlockType = BlockType.Checklist };
                     foreach (var item in c.Items)
-                        blockVm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, IsDone = item.IsDone, Due = item.Due });
+                        blockVm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, State = item.State, Due = item.Due });
                     return blockVm;
                 },
                 secret: s => new BlockViewModel
@@ -1000,7 +1036,7 @@ public partial class NoteEditorViewModel : ObservableObject
                     // mistake worth reporting.
                     var items = vm.ChecklistItems
                         .Where(item => !string.IsNullOrWhiteSpace(item.Text))
-                        .Select(item => new ChecklistItem(item.Text.Trim(), item.IsDone, item.Due))
+                        .Select(item => new ChecklistItem(item.Text.Trim(), item.State, item.Due))
                         .ToList();
 
                     if (items.Count == 0)
