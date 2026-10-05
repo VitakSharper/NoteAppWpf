@@ -117,6 +117,16 @@ dotnet run --project src/NoteApp                 # or: NoteApp.exe --ConnectionS
 
 The window title then reads `NoteApp — noteDb_test (test instance)`.
 
+### 7. Regenerate the app icon (optional)
+
+The logo is drawn by code (`tools/IconGenerator/Logo.cs`). After changing it:
+
+```bash
+dotnet run --project tools/IconGenerator -- --preview icon-preview.png
+```
+
+It rewrites `src/NoteApp/Resources/app.ico` (16 to 256 px) and draws every size on a light and a dark background in the preview.
+
 ## Project Structure
 
 ```
@@ -139,6 +149,7 @@ NoteApp/
 │   ├── Views/                      XAML views
 │   ├── Theme/                      Modern Violet MD3 resources
 │   └── Converters/                 WPF value converters
+├── tools/IconGenerator/            Draws the logo and writes app.ico
 └── tests/NoteApp.Tests/            xUnit tests for the pure layers
 ```
 

@@ -28,6 +28,13 @@ dotnet publish src/NoteApp/NoteApp.csproj -c Release -r win-x64 --self-contained
 ```
 
 ```bash
+# App icon (from repo root): tools/IconGenerator draws the logo with WPF (Logo.cs = the design, Program.cs = sizes 16-256
+# and the ICO format: 32-bit DIBs up to 48, PNG for 64/256) and rewrites src/NoteApp/Resources/app.ico; --preview <png>
+# shows every size on light and dark. Same machine, same bytes: re-running it leaves app.ico unchanged in git.
+dotnet run --project tools/IconGenerator -- --preview icon-preview.png
+```
+
+```bash
 # Tests (from repo root) — NoteApp.Tests: xUnit on the pure layers (Domain, mapper, encryption, preview, view models); no DB, no UI thread.
 # NoteApp.UiTests: the real WPF views (NoteEditorView...) off-screen on one shared STA dispatcher (tests/NoteApp.UiTests/Wpf.cs),
 # view models on repositories that throw — still no DB. Wrap each test body in Wpf.Run(...), drive typing with OpenEditor.Type.
