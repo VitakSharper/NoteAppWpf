@@ -140,7 +140,7 @@ public class WordExportServiceTests
                 new DocLineBreak(),
                 new DocImage(TinyPng)]),
             new DocList(DocListMarker.Bullet, [[new DocText("item", false, false, false)]]),
-            new DocChecklist([new DocChecklistItem("read https://mid.example.com/a later", Done), new DocChecklistItem("started", InProgress), new DocChecklistItem("todo", Todo)]),
+            new DocChecklist([new DocChecklistItem("read https://mid.example.com/a later", Done), new DocChecklistItem("started", InProgress, "a note"), new DocChecklistItem("todo", Todo)]),
             new DocLink("https://example.com/page", "Example"),
             new DocLink("not a url", ""),
             new DocAttachment("report.pdf", 2048),
@@ -241,20 +241,27 @@ public class WordExportServiceTests
         using var stream = new MemoryStream();
 
         WordExportService.Render("Note",
-            [new DocChecklist([new DocChecklistItem("buy milk", Done), new DocChecklistItem("call the bank", Todo), new DocChecklistItem("pay rent", InProgress)])],
+            [new DocChecklist([new DocChecklistItem("buy milk", Done), new DocChecklistItem("call the bank", Todo), new DocChecklistItem("pay rent", InProgress, "before the 5th" + Environment.NewLine + "by transfer")])],
             stream);
 
         stream.Position = 0;
         using var doc = WordprocessingDocument.Open(stream, isEditable: false);
         var paragraphs = doc.MainDocumentPart!.Document!.Body!.Elements<Paragraph>().ToList();
 
-        Assert.Equal(4, paragraphs.Count); // title + one per item
+        Assert.Equal(5, paragraphs.Count); // title + one per item + the note
         Assert.Equal("☑ buy milk", paragraphs[1].InnerText);
         Assert.Equal("☐ call the bank", paragraphs[2].InnerText);
         Assert.Equal("◐ pay rent", paragraphs[3].InnerText);
         Assert.All(paragraphs[1].Descendants<Run>(), r => Assert.NotNull(r.RunProperties?.Strike));
         Assert.All(paragraphs[2].Descendants<Run>(), r => Assert.Null(r.RunProperties?.Strike));
         Assert.All(paragraphs[3].Descendants<Run>(), r => Assert.Null(r.RunProperties?.Strike));
+
+        // The note: under its item, further in, small and grey, one line per line.
+        var note = paragraphs[4];
+        Assert.Equal("before the 5thby transfer", note.InnerText);
+        Assert.Single(note.Descendants<Break>());
+        Assert.Equal("720", note.ParagraphProperties?.Indentation?.Left?.Value);
+        Assert.All(note.Descendants<Run>(), r => Assert.Equal("808080", r.RunProperties?.Color?.Val?.Value));
     }
 
     [Fact]

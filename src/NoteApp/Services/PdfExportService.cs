@@ -119,6 +119,10 @@ public static class PdfExportService
                 foreach (var (piece, link) in DocTextLinks.Split(item.Text))
                     Done(link is null ? text.Span(piece) : LinkSpan(text, piece, link), item.IsDone);
             });
+
+            // Its note: under it, further in, small and grey.
+            if (item.NoteLines.Count > 0)
+                column.Item().PaddingLeft(30).Text(string.Join("\n", item.NoteLines)).FontSize(9).FontColor(Colors.Grey.Darken1);
         }
     }
 

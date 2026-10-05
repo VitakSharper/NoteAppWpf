@@ -21,6 +21,7 @@ public static class ChecklistJson
         JsonSerializer.Serialize(items.Select(i => new ItemDto
         {
             Text = i.Text,
+            Note = i.Note.Length > 0 ? i.Note : null,
             IsDone = i.State == ChecklistItemState.Done,
             InProgress = i.State == ChecklistItemState.InProgress,
             Due = i.Due
@@ -36,7 +37,7 @@ public static class ChecklistJson
         try
         {
             var dtos = JsonSerializer.Deserialize<List<ItemDto>>(json, Options) ?? [];
-            return dtos.Select(d => new ChecklistItem(d.Text ?? string.Empty, StateOf(d), d.Due is { } due ? DateTime.SpecifyKind(due, DateTimeKind.Utc) : null)).ToList();
+            return dtos.Select(d => new ChecklistItem(d.Text ?? string.Empty, StateOf(d), d.Due is { } due ? DateTime.SpecifyKind(due, DateTimeKind.Utc) : null, d.Note ?? string.Empty)).ToList();
         }
         catch (JsonException)
         {
@@ -51,6 +52,8 @@ public static class ChecklistJson
     private sealed class ItemDto
     {
         [JsonPropertyName("t")] public string? Text { get; init; }
+        // The item's note; left out when there is none.
+        [JsonPropertyName("n")] public string? Note { get; init; }
         [JsonPropertyName("d")] public bool IsDone { get; init; }
         // Started, not finished. A key of its own rather than a state number, so the rows
         // written before it read unchanged — and an older release reads it as not done.

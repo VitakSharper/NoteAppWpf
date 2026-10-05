@@ -1553,6 +1553,13 @@ public partial class NoteEditorView : UserControl
             return;
         }
 
+        if (OpensItemNote(e.Key, Keyboard.Modifiers))
+        {
+            e.Handled = true;
+            OpenItemNote(item);
+            return;
+        }
+
         if (e.Key != Key.Enter)
             return;
 
@@ -1565,6 +1572,45 @@ public partial class NoteEditorView : UserControl
 
         _ = Dispatcher.BeginInvoke(DispatcherPriority.Loaded,
             new Action(() => FindChecklistTextBox(BlocksScrollViewer, added)?.Focus()));
+    }
+
+    // Shift+Enter in an item opens its note; Enter alone adds the next item.
+    internal static bool OpensItemNote(Key key, ModifierKeys modifiers) =>
+        key == Key.Enter && modifiers == ModifierKeys.Shift;
+
+    private void OnItemNote(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ChecklistItemViewModel item })
+            OpenItemNote(item);
+    }
+
+    // The field only exists once the open state has been laid out: focus it a pass later,
+    // caret at the end of what is already there.
+    private void OpenItemNote(ChecklistItemViewModel item)
+    {
+        item.IsNoteOpen = true;
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            if (FindTextBox(BlocksScrollViewer, box => box.Name == "ItemNote" && ReferenceEquals(box.DataContext, item)) is not { } box)
+                return;
+
+            box.Focus();
+            box.CaretIndex = box.Text.Length;
+        }));
+    }
+
+    // Held open while it has the focus, so emptying a note does not make its field vanish
+    // under the caret; left empty, it closes.
+    private void OnItemNoteGotFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: ChecklistItemViewModel item })
+            item.IsNoteOpen = true;
+    }
+
+    private void OnItemNoteLostFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: ChecklistItemViewModel item } && !item.HasNote)
+            item.IsNoteOpen = false;
     }
 
     // Alt turns the arrow keys into Key.System, with the real key in SystemKey.
@@ -1592,14 +1638,17 @@ public partial class NoteEditorView : UserControl
         }));
     }
 
-    private static TextBox? FindChecklistTextBox(DependencyObject root, ChecklistItemViewModel item)
+    private static TextBox? FindChecklistTextBox(DependencyObject root, ChecklistItemViewModel item) =>
+        FindTextBox(root, box => ReferenceEquals(box.Tag, item));
+
+    private static TextBox? FindTextBox(DependencyObject root, Func<TextBox, bool> match)
     {
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
         {
             var child = VisualTreeHelper.GetChild(root, i);
-            if (child is TextBox box && ReferenceEquals(box.Tag, item))
+            if (child is TextBox box && match(box))
                 return box;
-            if (FindChecklistTextBox(child, item) is { } hit)
+            if (FindTextBox(child, match) is { } hit)
                 return hit;
         }
 
@@ -1800,7 +1849,7 @@ public partial class NoteEditorView : UserControl
             BlockType.Checklist => new ChecklistExportBlock(
                 b.ChecklistItems
                     .Where(i => !string.IsNullOrWhiteSpace(i.Text))
-                    .Select(i => new DocChecklistItem(i.Text.Trim(), i.State))
+                    .Select(i => new DocChecklistItem(i.Text.Trim(), i.State, i.Note))
                     .ToList()),
             // Never the password: it does not even reach the exporter.
             BlockType.Secret => new SecretExportBlock(b.SecretLabel.Trim(), b.SecretUserName.Trim(), b.SecretUrl.Trim()),

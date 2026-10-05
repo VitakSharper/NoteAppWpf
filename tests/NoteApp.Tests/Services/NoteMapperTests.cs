@@ -41,6 +41,7 @@ public class NoteMapperTests
         var checklist = Assert.IsType<NoteBlock.Checklist>(mapped.Blocks[3]);
         Assert.Equal(["buy milk", "call the bank", "pay rent"], checklist.Items.Select(i => i.Text));
         Assert.Equal([Done, Todo, InProgress], checklist.Items.Select(i => i.State));
+        Assert.Equal(["", "", "before the 5th\nby transfer"], checklist.Items.Select(i => i.Note));
 
         var secret = Assert.IsType<NoteBlock.Secret>(mapped.Blocks[4]);
         Assert.Equal(("Support site", "vbanard", " p@ss word ", "https://support.example.com/"),

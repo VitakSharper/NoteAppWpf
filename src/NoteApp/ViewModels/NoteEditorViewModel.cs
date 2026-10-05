@@ -64,6 +64,20 @@ public partial class ChecklistItemViewModel : ObservableObject
     // a link when the address is all there is.
     public bool HasLink => TextLinks.Find(Text).Count > 0;
     public bool IsLink => TextLinks.IsLink(Text);
+
+    // A few lines under the item (ChecklistItem.MaxNoteLength at most), saved with the checklist.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasNote), nameof(ShowsNote))]
+    private string _note = string.Empty;
+
+    // View state, not content (the editor's dirty tracking skips it): the field is open because
+    // the note button or Shift+Enter asked for it, or because it has the focus.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsNote))]
+    private bool _isNoteOpen;
+
+    public bool HasNote => !string.IsNullOrWhiteSpace(Note);
+    public bool ShowsNote => HasNote || IsNoteOpen;
 }
 
 public partial class BlockViewModel : ObservableObject
@@ -261,7 +275,7 @@ public partial class NoteEditorViewModel : ObservableObject
             BlockType.Secret => new DraftBlock(BlockType.Secret, SecretLabel: b.SecretLabel, SecretUserName: b.SecretUserName, SecretUrl: b.SecretUrl),
             BlockType.Code => new DraftBlock(BlockType.Code, PlainText: b.CodeText),
             _ => new DraftBlock(BlockType.Checklist,
-                Items: b.ChecklistItems.Select(i => DraftChecklistItem.From(i.Text, i.State, i.Due)).ToList())
+                Items: b.ChecklistItems.Select(i => DraftChecklistItem.From(i.Text, i.State, i.Due, i.Note)).ToList())
         }).ToList();
 
         return new NoteDraft(DraftKey, EditedNoteId?.Value, Title, blocks, SelectedTags.Select(t => t.Id).ToList(), DateTime.Now);
@@ -298,7 +312,7 @@ public partial class NoteEditorViewModel : ObservableObject
                 CodeText = block.Type == BlockType.Code ? block.PlainText ?? string.Empty : string.Empty
             };
             foreach (var item in block.Items ?? [])
-                vm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, State = item.State, Due = item.Due });
+                vm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, State = item.State, Due = item.Due, Note = item.Note ?? string.Empty });
             Blocks.Add(vm);
         }
 
@@ -361,7 +375,7 @@ public partial class NoteEditorViewModel : ObservableObject
         WordCount = Blocks.Sum(b => b.BlockType switch
         {
             BlockType.Text => NoteStatus.Words(_liveText.GetValueOrDefault(b.Id) ?? b.PlainTextContent),
-            BlockType.Checklist => b.ChecklistItems.Sum(i => NoteStatus.Words(i.Text)),
+            BlockType.Checklist => b.ChecklistItems.Sum(i => NoteStatus.Words(i.Text) + NoteStatus.Words(i.Note)),
             BlockType.Code => NoteStatus.Words(b.CodeText),
             BlockType.Link => NoteStatus.Words(b.LinkDescription),
             _ => 0
@@ -450,8 +464,12 @@ public partial class NoteEditorViewModel : ObservableObject
 
     private void OnChecklistItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Opening or closing a note's field changes nothing that is stored.
+        if (e.PropertyName is nameof(ChecklistItemViewModel.IsNoteOpen) or nameof(ChecklistItemViewModel.ShowsNote))
+            return;
+
         MarkDirty();
-        if (e.PropertyName == nameof(ChecklistItemViewModel.Text))
+        if (e.PropertyName is nameof(ChecklistItemViewModel.Text) or nameof(ChecklistItemViewModel.Note))
             RecountWords();
     }
 
@@ -538,7 +556,7 @@ public partial class NoteEditorViewModel : ObservableObject
                 {
                     var blockVm = new BlockViewModel { Id = id, BlockType = BlockType.Checklist };
                     foreach (var item in c.Items)
-                        blockVm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, State = item.State, Due = item.Due });
+                        blockVm.ChecklistItems.Add(new ChecklistItemViewModel { Text = item.Text, State = item.State, Due = item.Due, Note = item.Note });
                     return blockVm;
                 },
                 secret: s => new BlockViewModel
@@ -1033,11 +1051,19 @@ public partial class NoteEditorViewModel : ObservableObject
                 case BlockType.Checklist:
                     // Blank rows are the trace of typing, not content: they are dropped
                     // rather than stored, but a checklist of nothing but blanks is a
-                    // mistake worth reporting.
+                    // mistake worth reporting — and so is a row whose note would go with it.
+                    if (vm.ChecklistItems.Any(item => string.IsNullOrWhiteSpace(item.Text) && item.HasNote))
+                        return Result<IReadOnlyList<NoteBlock>, AppError>.Fail(
+                            AppError.Validation($"Checklist block #{i + 1}: an item with a note needs a text."));
+
                     var items = vm.ChecklistItems
                         .Where(item => !string.IsNullOrWhiteSpace(item.Text))
-                        .Select(item => new ChecklistItem(item.Text.Trim(), item.State, item.Due))
+                        .Select(item => new ChecklistItem(item.Text.Trim(), item.State, item.Due, item.Note.ReplaceLineEndings("\n").Trim()))
                         .ToList();
+
+                    if (items.Any(item => item.Note.Length > ChecklistItem.MaxNoteLength))
+                        return Result<IReadOnlyList<NoteBlock>, AppError>.Fail(
+                            AppError.Validation($"Checklist block #{i + 1}: a note is longer than {ChecklistItem.MaxNoteLength} characters."));
 
                     if (items.Count == 0)
                         return Result<IReadOnlyList<NoteBlock>, AppError>.Fail(

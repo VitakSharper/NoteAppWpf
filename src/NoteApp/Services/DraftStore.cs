@@ -7,10 +7,10 @@ namespace NoteApp.Services;
 
 // Two flags rather than the state: a draft left behind by a release that knew only "done"
 // still reads as it was written.
-public sealed record DraftChecklistItem(string Text, bool IsDone, DateTime? Due = null, bool InProgress = false)
+public sealed record DraftChecklistItem(string Text, bool IsDone, DateTime? Due = null, bool InProgress = false, string? Note = null)
 {
-    public static DraftChecklistItem From(string text, ChecklistItemState state, DateTime? due) =>
-        new(text, state == ChecklistItemState.Done, due, state == ChecklistItemState.InProgress);
+    public static DraftChecklistItem From(string text, ChecklistItemState state, DateTime? due, string note) =>
+        new(text, state == ChecklistItemState.Done, due, state == ChecklistItemState.InProgress, note.Length > 0 ? note : null);
 
     [JsonIgnore]
     public ChecklistItemState State =>

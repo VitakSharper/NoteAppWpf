@@ -170,11 +170,21 @@ public static class MarkdownImport
             && text.Length > InProgressMarker.Length
             && char.IsWhiteSpace(text[InProgressMarker.Length]);
 
+        // The item's first paragraph is its text; what follows (the export's indented paragraph)
+        // is its note, cut at the editor's limit.
         private static ChecklistItem ToItem(ListItemBlock item)
         {
-            var text = string.Join(" ", item.OfType<LeafBlock>().Select(b => PlainText(b.Inline).Trim())).Trim();
+            var leaves = item.OfType<LeafBlock>().ToList();
+            var text = leaves.Count > 0 ? PlainText(leaves[0].Inline).Trim() : string.Empty;
+            var note = string.Join("\n", leaves.Skip(1)
+                .Select(b => PlainText(b.Inline, keepLineBreaks: true).Trim())
+                .Where(paragraph => paragraph.Length > 0));
             var state = StateOf(item) ?? ChecklistItemState.Todo;
-            return new(state == ChecklistItemState.InProgress ? text[InProgressMarker.Length..].TrimStart() : text, state);
+
+            return new(
+                state == ChecklistItemState.InProgress ? text[InProgressMarker.Length..].TrimStart() : text,
+                state,
+                Note: note.Length > ChecklistItem.MaxNoteLength ? note[..ChecklistItem.MaxNoteLength] : note);
         }
 
         private IEnumerable<WpfBlock> ToWpf(Markdig.Syntax.Block block)
@@ -366,18 +376,20 @@ public static class MarkdownImport
         }
     }
 
-    private static string PlainText(ContainerInline? inlines) =>
-        inlines is null ? string.Empty : string.Concat(inlines.Select(PlainText));
+    // keepLineBreaks: a hard line break ("\" or two spaces at the end of a line) stays one.
+    private static string PlainText(ContainerInline? inlines, bool keepLineBreaks = false) =>
+        inlines is null ? string.Empty : string.Concat(inlines.Select(inline => PlainText(inline, keepLineBreaks)));
 
-    private static string PlainText(Markdig.Syntax.Inlines.Inline inline) => inline switch
+    private static string PlainText(Markdig.Syntax.Inlines.Inline inline, bool keepLineBreaks = false) => inline switch
     {
         TaskList => string.Empty,
         LiteralInline literal => literal.Content.ToString(),
         CodeInline code => code.Content,
         AutolinkInline autolink => autolink.Url,
+        LineBreakInline { IsHard: true } when keepLineBreaks => "\n",
         LineBreakInline => " ",
         HtmlEntityInline entity => entity.Transcoded.ToString(),
-        ContainerInline container => PlainText(container),
+        ContainerInline container => PlainText(container, keepLineBreaks),
         _ => string.Empty
     };
 }

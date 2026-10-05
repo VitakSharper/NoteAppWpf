@@ -71,7 +71,11 @@ public static class WordExportService
 
                 case DocChecklist checklist:
                     foreach (var item in checklist.Items)
+                    {
                         body.Append(ChecklistParagraph(item, main));
+                        if (item.NoteLines.Count > 0)
+                            body.Append(ChecklistNoteParagraph(item.NoteLines));
+                    }
                     break;
 
                 case DocCode code:
@@ -299,6 +303,20 @@ public static class WordExportService
             run.Append(new RunProperties(new Strike(), new Color { Val = "595959" }));
         run.Append(PreservedText(text));
         return run;
+    }
+
+    // An item's note: under it, further in, small and grey; its lines stay lines.
+    private static Paragraph ChecklistNoteParagraph(IReadOnlyList<string> lines)
+    {
+        var run = new Run(new RunProperties(new Color { Val = "808080" }, new FontSize { Val = "18" }));
+        for (var i = 0; i < lines.Count; i++)
+        {
+            if (i > 0)
+                run.Append(new Break());
+            run.Append(PreservedText(lines[i]));
+        }
+
+        return new Paragraph(new ParagraphProperties(new Indentation { Left = "720" }), run);
     }
 
     private static Paragraph AttachmentParagraph(DocAttachment attachment) =>

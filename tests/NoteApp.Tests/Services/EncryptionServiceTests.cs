@@ -32,6 +32,7 @@ public class EncryptionServiceTests
         var checklist = Assert.IsType<NoteBlock.Checklist>(decrypted[3]);
         Assert.Equal(["buy milk", "call the bank", "pay rent"], checklist.Items.Select(i => i.Text));
         Assert.Equal([Done, Todo, InProgress], checklist.Items.Select(i => i.State));
+        Assert.Equal(["", "", "before the 5th\nby transfer"], checklist.Items.Select(i => i.Note));
 
         var secret = Assert.IsType<NoteBlock.Secret>(decrypted[4]);
         Assert.Equal(" p@ss word ", secret.Password);

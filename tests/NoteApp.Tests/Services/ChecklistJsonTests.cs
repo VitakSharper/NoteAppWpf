@@ -12,7 +12,7 @@ public class ChecklistJsonTests
     public void Round_trips_items_in_order()
     {
         IReadOnlyList<ChecklistItem> items =
-            [new ChecklistItem("buy milk", Done), new ChecklistItem("call the bank", InProgress), new ChecklistItem("pay rent", Todo)];
+            [new ChecklistItem("buy milk", Done), new ChecklistItem("call the bank", InProgress, Note: "ask for\nthe advisor"), new ChecklistItem("pay rent", Todo)];
 
         var restored = ChecklistJson.Deserialize(ChecklistJson.Serialize(items));
 
@@ -29,6 +29,15 @@ public class ChecklistJsonTests
         Assert.Equal("""[{"t":"buy milk","d":true},{"t":"call the bank","p":true},{"t":"pay rent"}]""", json);
     }
 
+    // "n" holds the item's note, left out when there is none.
+    [Fact]
+    public void A_note_is_written_under_n_only_when_there_is_one()
+    {
+        var json = ChecklistJson.Serialize([new ChecklistItem("call the bank", Todo, Note: "ask for the advisor"), new ChecklistItem("pay rent", Todo)]);
+
+        Assert.Equal("""[{"t":"call the bank","n":"ask for the advisor"},{"t":"pay rent"}]""", json);
+    }
+
     // Columns written before "p" existed hold only "d": they read as they always did.
     [Fact]
     public void A_list_without_progress_reads_as_done_or_todo()
@@ -36,6 +45,7 @@ public class ChecklistJsonTests
         var items = ChecklistJson.Deserialize("""[{"t":"a","d":true},{"t":"b"}]""");
 
         Assert.Equal([Done, Todo], items.Select(i => i.State));
+        Assert.All(items, i => Assert.Equal(string.Empty, i.Note));
     }
 
     // A hand-edited row may carry both; done is the stronger claim.

@@ -2,9 +2,12 @@ using NoteApp.Domain.ValueObjects;
 
 namespace NoteApp.Domain.Models;
 
-// Due: when to be reminded of the item (UTC), if ever.
-public sealed record ChecklistItem(string Text, ChecklistItemState State, DateTime? Due = null)
+// Due: when to be reminded of the item (UTC), if ever. Note: a few lines under the item,
+// empty when there is none.
+public sealed record ChecklistItem(string Text, ChecklistItemState State, DateTime? Due = null, string Note = "")
 {
+    public const int MaxNoteLength = 512;
+
     public bool IsDone => State == ChecklistItemState.Done;
 }
 
@@ -45,8 +48,8 @@ public abstract record NoteBlock
         public int DoneCount => Items.Count(i => i.IsDone);
 
         // Same role as Text.PlainText: this is what search and the list preview read,
-        // so a checklist is findable by the words in its items.
-        public string PlainText => string.Join("\n", Items.Select(i => i.Text));
+        // so a checklist is findable by the words in its items — and in their notes.
+        public string PlainText => string.Join("\n", Items.SelectMany(i => i.Note.Length > 0 ? [i.Text, i.Note] : new[] { i.Text }));
     }
 
     // A login: what it is for, the user name, the password and, optionally, where it is

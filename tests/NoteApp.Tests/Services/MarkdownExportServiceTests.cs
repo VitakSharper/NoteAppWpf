@@ -25,7 +25,10 @@ public class MarkdownExportServiceTests
                 new DocText("https://auto.example.com", false, false, true, Link: "https://auto.example.com/")]),
             new DocList(DocListMarker.Bullet, [[new DocText("one", false, false, false)], [new DocText("two", false, false, false)]]),
             new DocList(DocListMarker.LowerLatin, [[new DocText("first", false, false, false)]]),
-            new DocChecklist([new DocChecklistItem("buy milk", Done), new DocChecklistItem("call the bank", InProgress), new DocChecklistItem("read www.x.com", Todo)]),
+            new DocChecklist([
+                new DocChecklistItem("buy milk", Done),
+                new DocChecklistItem("call the bank", InProgress, "ask for *the* advisor\n\nbefore noon"),
+                new DocChecklistItem("read www.x.com", Todo)]),
             new DocLink("https://example.com/page", "Example"),
             new DocLink("https://example.com/bare", ""),
             new DocAttachment("report.pdf", 2048)
@@ -47,6 +50,9 @@ public class MarkdownExportServiceTests
 
             - [x] buy milk
             - [/] call the bank
+
+              ask for \*the\* advisor\
+              before noon
             - [ ] read [www.x.com](https://www.x.com/)
 
             [Example](https://example.com/page)

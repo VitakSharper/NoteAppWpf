@@ -13,7 +13,9 @@ public static class VersionPreview
             text: t => Paragraphs(t.PlainText.Length > 0 || t.RichText.Length == 0 ? t.PlainText : RichTextPreview.ExtractPlainText(t.RichText)),
             file: f => [$"📎 {f.FileName} ({DocAttachment.Size(f.SizeBytes)})"],
             link: l => [string.IsNullOrWhiteSpace(l.Description) ? $"🔗 {l.Url}" : $"🔗 {l.Description} — {l.Url}"],
-            checklist: c => c.Items.Select(i => $"{DocChecklistItem.Box(i.State)} {i.Text}"),
+            checklist: c => c.Items.SelectMany(i => new DocChecklistItem(i.Text, i.State, i.Note).NoteLines
+                .Select(line => "    " + line)
+                .Prepend($"{DocChecklistItem.Box(i.State)} {i.Text}")),
             secret: s => [$"🔑 {string.Join(" · ", new[] { s.Label, s.UserName, s.Url }.Where(x => x.Length > 0))} · password hidden"],
             code: c => Paragraphs(c.Content).Select(line => "  " + line)))
         .ToList();

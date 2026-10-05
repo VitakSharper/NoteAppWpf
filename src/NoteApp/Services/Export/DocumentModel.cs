@@ -55,9 +55,13 @@ public sealed record DocSecret(string Label, string UserName, string Url) : DocE
     ];
 }
 
-public sealed record DocChecklistItem(string Text, ChecklistItemState State)
+public sealed record DocChecklistItem(string Text, ChecklistItemState State, string Note = "")
 {
     public bool IsDone => State == ChecklistItemState.Done;
+
+    // The note as every exporter writes it under the item: its lines, trimmed, blank ones left out.
+    public IReadOnlyList<string> NoteLines =>
+        Note.ReplaceLineEndings("\n").Split('\n').Select(line => line.Trim()).Where(line => line.Length > 0).ToList();
 
     // "[x]" / "[/]" / "[ ]": the Markdown task markers ("[/]" is the in-progress one other
     // editors read), which the PDF prints too — its font has no ballot boxes.

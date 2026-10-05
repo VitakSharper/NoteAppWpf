@@ -59,7 +59,16 @@ public static class MarkdownExportService
 
                 case DocChecklist checklist:
                     foreach (var item in checklist.Items)
+                    {
                         markdown.Append($"- {item.Marker} ").Append(TextWithLinks(item.Text)).Append('\n');
+
+                        // Its note: a second paragraph of the same list item (a blank line, then
+                        // indented under the text), its lines joined by hard breaks.
+                        if (item.NoteLines.Count > 0)
+                            markdown.Append('\n')
+                                .Append(string.Join("\\\n", item.NoteLines.Select(line => "  " + TextWithLinks(line))))
+                                .Append('\n');
+                    }
                     markdown.Append('\n');
                     break;
 

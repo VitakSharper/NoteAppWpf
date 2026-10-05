@@ -38,6 +38,7 @@ public partial class HelpWindow : Window
             new("Ctrl + Click", "Opens the web address under the pointer anywhere — also in a checklist item or a link block, where a plain click edits."),
             new("Enter", "In the note search: run the search. In a text block find bar: next match (Shift + Enter: previous)."),
             new("Alt + Up / Down", "In a checklist item: move the item up or down."),
+            new("Shift + Enter", "In a checklist item: open its note, a few lines (512 characters at most) under the item."),
             new("Ctrl + wheel / + / -", "Zoom the note's blocks in or out (50 % to 250 %, remembered). Ctrl + 0: back to 100 %."),
             new("F11", "Focus mode: hide the rail and the note list while a note is open (Esc leaves it)."),
             new("F1", "This help.")

@@ -30,7 +30,7 @@ public class PdfExportServiceTests
             new DocList(DocListMarker.Decimal, [[new DocText("first", false, false, false)]]),
             new DocChecklist([
                 new DocChecklistItem("read https://mid.example.com/a later", Done),
-                new DocChecklistItem("call the bank", InProgress),
+                new DocChecklistItem("call the bank", InProgress, "ask for the advisor" + Environment.NewLine + "before noon"),
                 new DocChecklistItem("buy milk", Todo)]),
             new DocLink("https://example.com/page", "Example"),
             new DocAttachment("report.pdf", 2048),

@@ -52,6 +52,16 @@ public class NoteTests
 
     // PlainText is what search and the list preview read; DoneCount drives the
     // editor's "2/5 done" line.
+    // An item's note is searched like its text, right after it.
+    [Fact]
+    public void Checklist_PlainText_takes_each_note_after_its_item()
+    {
+        var checklist = new NoteBlock.Checklist(
+            [new ChecklistItem("call the bank", ChecklistItemState.Todo, Note: "ask for the advisor"), new ChecklistItem("pay rent", ChecklistItemState.Todo)]);
+
+        Assert.Equal("call the bank\nask for the advisor\npay rent", checklist.PlainText);
+    }
+
     [Fact]
     public void Checklist_ExposesItsItemsAsPlainTextAndCountsWhatIsDone()
     {

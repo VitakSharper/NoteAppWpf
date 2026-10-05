@@ -52,11 +52,11 @@ public class VersionTests
     {
         var lines = VersionPreview.Lines([
             new NoteBlock.Text("x", "first line\r\n\r\nsecond"),
-            new NoteBlock.Checklist([new ChecklistItem("done", ChecklistItemState.Done), new ChecklistItem("started", ChecklistItemState.InProgress), new ChecklistItem("todo", ChecklistItemState.Todo)]),
+            new NoteBlock.Checklist([new ChecklistItem("done", ChecklistItemState.Done), new ChecklistItem("started", ChecklistItemState.InProgress, Note: "half way, there"), new ChecklistItem("todo", ChecklistItemState.Todo)]),
             new NoteBlock.Secret("Wifi", "me", "hunter2"),
             new NoteBlock.Code("ls\n  -la")]);
 
-        Assert.Equal(["first line", "second", "☑ done", "◐ started", "☐ todo", "🔑 Wifi · me · password hidden", "  ls", "    -la"], lines);
+        Assert.Equal(["first line", "second", "☑ done", "◐ started", "    half way, there", "☐ todo", "🔑 Wifi · me · password hidden", "  ls", "    -la"], lines);
         Assert.DoesNotContain(lines, l => l.Contains("hunter2"));
     }
 

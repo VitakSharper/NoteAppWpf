@@ -5,6 +5,7 @@
              xmlns:converters="clr-namespace:NoteApp.Converters"
              xmlns:vm="clr-namespace:NoteApp.ViewModels"
              xmlns:views="clr-namespace:NoteApp.Views"
+             xmlns:models="clr-namespace:NoteApp.Domain.Models"
              Loaded="OnLoaded"
              AllowDrop="True"
              PreviewDragOver="OnEditorPreviewDragOver"
@@ -216,10 +217,10 @@
                 <ItemsControl ItemsSource="{Binding ChecklistItems}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:ChecklistItemViewModel}">
-                            <DockPanel Margin="0,1">
-                                <!-- "Hide done" on the block collapses the ticked rows. -->
-                                <DockPanel.Style>
-                                    <Style TargetType="DockPanel">
+                            <StackPanel Margin="0,1">
+                                <!-- "Hide done" on the block collapses the ticked rows, notes included. -->
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
                                         <Style.Triggers>
                                             <MultiDataTrigger>
                                                 <MultiDataTrigger.Conditions>
@@ -230,92 +231,153 @@
                                             </MultiDataTrigger>
                                         </Style.Triggers>
                                     </Style>
-                                </DockPanel.Style>
-                                <!-- A click goes not started → in progress (the dash) → done → not started. -->
-                                <views:TriStateCheckBox DockPanel.Dock="Left" IsChecked="{Binding IsChecked}"
-                                                        Style="{StaticResource MaterialDesignCheckBox}"
-                                                        VerticalAlignment="Center" Margin="0,0,8,0"
-                                                        ToolTip="{Binding StateTip}" />
-                                <Button DockPanel.Dock="Right" ToolTip="Remove item"
-                                        Style="{StaticResource MaterialDesignIconButton}"
-                                        Width="26" Height="26" Margin="4,0,0,0"
-                                        Foreground="{DynamicResource MaterialDesignBodyLight}"
-                                        Command="{Binding DataContext.RemoveChecklistItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding}">
-                                    <materialDesign:PackIcon Kind="Close" Width="14" Height="14" />
-                                </Button>
-                                <!-- The item's reminder: saved with the checklist. -->
-                                <Button DockPanel.Dock="Right" Height="26" Padding="4,0" Margin="4,0,0,0"
-                                        Tag="{Binding}" Click="OnItemReminder">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
-                                            <Setter Property="ToolTip" Value="Remind me of this item" />
-                                            <Setter Property="Opacity" Value="0.45" />
-                                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Opacity" Value="1" />
-                                                </Trigger>
-                                                <DataTrigger Binding="{Binding HasDue}" Value="True">
-                                                    <Setter Property="Opacity" Value="1" />
-                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
-                                                    <Setter Property="ToolTip" Value="Change or remove the reminder" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding IsOverdue}" Value="True">
-                                                    <Setter Property="Foreground" Value="{DynamicResource MaterialDesignValidationErrorBrush}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="BellOutline" Width="14" Height="14" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding DueLabel}" FontSize="11" Margin="4,0,0,0" VerticalAlignment="Center"
-                                                   Visibility="{Binding HasDue, Converter={StaticResource BoolToVis}}" />
-                                    </StackPanel>
-                                </Button>
-                                <Button DockPanel.Dock="Right" ToolTip="Open link (or Ctrl+Click it)"
-                                        Width="26" Height="26" Margin="4,0,0,0"
-                                        Tag="{Binding}" Click="OnOpenChecklistLink">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignIconButton}">
-                                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding HasLink}" Value="True">
-                                                    <Setter Property="Visibility" Value="Visible" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                    <materialDesign:PackIcon Kind="OpenInNew" Width="14" Height="14" />
-                                </Button>
-                                <!-- Tag carries the item so the code-behind can find and focus
-                                     the row it just created (Enter adds one below) or moved (Alt+Up/Down). -->
-                                <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
-                                         Tag="{Binding}"
-                                         KeyDown="OnChecklistItemKeyDown"
-                                         PreviewMouseLeftButtonDown="OnLinkPreviewMouseLeftButtonDown"
-                                         PreviewMouseMove="OnLinkHostMouseMove"
-                                         MouseLeave="OnLinkHostMouseLeave"
-                                         materialDesign:HintAssist.Hint="List item"
-                                         BorderThickness="0" VerticalAlignment="Center" Padding="0,4">
+                                </StackPanel.Style>
+                                <DockPanel>
+                                    <!-- A click goes not started → in progress (the dash) → done → not started. -->
+                                    <views:TriStateCheckBox DockPanel.Dock="Left" IsChecked="{Binding IsChecked}"
+                                                            Style="{StaticResource MaterialDesignCheckBox}"
+                                                            VerticalAlignment="Center" Margin="0,0,8,0"
+                                                            ToolTip="{Binding StateTip}" />
+                                    <Button DockPanel.Dock="Right" ToolTip="Remove item"
+                                            Style="{StaticResource MaterialDesignIconButton}"
+                                            Width="26" Height="26" Margin="4,0,0,0"
+                                            Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                            Command="{Binding DataContext.RemoveChecklistItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}">
+                                        <materialDesign:PackIcon Kind="Close" Width="14" Height="14" />
+                                    </Button>
+                                    <!-- The item's reminder: saved with the checklist. -->
+                                    <Button DockPanel.Dock="Right" Height="26" Padding="4,0" Margin="4,0,0,0"
+                                            Tag="{Binding}" Click="OnItemReminder">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                                                <Setter Property="ToolTip" Value="Remind me of this item" />
+                                                <Setter Property="Opacity" Value="0.45" />
+                                                <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Opacity" Value="1" />
+                                                    </Trigger>
+                                                    <DataTrigger Binding="{Binding HasDue}" Value="True">
+                                                        <Setter Property="Opacity" Value="1" />
+                                                        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                        <Setter Property="ToolTip" Value="Change or remove the reminder" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsOverdue}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource MaterialDesignValidationErrorBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="BellOutline" Width="14" Height="14" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding DueLabel}" FontSize="11" Margin="4,0,0,0" VerticalAlignment="Center"
+                                                       Visibility="{Binding HasDue, Converter={StaticResource BoolToVis}}" />
+                                        </StackPanel>
+                                    </Button>
+                                    <!-- The item's note: a few lines under it, saved with the checklist. -->
+                                    <Button DockPanel.Dock="Right" Height="26" Padding="4,0" Margin="4,0,0,0"
+                                            Tag="{Binding}" Click="OnItemNote">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                                                <Setter Property="ToolTip" Value="Add a note (or Shift+Enter in the item)" />
+                                                <Setter Property="Opacity" Value="0.45" />
+                                                <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Opacity" Value="1" />
+                                                    </Trigger>
+                                                    <DataTrigger Binding="{Binding HasNote}" Value="True">
+                                                        <Setter Property="Opacity" Value="1" />
+                                                        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                        <Setter Property="ToolTip" Value="Edit the note" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <!-- A bubble with a plus to add one, a filled bubble once there is one. -->
+                                        <materialDesign:PackIcon Width="14" Height="14" VerticalAlignment="Center">
+                                            <materialDesign:PackIcon.Style>
+                                                <Style TargetType="materialDesign:PackIcon">
+                                                    <Setter Property="Kind" Value="CommentPlusOutline" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasNote}" Value="True">
+                                                            <Setter Property="Kind" Value="CommentText" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </materialDesign:PackIcon.Style>
+                                        </materialDesign:PackIcon>
+                                    </Button>
+                                    <Button DockPanel.Dock="Right" ToolTip="Open link (or Ctrl+Click it)"
+                                            Width="26" Height="26" Margin="4,0,0,0"
+                                            Tag="{Binding}" Click="OnOpenChecklistLink">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignIconButton}">
+                                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasLink}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <materialDesign:PackIcon Kind="OpenInNew" Width="14" Height="14" />
+                                    </Button>
+                                    <!-- Tag carries the item so the code-behind can find and focus
+                                         the row it just created (Enter adds one below) or moved (Alt+Up/Down). -->
+                                    <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                                             Tag="{Binding}"
+                                             KeyDown="OnChecklistItemKeyDown"
+                                             PreviewMouseLeftButtonDown="OnLinkPreviewMouseLeftButtonDown"
+                                             PreviewMouseMove="OnLinkHostMouseMove"
+                                             MouseLeave="OnLinkHostMouseLeave"
+                                             materialDesign:HintAssist.Hint="List item"
+                                             BorderThickness="0" VerticalAlignment="Center" Padding="0,4">
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox" BasedOn="{StaticResource MaterialDesignTextBox}">
+                                                <Style.Triggers>
+                                                    <!-- Before IsDone: a ticked link reads as done first. -->
+                                                    <DataTrigger Binding="{Binding IsLink}" Value="True">
+                                                        <Setter Property="TextDecorations" Value="Underline" />
+                                                        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsDone}" Value="True">
+                                                        <Setter Property="TextDecorations" Value="Strikethrough" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBox.Style>
+                                    </TextBox>
+                                </DockPanel>
+                                <!-- The note, lined up under the item's text: there when it holds
+                                     something or has just been opened. Named, not tagged — the code
+                                     that finds an item's own box goes by its Tag. -->
+                                <TextBox x:Name="ItemNote"
+                                         Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}"
+                                         MaxLength="{x:Static models:ChecklistItem.MaxNoteLength}"
+                                         AcceptsReturn="True" TextWrapping="Wrap"
+                                         GotKeyboardFocus="OnItemNoteGotFocus"
+                                         LostKeyboardFocus="OnItemNoteLostFocus"
+                                         materialDesign:HintAssist.Hint="Note"
+                                         Visibility="{Binding ShowsNote, Converter={StaticResource BoolToVis}}"
+                                         Margin="26,0,0,2" Padding="0,2" FontSize="12" BorderThickness="0"
+                                         Foreground="{DynamicResource MaterialDesignBodyLight}">
                                     <TextBox.Style>
                                         <Style TargetType="TextBox" BasedOn="{StaticResource MaterialDesignTextBox}">
+                                            <!-- The "n/512" count only while typing in it. -->
+                                            <Setter Property="materialDesign:TextFieldAssist.CharacterCounterVisibility" Value="Collapsed" />
                                             <Style.Triggers>
-                                                <!-- Before IsDone: a ticked link reads as done first. -->
-                                                <DataTrigger Binding="{Binding IsLink}" Value="True">
-                                                    <Setter Property="TextDecorations" Value="Underline" />
-                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding IsDone}" Value="True">
-                                                    <Setter Property="TextDecorations" Value="Strikethrough" />
-                                                    <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
-                                                </DataTrigger>
+                                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                                    <Setter Property="materialDesign:TextFieldAssist.CharacterCounterVisibility" Value="Visible" />
+                                                </Trigger>
                                             </Style.Triggers>
                                         </Style>
                                     </TextBox.Style>
                                 </TextBox>
-                            </DockPanel>
+                            </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

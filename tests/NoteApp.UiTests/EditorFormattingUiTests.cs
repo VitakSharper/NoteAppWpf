@@ -109,6 +109,62 @@ public class ChecklistUiTests
     });
 
     [Fact]
+    public void The_note_button_opens_a_field_under_the_item_and_an_empty_one_closes_when_left() => Wpf.Run(() =>
+    {
+        using var editor = new OpenEditor(Notes.With(Notes.Checklist("call the bank")));
+        var item = editor.ViewModel.Blocks[0].ChecklistItems[0];
+        var note = NoteBox(editor);
+        Assert.False(note.IsVisible);
+        Assert.Equal(MaterialDesignThemes.Wpf.PackIconKind.CommentPlusOutline, NoteIcon(editor));
+
+        EditorFormattingUiTests.Click(editor, "Add a note");
+
+        Assert.True(note.IsVisible);
+        Assert.True(note.IsKeyboardFocusWithin || note.IsFocused);
+        Assert.Equal(ChecklistItem.MaxNoteLength, note.MaxLength);
+        Assert.False(editor.ViewModel.IsDirty);
+
+        editor.Find<TextBox>().Single(t => ReferenceEquals(t.Tag, item)).Focus();
+        Wpf.Pump();
+
+        Assert.False(note.IsVisible);
+    });
+
+    [Fact]
+    public void A_note_stays_under_its_item_and_its_field_stays_while_it_is_emptied() => Wpf.Run(() =>
+    {
+        using var editor = new OpenEditor(Notes.With(new NoteApp.Domain.Models.NoteBlock.Checklist(
+            [new("call the bank", ChecklistItemState.Todo, Note: "ask for the advisor")])));
+        var note = NoteBox(editor);
+        Assert.True(note.IsVisible);
+        Assert.Equal("ask for the advisor", note.Text);
+        Assert.Equal(MaterialDesignThemes.Wpf.PackIconKind.CommentText, NoteIcon(editor));
+
+        note.Focus();
+        Wpf.Pump();
+        note.Clear();
+        Wpf.Pump();
+
+        Assert.True(note.IsVisible);
+        Assert.True(editor.ViewModel.IsDirty);
+    });
+
+    [Fact]
+    public void Only_shift_enter_in_an_item_opens_its_note()
+    {
+        Assert.True(NoteEditorView.OpensItemNote(System.Windows.Input.Key.Enter, System.Windows.Input.ModifierKeys.Shift));
+        Assert.False(NoteEditorView.OpensItemNote(System.Windows.Input.Key.Enter, System.Windows.Input.ModifierKeys.None));
+        Assert.False(NoteEditorView.OpensItemNote(System.Windows.Input.Key.Tab, System.Windows.Input.ModifierKeys.Shift));
+    }
+
+    // The note field: it carries no Tag, so the code that finds an item's own box never takes it.
+    private static TextBox NoteBox(OpenEditor editor) =>
+        editor.Find<TextBox>().Single(t => t.Name == "ItemNote");
+
+    private static MaterialDesignThemes.Wpf.PackIconKind NoteIcon(OpenEditor editor) =>
+        Wpf.Descendants<MaterialDesignThemes.Wpf.PackIcon>(editor.Find<Button>().Single(b => b.ToolTip is string tip && (tip.StartsWith("Add a note") || tip == "Edit the note"))).Single().Kind;
+
+    [Fact]
     public void Only_alt_with_an_arrow_moves_an_item()
     {
         Assert.Equal(-1, NoteApp.Views.NoteEditorView.ChecklistMoveOffset(System.Windows.Input.Key.Up, System.Windows.Input.ModifierKeys.Alt));

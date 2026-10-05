@@ -32,6 +32,9 @@ public class MarkdownImportUiTests : IDisposable
 
             - [x] tests
             - [/] review
+
+              with *the* team\
+              before noon
             - [ ] release
 
             ```
@@ -60,8 +63,20 @@ public class MarkdownImportUiTests : IDisposable
         Assert.Equal(
             [("tests", ChecklistItemState.Done), ("review", ChecklistItemState.InProgress), ("release", ChecklistItemState.Todo)],
             checklist.Items.Select(i => (i.Text, i.State)));
+        // What follows an item's first paragraph is its note, line breaks kept.
+        Assert.Equal(["", "with the team\nbefore noon", ""], checklist.Items.Select(i => i.Note));
         Assert.Equal("SELECT *\n\tFROM Notes", ((NoteBlock.Code)note.Blocks[2]).Content.ReplaceLineEndings("\n"));
         Assert.Equal("after the code", ((NoteBlock.Text)note.Blocks[3]).PlainText);
+    });
+
+    // A note from elsewhere may run long: it is cut at the editor's limit.
+    [Fact]
+    public void A_long_item_note_is_cut_at_512_characters() => Wpf.Run(() =>
+    {
+        var note = MarkdownImport.FromMarkdown($"- [ ] call\n\n  {new string('x', 600)}\n", "fallback");
+
+        var item = Assert.Single(((NoteBlock.Checklist)Assert.Single(note.Blocks)).Items);
+        Assert.Equal(ChecklistItem.MaxNoteLength, item.Note.Length);
     });
 
     // Markdig knows only "[ ]" and "[x]": "[/]" (the export's in progress) is read by the import.
