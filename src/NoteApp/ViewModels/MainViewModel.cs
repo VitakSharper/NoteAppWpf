@@ -543,7 +543,6 @@ public partial class MainViewModel : ObservableObject
         entries.Add(new CommandEntry(SettingsViewModel.IsDarkMode ? "Light theme" : "Dark theme", () =>
         {
             SettingsViewModel.IsDarkMode = !SettingsViewModel.IsDarkMode;
-            SettingsViewModel.SaveCommand.Execute(null);
             return Task.CompletedTask;
         }));
         return entries;

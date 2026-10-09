@@ -95,8 +95,15 @@ public partial class SettingsViewModel : ObservableObject
     partial void OnIsBackingUpChanged(bool value) => OnPropertyChanged(nameof(CanBackup));
     partial void OnBackupPasswordChanged(string value) => OnPropertyChanged(nameof(CanBackup));
 
-    partial void OnIsDarkModeChanged(bool value) =>
+    // The theme repaints the window at once, so it is saved at once too: switched but never
+    // saved, it came back light at the next start. Only this field — the rest of the form
+    // still waits for "Save settings".
+    partial void OnIsDarkModeChanged(bool value)
+    {
         ApplyTheme(value);
+        if (!_isLoading)
+            _settingsService.Save(_settingsService.Current with { IsDarkMode = value });
+    }
 
     // The schedule is saved at once: it lives in the backup card, far from "Save settings",
     // and a schedule picked but never saved would silently never run.
